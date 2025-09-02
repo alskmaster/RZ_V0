@@ -89,9 +89,13 @@ Este documento resume as principais evoluções realizadas e como utilizá‑las
 ### Opções – SLA Gráfico
 - `top_n`, `order`, `color`, `target_sla`, `below_color`, `x_axis_0_100`.
 - Extras: `label_wrap`, `dynamic_height`, `height_per_bar`, `show_values`, `grid`, `host_contains`.
+- Novas: `only_below_goal` para mostrar apenas hosts abaixo da meta.
+- UI: campos de cor com color‑picker e atalho “Usar do cliente” para preencher `target_sla` a partir do cliente selecionado (lê `data-sla` do `<option>` do cliente).
 
 ### Opções – SLA Tabela
 - `target_sla`, `show_goal`, `show_downtime`, `highlight_below_goal`, `decimals`, `sort_by`, `sort_asc`, `top_n`.
+- Novas: `only_below_goal` e `hide_summary`.
+- UI: “Ordenar por” com opções pré‑definidas e botão “Usar do cliente” no gráfico para meta.
 
 ## Melhorias de UX (acentuação e mensagens)
 - Corrigidas mensagens com acentuação na tela de geração e no polling:

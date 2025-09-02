@@ -18,7 +18,7 @@
                         <select name="client_id" id="client_id" class="form-select" required>
                             <option value="">Selecione um cliente...</option>
                             {% for client in clients %}
-                            <option value="{{ client.id }}">{{ client.name }}</option>
+                            <option value="{{ client.id }}" data-sla="{{ client.sla_contract or '' }}">{{ client.name }}</option>
                             {% endfor %}
                         </select>
                     </div>

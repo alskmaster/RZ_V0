@@ -29,15 +29,18 @@
               </div>
               <div class="col-6">
                 <label class="form-label">Meta (SLA %)</label>
-                <input type="number" class="form-control" id="slaChartTarget" min="0" max="100" step="0.1" />
+                <div class="input-group">
+                  <input type="number" class="form-control" id="slaChartTarget" min="0" max="100" step="0.1" />
+                  <button class="btn btn-outline-secondary" type="button" id="slaChartTargetFromClient" title="Usar meta do cliente">Usar do cliente</button>
+                </div>
               </div>
               <div class="col-6">
                 <label class="form-label">Cor abaixo da meta</label>
-                <input type="text" class="form-control" id="slaChartBelowColor" placeholder="#e55353" />
+                <input type="color" class="form-control form-control-color" id="slaChartBelowColor" value="#e55353" />
               </div>
               <div class="col-6">
                 <label class="form-label">Cor padrão</label>
-                <input type="text" class="form-control" id="slaChartColor" placeholder="#2c7be5" />
+                <input type="color" class="form-control form-control-color" id="slaChartColor" value="#2c7be5" />
               </div>
               <div class="col-6 form-check">
                 <input class="form-check-input" type="checkbox" id="slaChartAxis" checked>
@@ -46,6 +49,10 @@
               <div class="col-12">
                 <label class="form-label">Filtrar hosts (contém)</label>
                 <input type="text" class="form-control" id="slaChartFilter" placeholder="ex.: SDWAN" />
+              </div>
+              <div class="col-12 form-check">
+                <input class="form-check-input" type="checkbox" id="slaChartOnlyBelow">
+                <label class="form-check-label" for="slaChartOnlyBelow">Mostrar apenas hosts abaixo da meta</label>
               </div>
               <hr/>
               <div class="col-6">
@@ -91,10 +98,12 @@
         topN: document.getElementById('slaChartTopN'),
         order: document.getElementById('slaChartOrder'),
         target: document.getElementById('slaChartTarget'),
+        targetBtn: document.getElementById('slaChartTargetFromClient'),
         below: document.getElementById('slaChartBelowColor'),
         color: document.getElementById('slaChartColor'),
         axis: document.getElementById('slaChartAxis'),
         filter: document.getElementById('slaChartFilter'),
+        onlyBelow: document.getElementById('slaChartOnlyBelow'),
         wrap: document.getElementById('slaChartWrap'),
         hpb: document.getElementById('slaChartHPB'),
         dyn: document.getElementById('slaChartDyn'),
@@ -113,12 +122,24 @@
       this.elements.color.value = o.color || '#2c7be5';
       this.elements.axis.checked = (o.x_axis_0_100 ?? true);
       this.elements.filter.value = o.host_contains || '';
+      this.elements.onlyBelow.checked = !!o.only_below_goal;
       this.elements.wrap.value = o.label_wrap ?? 40;
       this.elements.hpb.value = o.height_per_bar ?? 0.35;
       this.elements.dyn.checked = (o.dynamic_height ?? true);
       this.elements.values.checked = (o.show_values ?? true);
       this.elements.grid.checked = (o.grid ?? true);
       this.elements.saveBtn.onclick = null;
+      // botão para puxar SLA do cliente selecionado
+      if (this.elements.targetBtn) {
+        this.elements.targetBtn.onclick = () => {
+          try {
+            const sel = document.getElementById('client_id');
+            const opt = sel?.selectedOptions?.[0];
+            const sla = opt?.getAttribute('data-sla');
+            if (sla) this.elements.target.value = sla;
+          } catch (e) {}
+        };
+      }
       this.elements.saveBtn.addEventListener('click', ()=>{
         if (this._onSave) this._onSave(this.save());
         this.modal.hide();
@@ -133,6 +154,7 @@
         color: this.elements.color.value || '#2c7be5',
         x_axis_0_100: !!this.elements.axis.checked,
         host_contains: this.elements.filter.value || '',
+        only_below_goal: !!this.elements.onlyBelow.checked,
         label_wrap: parseInt(this.elements.wrap.value||40),
         height_per_bar: parseFloat(this.elements.hpb.value||0.35),
         dynamic_height: !!this.elements.dyn.checked,
@@ -142,4 +164,3 @@
     }
   };
 })();
-

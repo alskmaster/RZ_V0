@@ -65,6 +65,13 @@ class SlaChartCollector(BaseCollector):
         df_plot = df_plot.dropna()
 
         ascending = True if order == 'asc' else False
+        # Filtro: apenas abaixo da meta, se configurado
+        only_below = bool(opts.get('only_below_goal'))
+        if only_below and target_sla is not None:
+            try:
+                df_plot = df_plot[df_plot[sla_col] < float(target_sla)]
+            except Exception:
+                pass
         df_plot = df_plot.sort_values(by=sla_col, ascending=ascending)
         if top_n > 0:
             df_plot = df_plot.head(top_n) if ascending else df_plot.tail(top_n)

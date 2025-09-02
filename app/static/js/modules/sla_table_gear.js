@@ -38,7 +38,11 @@
               </div>
               <div class="col-6">
                 <label class="form-label">Ordenar por</label>
-                <input type="text" class="form-control" id="slaTableSortBy" placeholder="SLA (%)"/>
+                <select class="form-select" id="slaTableSortBy">
+                  <option value="SLA (%)">SLA (%)</option>
+                  <option value="Host">Host</option>
+                  <option value="Tempo Indisponível">Tempo Indisponível</option>
+                </select>
               </div>
               <div class="col-6 form-check">
                 <input class="form-check-input" type="checkbox" id="slaTableSortAsc" checked>
@@ -47,6 +51,14 @@
               <div class="col-6">
                 <label class="form-label">Top N</label>
                 <input type="number" class="form-control" id="slaTableTopN" min="0" value="0"/>
+              </div>
+              <div class="col-12 form-check">
+                <input class="form-check-input" type="checkbox" id="slaTableOnlyBelow">
+                <label class="form-check-label" for="slaTableOnlyBelow">Mostrar apenas hosts abaixo da meta</label>
+              </div>
+              <div class="col-12 form-check">
+                <input class="form-check-input" type="checkbox" id="slaTableHideSummary">
+                <label class="form-check-label" for="slaTableHideSummary">Ocultar resumo</label>
               </div>
             </div>
           </div>
@@ -76,6 +88,8 @@
         sortBy: document.getElementById('slaTableSortBy'),
         sortAsc: document.getElementById('slaTableSortAsc'),
         topN: document.getElementById('slaTableTopN'),
+        onlyBelow: document.getElementById('slaTableOnlyBelow'),
+        hideSummary: document.getElementById('slaTableHideSummary'),
         saveBtn: document.getElementById('saveSlaTableBtn')
       };
     },
@@ -90,6 +104,8 @@
       this.elements.sortBy.value = o.sort_by || 'SLA (%)';
       this.elements.sortAsc.checked = (o.sort_asc ?? true);
       this.elements.topN.value = o.top_n ?? 0;
+      this.elements.onlyBelow.checked = !!o.only_below_goal;
+      this.elements.hideSummary.checked = !!o.hide_summary;
       this.elements.saveBtn.onclick = null;
       this.elements.saveBtn.addEventListener('click', ()=>{
         if (this._onSave) this._onSave(this.save());
@@ -105,9 +121,10 @@
         highlight_below_goal: !!this.elements.highlight.checked,
         sort_by: this.elements.sortBy.value || 'SLA (%)',
         sort_asc: !!this.elements.sortAsc.checked,
-        top_n: parseInt(this.elements.topN.value||0)
+        top_n: parseInt(this.elements.topN.value||0),
+        only_below_goal: !!this.elements.onlyBelow.checked,
+        hide_summary: !!this.elements.hideSummary.checked
       };
     }
   };
 })();
-
