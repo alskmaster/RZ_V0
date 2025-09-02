@@ -20,6 +20,19 @@ class SlaChartCollector(BaseCollector):
         top_n = int(opts.get('top_n', 0) or 0)
         order = str(opts.get('order', 'asc')).lower()  # asc/desc
         color = opts.get('color', '#2c7be5')
+        # Nova opções (engrenagem): meta de SLA, destaque abaixo da meta, e limitar eixo X em 0..100
+        target_sla = None
+        try:
+            target_sla = float(opts.get('target_sla')) if opts.get('target_sla') is not None else None
+        except Exception:
+            target_sla = None
+        if target_sla is None:
+            try:
+                target_sla = float(self.generator._get_client_sla_contract() or 0)
+            except Exception:
+                target_sla = None
+        below_color = opts.get('below_color', '#e55353')
+        force_percent_axis = bool(opts.get('x_axis_0_100', True))
 
         # Keep only needed columns
         if 'SLA (%)' not in df_sla.columns:
@@ -43,6 +56,16 @@ class SlaChartCollector(BaseCollector):
         if top_n > 0:
             df_plot = df_plot.head(top_n) if ascending else df_plot.tail(top_n)
 
-        chart = generate_chart(df_plot, x_col=sla_col, y_col='Host', title=self.module_config.get('title') or 'Disponibilidade por Host (%)', x_label='SLA (%)', chart_color=color)
+        chart = generate_chart(
+            df_plot,
+            x_col=sla_col,
+            y_col='Host',
+            title=self.module_config.get('title') or 'Disponibilidade por Host (%)',
+            x_label='SLA (%)',
+            chart_color=color,
+            target_line=target_sla,
+            below_color=below_color,
+            above_color=color,
+            xlim=(0, 100) if force_percent_axis else None,
+        )
         return self.render('sla_chart', {'chart': chart, 'note': ''})
-

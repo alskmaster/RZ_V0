@@ -17,6 +17,12 @@ class SlaTableCollector(BaseCollector):
 
         opts = self.module_config.get('custom_options', {}) or {}
         sla_goal = self.generator.client.sla_contract
+        try:
+            override_goal = opts.get('target_sla')
+            if override_goal is not None and str(override_goal).strip() != '':
+                sla_goal = float(override_goal)
+        except Exception:
+            pass
 
         cols = ['Host']
         if opts.get('show_ip') and 'IP' in df_sla.columns:
@@ -75,4 +81,3 @@ class SlaTableCollector(BaseCollector):
         table_html = df_disp.to_html(classes='table', index=False, escape=False)
 
         return self.render('sla_table', {'summary_html': summary_html, 'table_html': table_html})
-

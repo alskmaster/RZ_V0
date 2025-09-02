@@ -119,7 +119,19 @@ def _normalize_mem_dataframe(df):
 # API pública
 # -----------------------
 
-def generate_chart(df, x_col, y_col, title, x_label, chart_color):
+def generate_chart(
+    df,
+    x_col,
+    y_col,
+    title,
+    x_label,
+    chart_color,
+    *,
+    target_line=None,
+    below_color=None,
+    above_color=None,
+    xlim=None
+):
     logging.info(f"Gerando gráfico: {title}...")
     if df is None or df.empty:
         logging.warning("[charting.generate_chart] DataFrame vazio - gráfico não será gerado.")
@@ -135,20 +147,38 @@ def generate_chart(df, x_col, y_col, title, x_label, chart_color):
         df_sorted = df
 
     y_labels = ['\n'.join(textwrap.wrap(str(label), width=50)) for label in df_sorted[y_col]]
-    bars = ax.barh(y_labels, df_sorted[x_col], color=chart_color)
+    values = df_sorted[x_col]
+    # Cores por barra (destacar abaixo da meta)
+    if target_line is not None and below_color:
+        bar_colors = [below_color if (pd.to_numeric([v], errors='coerce')[0] < float(target_line)) else (above_color or chart_color) for v in values]
+    else:
+        bar_colors = chart_color
+    bars = ax.barh(y_labels, values, color=bar_colors)
     font_size = 8 if len(y_labels) > 10 else 9
 
     ax.tick_params(axis='y', labelsize=font_size)
     ax.set_xlabel(x_label)
     ax.set_title(title, fontsize=16)
     ax.grid(True, which='major', axis='x', linestyle='--', linewidth=0.5)
+    # Linha de meta (target)
+    if target_line is not None:
+        try:
+            ax.axvline(float(target_line), color='#ff8c00', linestyle='--', linewidth=1.5)
+        except Exception:
+            pass
+    # Limites do eixo X (ex.: 0..100 para %)
+    if xlim and isinstance(xlim, (list, tuple)) and len(xlim) == 2:
+        try:
+            ax.set_xlim(float(xlim[0]), float(xlim[1]))
+        except Exception:
+            pass
     for spine in ['top', 'right', 'left', 'bottom']:
         ax.spines[spine].set_visible(False)
 
     for bar in bars:
         label_val = bar.get_width()
         try:
-            label = f'{float(label_val):.2f}'
+            label = f'{float(label_val):.2f}'.replace('.', ',')
         except Exception:
             label = str(label_val)
         ax.text(label_val, bar.get_y() + bar.get_height()/2, f' {label}', va='center', ha='left', fontsize=font_size - 1)
