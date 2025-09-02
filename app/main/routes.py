@@ -270,7 +270,10 @@ def get_available_modules(client_id):
     
     if check_key('icmpping'):
         available_modules.append({'type': 'kpi', 'name': 'KPIs de Disponibilidade'})
-        available_modules.append({'type': 'sla', 'name': 'Tabela de Disponibilidade'})
+        available_modules.append({'type': 'sla_table', 'name': 'Disponibilidade (SLA) - Tabela'})
+        available_modules.append({'type': 'sla_chart', 'name': 'Disponibilidade (SLA) - Gráfico'})
+        # Mantém módulo legado para compatibilidade
+        available_modules.append({'type': 'sla', 'name': 'Disponibilidade (SLA) - Legado'})
         available_modules.append({'type': 'top_hosts', 'name': 'Diagnóstico dos Ofensores'})
         available_modules.append({'type': 'top_problems', 'name': 'Painel de Vilões Sistêmicos'})
         available_modules.append({'type': 'stress', 'name': 'Eletrocardiograma do Ambiente'})
@@ -446,3 +449,4 @@ def test_events(client_id, mes_ref):
         "diagnostico": "Coleta em lote está INCOMPLETA." if total_diario > total_lote else "Coleta em lote parece COMPLETA.",
         "detalhes_diarios": dias_com_eventos
     })
+
