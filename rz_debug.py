@@ -91,33 +91,38 @@ def _get_request_id() -> Optional[str]:
         return None
 
 # -----------------------------------------------------------------------------
-# Decorador principal
+# Decorador principal (CORRIGIDO)
 # -----------------------------------------------------------------------------
-def with_debug(name: Optional[str] = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def with_debug(arg: Optional[Callable[..., Any]] = None):
     """
     Instrumenta a função com logs de entrada/saída/erro, tempo e correlação.
     Seguro para uso fora de request (ex.: código de startup).
+    Pode ser usado como @with_debug, @with_debug() ou @with_debug("custom_name").
     """
-    def _wrap(fn: Callable[..., Any]) -> Callable[..., Any]:
-        label = name or f"{fn.__module__}.{fn.__name__}"
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+        # Se 'arg' for uma string, é o nome do label. Senão, o nome é derivado da função.
+        label = arg if isinstance(arg, str) else f"{fn.__module__}.{fn.__name__}"
 
         @functools.wraps(fn)
         def inner(*args: Any, **kwargs: Any) -> Any:
             rid = _get_request_id() or uuid.uuid4().hex[:8]
             t0 = _now_ms()
 
-            # Log de entrada (kwargs saneados)
             try:
                 kw_log = _safe_serialize(_scrub_mapping(kwargs))
             except Exception:
                 kw_log = "<unable to serialize kwargs>"
+
+            log_args_len = len(args)
+            if log_args_len > 0 and hasattr(args[0], fn.__name__):
+                 log_args_len -= 1
 
             LOG.debug(_safe_serialize({
                 "rid": rid,
                 "evt": "enter",
                 "fn": label,
                 "kwargs": kw_log if kw_log else {},
-                "args_len": len(args)
+                "args_len": log_args_len
             }))
 
             out = None
@@ -137,10 +142,10 @@ def with_debug(name: Optional[str] = None) -> Callable[[Callable[..., Any]], Cal
                 dt = max(_now_ms() - t0, 0.01)
                 result_info = {"type": None, "len": None}
                 try:
-                    if isinstance(out, (str, bytes)):
+                    if isinstance(out, (str, bytes, list, dict, set, tuple)):
                         result_info = {"type": type(out).__name__, "len": len(out)}
-                    elif isinstance(out, Iterable) and not isinstance(out, (dict, set)):
-                        result_info = {"type": type(out).__name__, "len": None}
+                    elif isinstance(out, Iterable):
+                        result_info = {"type": type(out).__name__, "len": "iterable"}
                     else:
                         result_info = {"type": type(out).__name__, "len": None}
                 except Exception:
@@ -153,9 +158,14 @@ def with_debug(name: Optional[str] = None) -> Callable[[Callable[..., Any]], Cal
                     "ms": round(dt, 2),
                     "result": result_info
                 }))
-
         return inner
-    return _wrap
+
+    # Se 'arg' for a função (uso: @with_debug), aplica o decorador diretamente.
+    # Senão (uso: @with_debug() ou @with_debug("nome")), retorna o decorador.
+    if callable(arg):
+        return decorator(arg)
+    else:
+        return decorator
 
 # -----------------------------------------------------------------------------
 # Integração com Flask (correlation-id por requisição)
@@ -180,7 +190,6 @@ def install_request_context(app) -> None:
         try:
             g.request_id = rid or uuid.uuid4().hex
         except Exception:
-            # Em caso extremo, seguimos sem g
             pass
 
         LOG.debug(_safe_serialize({

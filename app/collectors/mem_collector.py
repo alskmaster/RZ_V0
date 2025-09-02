@@ -4,20 +4,17 @@ from flask import current_app
 from .base_collector import BaseCollector
 from app.charting import generate_multi_bar_chart
 from app.models import MetricKeyProfile, CalculationType
-# --- MODIFICAÇÃO 1 de 2: Importando o decorador de debug ---
+# O decorador @with_debug já está sendo importado e usado corretamente.
 from rz_debug import with_debug
 
 
 class MemCollector(BaseCollector):
     """
     Plugin (Collector) para coletar e renderizar dados de Memória.
-    - Usa Perfis de Métrica (tabela MetricKeyProfile) para decidir dinamicamente quais chaves buscar.
-    - Padroniza o DataFrame final para colunas: ['Host', 'Min', 'Avg', 'Max'] (floats).
-    - Acrescenta logs detalhados (debug) em todas as etapas.
-    - Otimiza volume: busca itens por perfil em lote (menos chamadas à API).
+    - Usa Perfis de Métrica para buscar chaves dinamicamente.
+    - Suporta opções customizadas (show_table, show_chart, top_n).
     """
 
-    # --- MODIFICAÇÃO 2 de 2: Aplicando o decorador na função ---
     @with_debug
     def collect(self, all_hosts, period):
         """
@@ -25,6 +22,12 @@ class MemCollector(BaseCollector):
         """
         current_app.logger.debug("Módulo Memória [Dinâmico]: Iniciando coleta.")
         self._update_status("Coletando dados de Memória...")
+
+        # --- MODIFICAÇÃO 1 de 4: Ler opções customizadas ---
+        opts = self.module_config.get('custom_options', {})
+        show_table = opts.get('show_table', True)
+        show_chart = opts.get('show_chart', True)
+        top_n = opts.get('top_n', 0)
 
         data, error_msg = self._collect_mem_data(all_hosts, period)
         if error_msg:
@@ -36,15 +39,29 @@ class MemCollector(BaseCollector):
 
         df_mem = data['df_mem']
         
+        # --- MODIFICAÇÃO 2 de 4: Preparar dados para o template ---
         module_data = {
-            'tabela': df_mem.to_html(classes='table', index=False, float_format='%.2f'),
-            'grafico': generate_multi_bar_chart(
-                df_mem, 
+            'tabela': None,
+            'grafico': None
+        }
+
+        # --- MODIFICAÇÃO 3 de 4: Lógica condicional para tabela ---
+        if show_table:
+            module_data['tabela'] = df_mem.to_html(classes='table', index=False, float_format='%.2f')
+
+        # --- MODIFICAÇÃO 4 de 4: Lógica condicional para gráfico ---
+        if show_chart:
+            df_chart = df_mem.copy()
+            if top_n > 0:
+                df_chart = df_chart.sort_values(by='Avg', ascending=False).head(top_n)
+            
+            module_data['grafico'] = generate_multi_bar_chart(
+                df_chart, 
                 'Uso de Memória (%)', 
                 'Uso de Memória (%)',
-                ['#66b3ff', '#3385ff', '#0047b3']
+                ['#66b3ff', '#3385ff', '#0047b3'] # Paleta de cores para Memória
             )
-        }
+        
         return self.render('mem', module_data)
 
     def _collect_mem_data(self, all_hosts, period):
@@ -90,7 +107,6 @@ class MemCollector(BaseCollector):
             
             for host_id, group in grouped:
                 hid = str(host_id)
-                # Pega o tipo de cálculo do primeiro item encontrado para este host
                 first_item_id = group['itemid'].iloc[0]
                 calc_type = items_map.get(first_item_id, {}).get('profile_calc_type', CalculationType.DIRECT)
 
@@ -110,22 +126,15 @@ class MemCollector(BaseCollector):
                 })
 
             if not mem_rows:
-                return None, (
-                    "Dados de histórico de memória foram encontrados, mas não puderam ser processados "
-                    "(todas as linhas inválidas ou vazias)."
-                )
+                return None, "Dados de histórico de memória não puderam ser processados."
 
             df_mem = pd.DataFrame(mem_rows, columns=['Host', 'Min', 'Avg', 'Max'])
 
-            # Tipagem final + limpeza de linhas totalmente vazias em métricas
             for c in ['Min', 'Avg', 'Max']:
                 df_mem[c] = pd.to_numeric(df_mem[c], errors='coerce')
             df_mem = df_mem.dropna(subset=['Min', 'Avg', 'Max'], how='all').reset_index(drop=True)
 
-            current_app.logger.debug(
-                f"Módulo Memória [Dinâmico]: DF final padronizado -> "
-                f"linhas={len(df_mem)} | colunas={list(df_mem.columns)} | dtypes={dict(df_mem.dtypes)}"
-            )
+            current_app.logger.debug(f"Módulo Memória [Dinâmico]: DF final com {len(df_mem)} linhas.")
 
             return {'df_mem': df_mem}, None
 

@@ -16,5 +16,5 @@ matplotlib                # Gráficos
 
 # --- PDF/Relatórios ---
 xhtml2pdf                 # HTML -> PDF (alternativa: WeasyPrint se migrar)
-pypdf                     # Fork ativo do PyPDF2
+PyPDF2                    # Biblioteca para manipulação de PDF
 imgkit                    # Wrapper p/ wkhtmltoimage (avaliar alternativas no futuro)
