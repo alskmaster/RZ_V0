@@ -33,6 +33,14 @@ class SlaChartCollector(BaseCollector):
                 target_sla = None
         below_color = opts.get('below_color', '#e55353')
         force_percent_axis = bool(opts.get('x_axis_0_100', True))
+        # Extras surpresa: wrap de rótulos, altura dinâmica, exibir valores e grid
+        label_wrap = int(opts.get('label_wrap', 40))
+        dynamic_height = bool(opts.get('dynamic_height', True))
+        height_per_bar = float(opts.get('height_per_bar', 0.35))
+        show_values = bool(opts.get('show_values', True))
+        grid = bool(opts.get('grid', True))
+        # Filtro opcional por substring (útil para ambientes grandes)
+        host_contains = str(opts.get('host_contains') or '').strip()
 
         # Keep only needed columns
         if 'SLA (%)' not in df_sla.columns:
@@ -45,6 +53,11 @@ class SlaChartCollector(BaseCollector):
             sla_col = 'SLA (%)'
 
         df_plot = df_sla[['Host', sla_col]].dropna()
+        if host_contains:
+            try:
+                df_plot = df_plot[df_plot['Host'].str.contains(host_contains, case=False, na=False)]
+            except Exception:
+                pass
         try:
             df_plot[sla_col] = pd.to_numeric(df_plot[sla_col], errors='coerce')
         except Exception:
@@ -67,5 +80,10 @@ class SlaChartCollector(BaseCollector):
             below_color=below_color,
             above_color=color,
             xlim=(0, 100) if force_percent_axis else None,
+            label_wrap=label_wrap,
+            dynamic_height=dynamic_height,
+            height_per_bar=height_per_bar,
+            show_values=show_values,
+            grid=grid,
         )
         return self.render('sla_chart', {'chart': chart, 'note': ''})

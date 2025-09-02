@@ -72,12 +72,29 @@ class SlaTableCollector(BaseCollector):
                 f'</div>'
             )
 
-        # Build minimal HTML table
+        # Build minimal HTML table (com destaque opcional abaixo da meta)
         display = [c for c in cols if c in df_sla.columns]
         df_disp = df_sla[display].copy()
+        decimals = int(opts.get('decimals', 2) or 2)
+        highlight = bool(opts.get('highlight_below_goal', False))
         for c in df_disp.columns:
             if df_disp[c].dtype == float:
-                df_disp[c] = df_disp[c].map(lambda v: f"{v:.2f}".replace('.', ',') if pd.notna(v) else '')
-        table_html = df_disp.to_html(classes='table', index=False, escape=False)
+                df_disp[c] = df_disp[c].map(lambda v: (f"{v:.{decimals}f}".replace('.', ',') if pd.notna(v) else ''))
+        if highlight and current_sla_col in df_sla.columns:
+            rows = []
+            for _, row in df_disp.iterrows():
+                style = ''
+                try:
+                    val = float(str(row[current_sla_col]).replace(',', '.'))
+                    if val < float(sla_goal):
+                        style = ' style="background-color:#fff3cd;"'
+                except Exception:
+                    pass
+                tds = ''.join(f"<td>{row[c]}</td>" for c in df_disp.columns)
+                rows.append(f"<tr{style}>" + tds + "</tr>")
+            header = ''.join(f"<th>{c}</th>" for c in df_disp.columns)
+            table_html = f"<table class='table'><thead><tr>{header}</tr></thead><tbody>{''.join(rows)}</tbody></table>"
+        else:
+            table_html = df_disp.to_html(classes='table', index=False, escape=False)
 
         return self.render('sla_table', {'summary_html': summary_html, 'table_html': table_html})

@@ -50,6 +50,8 @@ class SlaCollector(BaseCollector):
             df_sla_problems['Meta'] = df_sla_problems[current_sla_col].apply(lambda x: "Atingido" if x >= sla_goal else "Não Atingido")
             columns_to_show_display.append('Meta')
         
+        # Garante que apenas colunas existentes sejam usadas (evita KeyError por diferenças de acentuação)
+        columns_to_show_display = [c for c in columns_to_show_display if c in df_sla_problems.columns]
         df_sla_problems = df_sla_problems[columns_to_show_display]
         
         hosts_failed = df_sla_problems[df_sla_problems[current_sla_col] < 100].shape[0] if current_sla_col in df_sla_problems.columns else 0

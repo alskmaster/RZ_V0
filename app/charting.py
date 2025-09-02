@@ -130,7 +130,13 @@ def generate_chart(
     target_line=None,
     below_color=None,
     above_color=None,
-    xlim=None
+    xlim=None,
+    label_wrap=50,
+    dynamic_height=True,
+    height_per_bar=0.35,
+    base_height=3.0,
+    show_values=True,
+    grid=True,
 ):
     logging.info(f"Gerando gráfico: {title}...")
     if df is None or df.empty:
@@ -138,7 +144,12 @@ def generate_chart(
         return None
 
     plt.style.use('seaborn-v0_8-whitegrid')
-    fig, ax = plt.subplots(figsize=(10, 8))
+    # Define altura dinamicamente para evitar poluição visual em muitos hosts
+    if dynamic_height:
+        fig_height = max(base_height, base_height + height_per_bar * max(1, len(df)))
+    else:
+        fig_height = 8
+    fig, ax = plt.subplots(figsize=(10, fig_height))
 
     try:
         df_sorted = df.sort_values(by=x_col, ascending=True)
@@ -146,7 +157,7 @@ def generate_chart(
         logging.error(f"[charting.generate_chart] Falha ao ordenar por '{x_col}': {e}")
         df_sorted = df
 
-    y_labels = ['\n'.join(textwrap.wrap(str(label), width=50)) for label in df_sorted[y_col]]
+    y_labels = ['\n'.join(textwrap.wrap(str(label), width=int(label_wrap))) for label in df_sorted[y_col]]
     values = df_sorted[x_col]
     # Cores por barra (destacar abaixo da meta)
     if target_line is not None and below_color:
@@ -159,7 +170,10 @@ def generate_chart(
     ax.tick_params(axis='y', labelsize=font_size)
     ax.set_xlabel(x_label)
     ax.set_title(title, fontsize=16)
-    ax.grid(True, which='major', axis='x', linestyle='--', linewidth=0.5)
+    if grid:
+        ax.grid(True, which='major', axis='x', linestyle='--', linewidth=0.5)
+    else:
+        ax.grid(False)
     # Linha de meta (target)
     if target_line is not None:
         try:
@@ -175,13 +189,14 @@ def generate_chart(
     for spine in ['top', 'right', 'left', 'bottom']:
         ax.spines[spine].set_visible(False)
 
-    for bar in bars:
-        label_val = bar.get_width()
-        try:
-            label = f'{float(label_val):.2f}'.replace('.', ',')
-        except Exception:
-            label = str(label_val)
-        ax.text(label_val, bar.get_y() + bar.get_height()/2, f' {label}', va='center', ha='left', fontsize=font_size - 1)
+    if show_values:
+        for bar in bars:
+            label_val = bar.get_width()
+            try:
+                label = f'{float(label_val):.2f}'.replace('.', ',')
+            except Exception:
+                label = str(label_val)
+            ax.text(label_val, bar.get_y() + bar.get_height()/2, f' {label}', va='center', ha='left', fontsize=font_size - 1)
 
     plt.subplots_adjust(left=0.45, right=0.95, top=0.9, bottom=0.1)
     buffer = BytesIO()
