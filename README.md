@@ -80,6 +80,24 @@ Este documento resume as principais evoluções realizadas e como utilizá‑las
 - UI de pré‑checagem: mostrar hosts/itens/dados antes de gerar o relatório.
 - Paralelização com limites (throttling) para grandes volumes de itens.
 
+## Novidades (SLA - Engrenagem por módulo)
+- Engrenagem para `SLA - Gráfico` e `SLA - Tabela` adicionada via JS modular:
+  - Arquivos: `app/static/js/modules/sla_chart_gear.js` e `app/static/js/modules/sla_table_gear.js`.
+  - O registro é pluginável: `app/static/js/gerar_form.js` consome `window.ModuleCustomizers` sem alterar o core.
+  - Inclusão no template: `app/templates/gerar_form.html` registra os dois scripts.
+
+### Opções – SLA Gráfico
+- `top_n`, `order`, `color`, `target_sla`, `below_color`, `x_axis_0_100`.
+- Extras: `label_wrap`, `dynamic_height`, `height_per_bar`, `show_values`, `grid`, `host_contains`.
+
+### Opções – SLA Tabela
+- `target_sla`, `show_goal`, `show_downtime`, `highlight_below_goal`, `decimals`, `sort_by`, `sort_asc`, `top_n`.
+
+## Melhorias de UX (acentuação e mensagens)
+- Corrigidas mensagens com acentuação na tela de geração e no polling:
+  - `gerar_form.js` agora mostra “Gerar Relatório”, “Concluído”, etc.
+  - Mensagem de progresso do backend sanitizada (ASCII): “Processando eventos para N objetos em uma unica chamada...”.
+
 ## Utilidades
 - Resetar/criar superadmin:
   - `FLASK_APP=run.py flask reset-superadmin --password "NovaSenhaForte"`
