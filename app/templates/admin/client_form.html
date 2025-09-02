@@ -1,0 +1,257 @@
+{% extends 'admin/base.html' %}
+{% block title %}{{ action }} Cliente{% endblock %}
+
+{% block admin_content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">{{ action }} Cliente</h1>
+    </div>
+
+    {% set form_action = url_for('admin.add_client') if action == 'Adicionar' else url_for('admin.edit_client', client_id=client.id) %}
+    <form id="form-cliente" method="POST" action="{{ form_action }}" enctype="multipart/form-data">
+        <!-- CSRF obrigatório para o submit tradicional -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <span class="badge bg-primary me-2">1º</span> Conexão com o Zabbix
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label for="name" class="form-label">Nome do Cliente</label>
+                        <input type="text" id="name" class="form-control" name="name" value="{{ client.name if client else '' }}" required>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label for="zabbix_url" class="form-label">URL da API Zabbix</label>
+                        <input type="url" id="zabbix_url" class="form-control" name="zabbix_url" value="{{ client.zabbix_url if client else '' }}" placeholder="http://zabbix.example.com/api_jsonrpc.php" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="zabbix_user" class="form-label">Usuário Zabbix</label>
+                        <input type="text" id="zabbix_user" class="form-control" name="zabbix_user" value="{{ client.zabbix_user if client else '' }}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="zabbix_password" class="form-label">Senha Zabbix</label>
+                        <input type="password" id="zabbix_password" class="form-control" name="zabbix_password">
+                        {% if client %}<small class="form-text text-muted">Deixe em branco para não alterar.</small>{% endif %}
+                    </div>
+                </div>
+                <div id="connection-feedback" class="mt-2"></div>
+                <button type="button" id="test-connection-btn" class="btn btn-info" data-debug="testar-carregar-grupos">
+                    <i class="fas fa-plug me-1"></i> Testar e Carregar Grupos
+                </button>
+            </div>
+        </div>
+
+        <fieldset id="tenant-config-section" {% if action == 'Adicionar' %}disabled{% endif %}>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <span class="badge bg-primary me-2">2º</span> Configurações do Tenant
+                </div>
+                <div class="card-body">
+
+                    <!-- NOVO: SLA do Cliente -->
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="sla_contract" class="form-label">Meta de SLA do Cliente (%)</label>
+                            <input
+                                type="number"
+                                id="sla_contract"
+                                name="sla_contract"
+                                class="form-control"
+                                step="0.001"
+                                min="0"
+                                max="100"
+                                placeholder="99.9"
+                                value="{{ ('%.3f' % client.sla_contract).rstrip('0').rstrip('.') if client and client.sla_contract is not none else '99.9' }}"
+                            >
+                            <small class="text-muted">Ex.: 99.9</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Grupos de Hosts do Zabbix</label>
+                        <div id="zabbix-groups-container">
+                            {% if zabbix_groups_selecionados %}
+                                {% for selected_group_id in zabbix_groups_selecionados %}
+                                <div class="input-group mb-2">
+                                    <select class="form-select" name="zabbix_groups[]">
+                                        <option value="">Selecione um grupo...</option>
+                                        {% for group in zabbix_groups %}
+                                            <option value="{{ group.groupid }}" {% if group.groupid == selected_group_id %}selected{% endif %}>
+                                                {{ group.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <button class="btn btn-outline-danger remove-group-btn" type="button">Remover</button>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="input-group mb-2">
+                                    <select class="form-select" name="zabbix_groups[]">
+                                        <option value="">Selecione um grupo...</option>
+                                         {% for group in zabbix_groups %}
+                                            <option value="{{ group.groupid }}">{{ group.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button class="btn btn-outline-danger remove-group-btn" type="button" style="display: none;">Remover</button>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <button id="add-group-btn" type="button" class="btn btn-sm btn-outline-secondary mt-2" data-debug="adicionar-grupo">Adicionar outro Grupo</button>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3">Branding</h5>
+                    <div class="mb-3">
+                        <label for="logo" class="form-label">Logo do Cliente</label>
+                        <input type="file" id="logo" class="form-control" name="logo" accept=".png,.jpg,.jpeg">
+                        {% if client and client.logo_path %}
+                        <small class="form-text text-muted mt-2 d-block">Atual:
+                            <img src="{{ url_for('main.uploaded_file', filename=client.logo_path) }}" height="30" class="bg-light border p-1 rounded" alt="Logo atual">
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary" data-debug="salvar-cliente">Salvar Cliente</button>
+            <a href="{{ url_for('admin.list_clients') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const testBtn = document.getElementById('test-connection-btn');
+    const feedbackDiv = document.getElementById('connection-feedback');
+    const tenantSection = document.getElementById('tenant-config-section');
+    const groupsContainer = document.getElementById('zabbix-groups-container');
+    const addGroupBtn = document.getElementById('add-group-btn');
+    const form = document.getElementById('form-cliente');
+    const slaInput = document.getElementById('sla_contract');
+
+    // CSRF token para requisições AJAX e para logs
+    const csrfToken = '{{ csrf_token() }}';
+
+    // ===== DEBUG GLOBAL =====
+    function dbg(msg, extra) {
+        try {
+            console.debug('[CLIENTE][DEBUG]', msg, extra || {});
+        } catch(e) {}
+    }
+
+    // Log de submit (sem impedir o submit tradicional do navegador)
+    form.addEventListener('submit', function() {
+        dbg('Submit formulário /admin/client/add|edit', {
+            action: form.action,
+            hasCsrfField: !!form.querySelector('input[name="csrf_token"]'),
+            name: document.getElementById('name')?.value || null,
+            zabbix_url: document.getElementById('zabbix_url')?.value || null,
+            sla_contract: slaInput ? slaInput.value : null
+        });
+    });
+
+    // ===== Testar Conexão e Carregar Grupos (AJAX) =====
+    testBtn.addEventListener('click', async function() {
+        const url = document.getElementById('zabbix_url').value;
+        const user = document.getElementById('zabbix_user').value;
+        const password = document.getElementById('zabbix_password').value;
+
+        feedbackDiv.innerHTML = `<div class="alert alert-info">Testando conexão... <span class="spinner-border spinner-border-sm"></span></div>`;
+        dbg('Testar conexão Zabbix: iniciando', { url, userMasked: !!user, passProvided: !!password });
+
+        try {
+            const response = await fetch('{{ url_for("admin.test_zabbix") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    zabbix_url: url,
+                    zabbix_user: user,
+                    zabbix_password: password
+                })
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await response.text();
+                dbg('Resposta não-JSON do test_zabbix', { status: response.status, body: text.slice(0, 300) });
+                throw new Error('Resposta inesperada do servidor.');
+            }
+
+            const data = await response.json();
+            dbg('Testar conexão Zabbix: resposta', { ok: response.ok, status: response.status, bodyKeys: Object.keys(data || {}) });
+
+            if (data.success) {
+                feedbackDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                tenantSection.disabled = false;
+                populateGroupSelectors(data.groups);
+            } else {
+                feedbackDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                tenantSection.disabled = true;
+            }
+        } catch (error) {
+            dbg('Erro fetch test_zabbix', { error: String(error) });
+            feedbackDiv.innerHTML = `<div class="alert alert-danger">Erro na requisição: ${error}</div>`;
+            tenantSection.disabled = true;
+        }
+    });
+
+    function populateGroupSelectors(groups) {
+        const firstSelect = groupsContainer.querySelector('select');
+        // Limpa opções existentes, exceto a primeira ("Selecione...")
+        while (firstSelect.options.length > 1) {
+            firstSelect.remove(1);
+        }
+
+        groups.forEach(group => {
+            const option = new Option(group.name, group.groupid);
+            firstSelect.add(option);
+        });
+
+        // Limpa seletores antigos (caso o teste seja rodado mais de uma vez)
+        while (groupsContainer.children.length > 1) {
+            groupsContainer.removeChild(groupsContainer.lastChild);
+        }
+
+        dbg('populateGroupSelectors', { total: groups?.length || 0 });
+    }
+
+    // Lógica para adicionar/remover grupos
+    function updateRemoveButtons() {
+        const groupDivs = groupsContainer.querySelectorAll('.input-group');
+        groupDivs.forEach((group) => {
+            const removeBtn = group.querySelector('.remove-group-btn');
+            removeBtn.style.display = groupDivs.length > 1 ? 'block' : 'none';
+        });
+        dbg('updateRemoveButtons', { count: groupsContainer.querySelectorAll('.input-group').length });
+    }
+
+    addGroupBtn.addEventListener('click', function() {
+        const firstSelectGroup = groupsContainer.querySelector('.input-group');
+        if (firstSelectGroup) {
+            const newGroup = firstSelectGroup.cloneNode(true);
+            newGroup.querySelector('select').selectedIndex = 0;
+            groupsContainer.appendChild(newGroup);
+            updateRemoveButtons();
+            dbg('Grupo adicionado');
+        }
+    });
+
+    groupsContainer.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('remove-group-btn')) {
+            e.target.closest('.input-group').remove();
+            updateRemoveButtons();
+            dbg('Grupo removido');
+        }
+    });
+
+    updateRemoveButtons();
+});
+</script>
+{% endblock %}

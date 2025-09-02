@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<h1 class="mb-4">{{ title }}</h1>
+<form id="report-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    1. Configurações Gerais
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="client_id" class="form-label">Cliente</label>
+                        <select name="client_id" id="client_id" class="form-select" required>
+                            <option value="">Selecione um cliente...</option>
+                            {% for client in clients %}
+                            <option value="{{ client.id }}">{{ client.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="mes_ref" class="form-label">Mês de Referência</label>
+                        <input type="month" name="mes_ref" id="mes_ref" class="form-control" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                   2. Adicionar Módulos ao Relatório
+                </div>
+                <div class="card-body">
+                     <div class="mb-3">
+                        <label for="module-type-select" class="form-label">Tipo de Módulo</label>
+                        <select id="module-type-select" class="form-select" disabled>
+                            <option>Selecione um cliente para ver os módulos</option>
+                        </select>
+                    </div>
+                    
+                    <div id="interface-options" class="mb-3" style="display: none;">
+                        <label for="interface-selector" class="form-label">Interfaces de Rede (Opcional)</label>
+                        <p class="text-muted small my-1">Segure <kbd>Ctrl</kbd> (Windows) ou <kbd>Cmd</kbd> (macOS) para selecionar várias. Deixe em branco para agregar todas.</p>
+                        <select id="interface-selector" multiple class="form-select" style="height: 120px;"></select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="module-title-input" class="form-label">Título Customizado (Opcional)</label>
+                        <input type="text" id="module-title-input" class="form-control" placeholder="Ex: Desempenho dos Servidores de Web">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="module-newpage-check">
+                        <label class="form-check-label" for="module-newpage-check">
+                            Iniciar em uma nova página
+                        </label>
+                    </div>
+                    <button type="button" id="add-module-btn" class="btn btn-secondary w-100" disabled>
+                        <i class="bi bi-plus-circle"></i> Adicionar Módulo ao Layout
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card">
+                 <div class="card-header">
+                    3. Layout Final do Relatório
+                 </div>
+                <div class="card-body">
+                    <p class="text-muted">Arraste os módulos para reordenar.</p>
+                    <div id="report-layout-container" style="min-height: 200px;">
+                        <ul id="report-layout-list" class="list-group list-group-flush">
+                            <!-- Itens gerados via JS -->
+                        </ul>
+                    </div>
+                    <textarea id="report_layout_json" name="report_layout" class="form-control d-none"></textarea>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    Templates de Layout
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button type="button" class="btn btn-outline-primary" id="saveTemplateBtn" data-bs-toggle="modal" data-bs-target="#saveTemplateModal">
+                            <i class="bi bi-save"></i> Salvar Layout
+                        </button>
+                        <select id="templateSelector" class="form-select" style="max-width: 320px;">
+                            <option value="">Carregar Template...</option>
+                            {% for t in templates %}
+                                <option value='{{ t.layout_json|e }}'>{{ t.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn btn-outline-secondary" id="loadTemplateBtn">
+                            Carregar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" id="generate-btn" class="btn btn-primary btn-lg">
+                    <i class="bi bi-file-earmark-pdf"></i> Gerar Relatório
+                </button>
+            </div>
+
+            <div id="status-area" class="alert alert-info mt-4" role="alert" style="display: none;">
+                <h4 class="alert-heading">Gerando Relatório...</h4>
+                <p id="status-message">Iniciando...</p>
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                </div>
+                <hr>
+                <a href="#" id="download-link" class="btn btn-success disabled">
+                    <i class="bi bi-download"></i> Download
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="modal fade" id="saveTemplateModal" tabindex="-1" aria-labelledby="saveTemplateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="saveTemplateModalLabel">Salvar Layout como Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label for="templateNameInput" class="form-label">Nome do Template</label>
+                <input type="text" id="templateNameInput" class="form-control" placeholder="Ex: Template Mensal - LIFETIME">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmSaveTemplateBtn">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Personalização SLA -->
+<div class="modal fade" id="customizeSlaModal" tabindex="-1" aria-labelledby="customizeSlaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customizeSlaModalLabel">Personalizar Módulo: Tabela de Disponibilidade</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="slaHideSummaryCheck">
+                    <label class="form-check-label" for="slaHideSummaryCheck">Ocultar gráfico de barras resumo</label>
+                </div>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="slaComparePrevMonthCheck">
+                    <label class="form-check-label" for="slaComparePrevMonthCheck">
+                        Incluir comparação com o mês anterior
+                    </label>
+                </div>
+                
+                <h6>Colunas da Tabela</h6>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="slaShowIpCheck">
+                        <label class="form-check-label" for="slaShowIpCheck">
+                            Endereço IP
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="slaShowDowntimeCheck">
+                        <label class="form-check-label" for="slaShowDowntimeCheck">
+                            Tempo de Indisponibilidade
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="slaShowPreviousSlaCheck" disabled>
+                        <label class="form-check-label" for="slaShowPreviousSlaCheck">
+                            SLA do Mês Anterior
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="slaShowImprovementCheck" disabled>
+                        <label class="form-check-label" for="slaShowImprovementCheck">
+                            Melhoria ou Piora de SLA
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="slaShowGoalCheck">
+                        <label class="form-check-label" for="slaShowGoalCheck">
+                            Meta de SLA
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="saveSlaCustomizationBtn">Salvar Personalização</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Personalização TOP HOSTS -->
+<div class="modal fade" id="customizeTopHostsModal" tabindex="-1" aria-labelledby="customizeTopHostsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customizeTopHostsModalLabel">Personalizar Módulo: Diagnóstico dos Ofensores</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="topHostsCount" class="form-label">Número de Hosts a Analisar</label>
+                    <input type="number" class="form-control" id="topHostsCount" value="5" min="1" max="20">
+                </div>
+                <hr>
+                <h6>Componentes a Exibir</h6>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="topHostsShowSummaryChartCheck">
+                    <label class="form-check-label" for="topHostsShowSummaryChartCheck">
+                        Exibir Gráfico Resumo (Tempo Indisponível)
+                    </label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="topHostsShowDetailedDiagnosisCheck">
+                    <label class="form-check-label" for="topHostsShowDetailedDiagnosisCheck">
+                        Exibir Diagnóstico Detalhado (Cards de Análise)
+                    </label>
+                </div>
+                <hr>
+                <h6>Opções do Diagnóstico Detalhado</h6>
+                <div class="mb-3">
+                    <label for="topHostsBreakdownChartType" class="form-label">Visualização da Causa Raiz</label>
+                    <select class="form-select" id="topHostsBreakdownChartType">
+                        <option value="table">Tabela de Dados</option>
+                        <option value="bar">Gráfico de Barras</option>
+                        <option value="pie">Gráfico de Pizza</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="saveTopHostsCustomizationBtn">Salvar Personalização</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Personalização Wi-Fi -->
+<div class="modal fade" id="customizeWifiModal" tabindex="-1" aria-labelledby="customizeWifiModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customizeWifiModalLabel">Personalizar Módulo: Wi-Fi (Contagem de Clientes)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="wifiChartType" class="form-label">Gráfico</label>
+                        <select id="wifiChartType" class="form-select">
+                            <option value="bar">Barras por AP (máximo diário)</option>
+                            <option value="line">Linha (agregado global)</option>
+                            <option value="both">Ambos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="wifiTableType" class="form-label">Tabela</label>
+                        <select id="wifiTableType" class="form-select">
+                            <option value="summary">Resumo (mês atual × anterior)</option>
+                            <option value="detailed">Detalhada por AP e dia</option>
+                            <option value="both">Ambas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="wifiHeatmapMode" class="form-label">Heatmap</label>
+                        <select id="wifiHeatmapMode" class="form-select">
+                            <option value="global">Global (média por hora)</option>
+                            <option value="per_ap">Por AP</option>
+                            <option value="both">Ambos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="wifiCapacity" class="form-label">Capacidade/AP</label>
+                        <input type="number" id="wifiCapacity" class="form-control" value="50" min="1" step="1">
+                        <div class="form-text">Usado para marcar APs saturados (p95 ≥ capacidade).</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="wifiMaxCharts" class="form-label">Máx. Gráficos/AP</label>
+                        <input type="number" id="wifiMaxCharts" class="form-control" value="6" min="1" step="1">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="saveWifiCustomizationBtn">Salvar Personalização</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+    const URLS = {
+        get_modules: "{{ url_for('main.get_available_modules', client_id=0) }}",
+        get_interfaces: "{{ url_for('main.get_client_interfaces', client_id=0) }}",
+        gerar_relatorio: "{{ url_for('main.gerar_relatorio') }}",
+        report_status: "{{ url_for('main.report_status', task_id=0) }}",
+        download_report: "{{ url_for('main.download_final_report', task_id=0) }}",
+        save_template: "{{ url_for('main.save_template') }}",
+    };
+</script>
+<script src="{{ url_for('static', filename='js/gerar_form.js') }}"></script>
+{% endblock %}

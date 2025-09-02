@@ -1,0 +1,51 @@
+{% extends 'admin/base.html' %}
+{% block title %}{{ action }} Usuário{% endblock %}
+
+{% block admin_content %}
+<div class="container-fluid">
+    <h1 class="mt-4">{{ action }} Usuário</h1>
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-user-edit mr-1"></i>
+            Dados do Usuário
+        </div>
+        <div class="card-body">
+            {% set form_action = url_for('admin.add_user') if action == 'Adicionar' else url_for('admin.edit_user', user_id=user.id) %}
+            <form method="POST" action="{{ form_action }}">
+                {# Campo oculto CSRF obrigatório #}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+
+                <div class="mb-3">
+                    <label for="username" class="form-label">Nome de Usuário</label>
+                    <input type="text" id="username" class="form-control" name="username" value="{{ user.username if user else '' }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" id="email" class="form-control" name="email" value="{{ user.email if user else '' }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Senha</label>
+                    <input type="password" id="password" class="form-control" name="password" {% if action == 'Adicionar' %}required{% endif %}>
+                    {% if action == 'Editar' %}
+                    <small class="form-text text-muted">Deixe em branco para não alterar a senha.</small>
+                    {% endif %}
+                </div>
+                <div class="mb-3">
+                    <label for="role" class="form-label">Função</label>
+                    <select id="role" class="form-select" name="role" required>
+                        {% for role in roles %}
+                        <option value="{{ role.id }}" {% if user and user.role_id == role.id %}selected{% endif %}>
+                            {{ role.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <a href="{{ url_for('admin.list_users') }}" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
