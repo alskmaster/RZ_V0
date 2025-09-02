@@ -466,17 +466,21 @@ class ReportGenerator:
     def get_items(self, hostids, filter_key, search_by_key=False, exact_key_search=False):
         self._update_status(f"Buscando itens com filtro '{filter_key}'…")
         params = {
-            'output': ['itemid', 'hostid', 'name', 'key_'],
+            'output': ['itemid', 'hostid', 'name', 'key_', 'value_type'],
             'hostids': hostids,
             'sortfield': 'name'
         }
         if search_by_key:
-            search_dict = {'key_': filter_key if isinstance(filter_key, list) else [filter_key]}
+            # Em 'search', o Zabbix espera string (substring), não lista.
+            # Em 'filter' (busca exata), lista é aceita para múltiplos valores.
             if exact_key_search:
-                params['filter'] = search_dict
+                if isinstance(filter_key, list):
+                    params['filter'] = {'key_': filter_key}
+                else:
+                    params['filter'] = {'key_': [filter_key]}
             else:
-                params['search'] = search_dict
-            params['selectTriggers'] = 'extend'
+                params['search'] = {'key_': filter_key if isinstance(filter_key, str) else (filter_key[0] if filter_key else '')}
+            # params['selectTriggers'] = 'extend'  # opcional; pode ser pesado
         else:
             params['search'] = {'name': filter_key}
         body = {
@@ -523,6 +527,153 @@ class ReportGenerator:
             current_app.logger.error(f"Falha ao buscar trends para {len(itemids)} itens. Resposta inválida do Zabbix.")
             return []
         return trends
+
+    def get_trends_with_fallback(self, itemids, time_from=None, time_till=None, history_value_type=0):
+        """
+        Busca trends e, se vier vazio, usa history.get para agregar Min/Avg/Max por item.
+        Aceita tambam dict period como segundo argumento.
+        """
+        # Permite passar um dict {'start':..., 'end':...}
+        if isinstance(time_from, dict) and time_till is None:
+            period = time_from
+            time_from = int(period.get('start'))
+            time_till = int(period.get('end'))
+            try:
+                current_app.logger.debug("[ReportGenerator.get_trends_with_fallback] Recebido dict 'period'.")
+            except Exception:
+                pass
+
+        try:
+            trends = self.get_trends(itemids, time_from, time_till)
+        except TypeError:
+            trends = []
+        if isinstance(trends, list) and len(trends) > 0:
+            return trends
+
+        # Fallback via history.get
+        try:
+            self._update_status(f"Trends vazias. Buscando history para {len(itemids)} itens…")
+            body_hist = {
+                'jsonrpc': '2.0',
+                'method': 'history.get',
+                'params': {
+                    'output': ['itemid', 'clock', 'value'],
+                    'history': int(history_value_type),  # 0=float, 3=unsigned
+                    'itemids': itemids,
+                    'time_from': int(time_from),
+                    'time_till': int(time_till),
+                },
+                'auth': self.token,
+                'id': 1
+            }
+            hist = fazer_request_zabbix(body_hist, self.url)
+            if not isinstance(hist, list) or len(hist) == 0:
+                return []
+            import pandas as pd
+            dfh = pd.DataFrame(hist)
+            dfh['itemid'] = dfh['itemid'].astype(str)
+            dfh['value'] = pd.to_numeric(dfh['value'], errors='coerce')
+            agg = dfh.groupby('itemid')['value'].agg(value_min='min', value_avg='mean', value_max='max').reset_index()
+            return agg.to_dict(orient='records')
+        except Exception:
+            try:
+                current_app.logger.error("Falha no fallback de history.get", exc_info=True)
+            except Exception:
+                pass
+            return []
+
+    # -------------------- Robust aggregator (chunking + per-type history) --------------------
+    def _iter_chunks(self, seq, size):
+        for i in range(0, len(seq), size):
+            yield seq[i:i+size]
+
+    def _aggregate_trends(self, itemids, time_from, time_till, chunk_size=200):
+        """Busca trends em chunks e concatena resultados."""
+        all_rows = []
+        for chunk in self._iter_chunks(itemids, chunk_size):
+            body = {
+                'jsonrpc': '2.0',
+                'method': 'trend.get',
+                'params': {
+                    'output': ['itemid', 'clock', 'num', 'value_min', 'value_avg', 'value_max'],
+                    'itemids': chunk,
+                    'time_from': int(time_from),
+                    'time_till': int(time_till)
+                },
+                'auth': self.token,
+                'id': 1
+            }
+            rows = fazer_request_zabbix(body, self.url)
+            if isinstance(rows, list):
+                all_rows.extend(rows)
+        return all_rows
+
+    def get_history_aggregate(self, itemids, time_from, time_till, history_value_type=0, chunk_size=200):
+        """Busca history por tipo e agrega min/avg/max por itemid."""
+        import pandas as pd
+        all_rows = []
+        for chunk in self._iter_chunks(itemids, chunk_size):
+            body = {
+                'jsonrpc': '2.0',
+                'method': 'history.get',
+                'params': {
+                    'output': ['itemid', 'clock', 'value'],
+                    'history': int(history_value_type),
+                    'itemids': chunk,
+                    'time_from': int(time_from),
+                    'time_till': int(time_till)
+                },
+                'auth': self.token,
+                'id': 1
+            }
+            rows = fazer_request_zabbix(body, self.url)
+            if isinstance(rows, list):
+                all_rows.extend(rows)
+        if not all_rows:
+            return []
+        df = pd.DataFrame(all_rows)
+        if df.empty:
+            return []
+        df['itemid'] = df['itemid'].astype(str)
+        df['value'] = pd.to_numeric(df['value'], errors='coerce')
+        agg = df.groupby('itemid')['value'].agg(value_min='min', value_avg='mean', value_max='max').reset_index()
+        return agg.to_dict(orient='records')
+
+    def robust_aggregate(self, itemids, time_from, time_till, items_meta=None):
+        """
+        Agrega valores min/avg/max por itemid de forma resiliente:
+        - Tenta trend.get em chunks; se vier vazio, usa history.get por tipo de item.
+        - items_meta: lista de itens (com 'itemid' e possível 'value_type') para identificar grupos de history.
+        """
+        # 1) trends (chunked)
+        rows = self._aggregate_trends(itemids, time_from, time_till)
+        if isinstance(rows, list) and len(rows) > 0:
+            return rows
+
+        # 2) history per type
+        # Agrupa por value_type quando disponível
+        type_groups = {0: [], 3: []}
+        if items_meta:
+            for it in items_meta:
+                itemid = str(it.get('itemid'))
+                try:
+                    vtype = int(it.get('value_type'))
+                except Exception:
+                    vtype = 0
+                if vtype in (0, 3):
+                    type_groups[vtype].append(itemid)
+                else:
+                    type_groups[0].append(itemid)
+        else:
+            type_groups[0] = [str(i) for i in itemids]
+
+        combined = []
+        for vtype, ids in type_groups.items():
+            if not ids:
+                continue
+            hist_rows = self.get_history_aggregate(ids, time_from, time_till, history_value_type=vtype)
+            combined.extend(hist_rows)
+        return combined
 
     def obter_eventos(self, object_ids, periodo, id_type='hostids', max_depth=3):
         time_from, time_till = periodo['start'], periodo['end']

@@ -9,6 +9,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from werkzeug.middleware.proxy_fix import ProxyFix
+from flask.cli import with_appcontext
+import click
 
 from config import Config
 from .utils import get_text_color_for_bg
@@ -169,5 +171,28 @@ def create_app(config_class=Config):
             admin_user.set_password(app.config.get('SUPERADMIN_PASSWORD', 'change-me-now'))
             db.session.add(admin_user)
             db.session.commit()
+
+        # --- CLI: resetar/criar superadmin ---
+        @app.cli.command('reset-superadmin')
+        @click.option('--password', prompt=True, hide_input=True, confirmation_prompt=True, help='Nova senha para o usuário superadmin')
+        @with_appcontext
+        def reset_superadmin(password):
+            """Cria (se necessário) ou redefine a senha do usuário 'superadmin'."""
+            try:
+                role = models.Role.query.filter_by(name='super_admin').first()
+                user = models.User.query.filter_by(username='superadmin').first()
+                if not user:
+                    user = models.User(username='superadmin', role=role)
+                    user.set_password(password)
+                    db.session.add(user)
+                    db.session.commit()
+                    click.echo('Superadmin criado e senha definida com sucesso.')
+                else:
+                    user.set_password(password)
+                    db.session.commit()
+                    click.echo('Senha do superadmin atualizada com sucesso.')
+            except Exception as e:
+                db.session.rollback()
+                click.echo(f'Erro ao redefinir senha do superadmin: {e}', err=True)
 
     return app

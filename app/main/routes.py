@@ -22,7 +22,16 @@ from app.zabbix_api import obter_config_e_token_zabbix, fazer_request_zabbix
 
 @main.before_app_request
 def before_request_func():
-    g.sys_config = SystemConfig.query.first()
+    cfg = SystemConfig.query.first()
+    if not cfg:
+        # Cria um registro padrão para evitar falhas em templates que esperam g.sys_config
+        try:
+            cfg = SystemConfig()
+            db.session.add(cfg)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+    g.sys_config = cfg
 
 def run_generation_in_thread(app_context, task_id, client_id, ref_month, user_id, report_layout_json):
     with app_context:

@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from urllib.parse import urlparse
 
 # Carrega variáveis do .env cedo para não depender de ordem de import
 load_dotenv()
@@ -52,12 +53,31 @@ class Config:
     SQLALCHEMY_DATABASE_URI = _normalize_db_url(os.environ.get("DATABASE_URL"))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_pre_ping": True,
-        "pool_size": _int(os.getenv("DB_POOL_SIZE"), 10),
-        "max_overflow": _int(os.getenv("DB_MAX_OVERFLOW"), 20),
-        "pool_recycle": _int(os.getenv("DB_POOL_RECYCLE"), 1800),  # 30 min
-    }
+    # Ajuste de opções do engine conforme o backend do banco.
+    _db_url = SQLALCHEMY_DATABASE_URI or ""
+    _scheme = urlparse(_db_url).scheme
+    if _scheme.startswith("sqlite"):
+        # Para SQLite, especialmente em memória, algumas opções de pool não se aplicam.
+        try:
+            if ":memory:" in _db_url:
+                from sqlalchemy.pool import StaticPool
+                SQLALCHEMY_ENGINE_OPTIONS = {
+                    "poolclass": StaticPool,
+                    "connect_args": {"check_same_thread": False},
+                }
+            else:
+                SQLALCHEMY_ENGINE_OPTIONS = {
+                    "connect_args": {"check_same_thread": False},
+                }
+        except Exception:
+            SQLALCHEMY_ENGINE_OPTIONS = {}
+    else:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            "pool_pre_ping": True,
+            "pool_size": _int(os.getenv("DB_POOL_SIZE"), 10),
+            "max_overflow": _int(os.getenv("DB_MAX_OVERFLOW"), 20),
+            "pool_recycle": _int(os.getenv("DB_POOL_RECYCLE"), 1800),  # 30 min
+        }
 
     # --- Pastas (absolutas) ---
     UPLOAD_FOLDER = str((BASE_DIR / (os.getenv("UPLOAD_FOLDER") or "uploads")).resolve())

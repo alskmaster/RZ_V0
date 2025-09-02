@@ -12,6 +12,30 @@
         </div>
     </div>
 
+    <div class="card mb-3">
+        <div class="card-header">Descobrir no Zabbix</div>
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label for="discover-client" class="form-label">Cliente</label>
+                    <select id="discover-client" class="form-select"></select>
+                </div>
+                <div class="col-md-3">
+                    <label for="discover-type" class="form-label">Tipo de Métrica</label>
+                    <select id="discover-type" class="form-select">
+                        <option value="cpu">CPU</option>
+                        <option value="memory">Memória</option>
+                        <option value="disk">Disco</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button id="btnDiscover" class="btn btn-secondary w-100">Descobrir</button>
+                </div>
+            </div>
+            <div id="discover-results" class="mt-3"></div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-header">
             Chaves de Coleta Cadastradas
@@ -73,6 +97,154 @@
 </div>
 
 <script>
+// Assistente de descoberta e cadastro em lote
+document.addEventListener('DOMContentLoaded', function () {
+    const CSRF_TOKEN = "{{ csrf_token() if csrf_token is defined else '' }}";
+    const elClient = document.getElementById('discover-client');
+    const elType = document.getElementById('discover-type');
+    const elBtnDiscover = document.getElementById('btnDiscover');
+    const elResults = document.getElementById('discover-results');
+
+    async function loadClients() {
+        try {
+            const resp = await fetch('{{ url_for('admin.metric_keys_clients') }}');
+            const data = await resp.json();
+            elClient.innerHTML = '';
+            (data.clients || []).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                elClient.appendChild(opt);
+            });
+        } catch (e) {
+            console.warn('[metric_keys] Falha ao carregar clientes', e);
+        }
+    }
+
+    function renderCandidates(candidates, metricType) {
+        if (!candidates || candidates.length === 0) {
+            elResults.innerHTML = '<div class="alert alert-info mb-0">Nenhuma chave foi encontrada para os filtros selecionados.</div>';
+            return;
+        }
+        const rows = candidates.map((c) => {
+            const disabled = c.exists ? 'disabled' : '';
+            const status = c.exists ? '<span class="badge bg-secondary">Já cadastrado</span>' : '<span class="badge bg-success">Novo</span>';
+            return `
+                <tr>
+                    <td><input type="checkbox" class="form-check-input sel-cand" data-key="${c.key_string}" data-calc="${c.suggested_calc_type}" ${disabled}></td>
+                    <td><code>${c.key_string}</code></td>
+                    <td><span class="badge bg-light text-dark">${c.suggested_calc_type}</span></td>
+                    <td>${c.found_count}</td>
+                    <td><input type="number" class="form-control form-control-sm prio-cand" placeholder="auto" min="1" ${disabled}></td>
+                    <td><input type="checkbox" class="form-check-input active-cand" ${disabled} ${c.exists ? '' : 'checked'}></td>
+                    <td><input type="text" class="form-control form-control-sm desc-cand" placeholder="opcional" ${disabled}></td>
+                    <td>${status}</td>
+                </tr>`;
+        }).join('');
+
+        elResults.innerHTML = `
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Chave</th>
+                    <th>Cálculo</th>
+                    <th>Encontrados</th>
+                    <th>Prioridade</th>
+                    <th>Ativo</th>
+                    <th>Descrição</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+            <div class="mt-2">
+              <button id="btnSaveCandidates" class="btn btn-primary btn-sm">Salvar Selecionados</button>
+            </div>
+        `;
+
+        const btnSave = document.getElementById('btnSaveCandidates');
+        btnSave.addEventListener('click', async () => {
+            const items = [];
+            elResults.querySelectorAll('tbody tr').forEach(tr => {
+                const sel = tr.querySelector('.sel-cand');
+                if (sel && sel.checked && !sel.disabled) {
+                    const prioVal = tr.querySelector('.prio-cand').value;
+                    const active = tr.querySelector('.active-cand').checked;
+                    const desc = tr.querySelector('.desc-cand').value;
+                    items.push({
+                        key_string: sel.dataset.key,
+                        calculation_type: sel.dataset.calc,
+                        priority: prioVal ? parseInt(prioVal) : undefined,
+                        is_active: active,
+                        description: desc || undefined
+                    });
+                }
+            });
+
+            if (items.length === 0) {
+                alert('Selecione ao menos um candidato.');
+                return;
+            }
+
+            try {
+                const resp = await fetch('{{ url_for('admin.bulk_add_metric_keys') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
+                    body: JSON.stringify({ metric_type: elType.value, items })
+                });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    throw new Error(data && data.error ? data.error : 'Falha ao salvar');
+                }
+                const created = (data.created || []).length;
+                const skipped = (data.skipped || []).length;
+                alert(`Concluído. Inseridos: ${created}. Ignorados: ${skipped}.`);
+                window.location.reload();
+            } catch (e) {
+                console.error('[metric_keys] bulk_add error', e);
+                alert('Erro ao salvar em lote: ' + (e.message || e));
+            }
+        });
+    }
+
+    if (elClient) {
+        loadClients();
+    }
+    if (elBtnDiscover) {
+        elBtnDiscover.addEventListener('click', async () => {
+            const clientId = elClient && elClient.value;
+            const metricType = elType && elType.value;
+            if (!clientId || !metricType) {
+                alert('Selecione um cliente e o tipo de métrica.');
+                return;
+            }
+            elResults.innerHTML = '<div class="text-muted">Consultando o Zabbix...</div>';
+            try {
+                const url = new URL('{{ url_for('admin.discover_metric_keys') }}', window.location.origin);
+                url.searchParams.set('client_id', clientId);
+                url.searchParams.set('metric_type', metricType);
+                const resp = await fetch(url.toString());
+                const data = await resp.json();
+                if (!resp.ok) {
+                    throw new Error(data && data.error ? data.error : 'Falha na descoberta');
+                }
+                renderCandidates(data.candidates || [], metricType);
+            } catch (e) {
+                console.error('[metric_keys] discover error', e);
+                elResults.innerHTML = '<div class="alert alert-danger mb-0">Erro ao consultar o Zabbix.</div>';
+            }
+        });
+    }
+});
+</script>
+
+<script>
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.form-delete-metric-key').forEach(function (form) {
         form.addEventListener('submit', function (e) {
@@ -87,3 +259,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 {% endblock %}
+
