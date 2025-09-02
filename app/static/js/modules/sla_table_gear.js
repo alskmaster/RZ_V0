@@ -18,7 +18,10 @@
             <div class="row g-3">
               <div class="col-6">
                 <label class="form-label">Meta (SLA %)</label>
-                <input type="number" class="form-control" id="slaTableTarget" min="0" max="100" step="0.1" />
+                <div class="input-group">
+                  <input type="number" class="form-control" id="slaTableTarget" min="0" max="100" step="0.1" />
+                  <button class="btn btn-outline-secondary" type="button" id="slaTableTargetFromClient" title="Usar meta do cliente">Usar do cliente</button>
+                </div>
               </div>
               <div class="col-6 form-check">
                 <input class="form-check-input" type="checkbox" id="slaTableShowGoal">
@@ -81,6 +84,7 @@
       if (!this.modal) this.modal = new bootstrap.Modal(el);
       this.elements = {
         target: document.getElementById('slaTableTarget'),
+        targetBtn: document.getElementById('slaTableTargetFromClient'),
         showGoal: document.getElementById('slaTableShowGoal'),
         showDown: document.getElementById('slaTableShowDowntime'),
         decimals: document.getElementById('slaTableDecimals'),
@@ -107,6 +111,16 @@
       this.elements.onlyBelow.checked = !!o.only_below_goal;
       this.elements.hideSummary.checked = !!o.hide_summary;
       this.elements.saveBtn.onclick = null;
+      if (this.elements.targetBtn) {
+        this.elements.targetBtn.onclick = () => {
+          try {
+            const sel = document.getElementById('client_id');
+            const opt = sel?.selectedOptions?.[0];
+            const sla = opt?.getAttribute('data-sla');
+            if (sla) this.elements.target.value = sla;
+          } catch (e) {}
+        };
+      }
       this.elements.saveBtn.addEventListener('click', ()=>{
         if (this._onSave) this._onSave(this.save());
         this.modal.hide();

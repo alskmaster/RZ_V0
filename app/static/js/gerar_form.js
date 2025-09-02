@@ -134,6 +134,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (window.ModuleCustomizers && typeof window.ModuleCustomizers === 'object') {
         Object.assign(moduleCustomizers, window.ModuleCustomizers);
     }
+    // Remove customização inline do legado, usaremos o SLA Plus em plugin separado
+    if (moduleCustomizers['sla']) {
+        delete moduleCustomizers['sla'];
+    }
     // ===================================================================================
 
     // --- FUNÇÕES AUXILIARES ---

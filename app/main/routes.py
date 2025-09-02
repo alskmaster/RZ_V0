@@ -272,6 +272,7 @@ def get_available_modules(client_id):
         available_modules.append({'type': 'kpi', 'name': 'KPIs de Disponibilidade'})
         available_modules.append({'type': 'sla_table', 'name': 'Disponibilidade (SLA) - Tabela'})
         available_modules.append({'type': 'sla_chart', 'name': 'Disponibilidade (SLA) - Gráfico'})
+        available_modules.append({'type': 'sla_plus', 'name': 'SLA Plus VIP (Comparativo)'})
         # Mantém módulo legado para compatibilidade
         available_modules.append({'type': 'sla', 'name': 'Disponibilidade (SLA) - Legado'})
         available_modules.append({'type': 'top_hosts', 'name': 'Diagnóstico dos Ofensores'})

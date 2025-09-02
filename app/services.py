@@ -24,6 +24,7 @@ from .collectors.loss_collector import LossCollector
 from .collectors.inventory_collector import InventoryCollector
 from .collectors.html_collector import HtmlCollector
 from .collectors.sla_collector import SlaCollector
+from .collectors.sla_plus_collector import SlaPlusCollector
 from .collectors.sla_table_collector import SlaTableCollector
 from .collectors.sla_chart_collector import SlaChartCollector
 from .collectors.kpi_collector import KpiCollector
@@ -45,6 +46,7 @@ COLLECTOR_MAP = {
     'html': HtmlCollector,
     'kpi': KpiCollector,
     'sla': SlaCollector,
+    'sla_plus': SlaPlusCollector,
     'sla_table': SlaTableCollector,
     'sla_chart': SlaChartCollector,
     'top_hosts': TopHostsCollector,
@@ -191,7 +193,7 @@ class ReportGenerator:
         availability_data_cache = None
         sla_prev_month_df = None
 
-        availability_module_types = {'sla', 'sla_table', 'sla_chart', 'kpi', 'top_hosts', 'top_problems', 'stress'}
+        availability_module_types = {'sla', 'sla_table', 'sla_chart', 'sla_plus', 'kpi', 'top_hosts', 'top_problems', 'stress'}
 
         final_html_parts = []
 
@@ -247,9 +249,9 @@ class ReportGenerator:
                 html_part = ""
                 if module_type in availability_module_types:
                     if availability_data_cache:
-                        if module_type in {'sla', 'sla_table', 'sla_chart'}:
-                            html_part = collector_instance.collect(all_hosts, period, availability_data_cache, df_prev_month=sla_prev_month_df)
-                        else:
+                if module_type in {'sla', 'sla_table', 'sla_chart', 'sla_plus'}:
+                    html_part = collector_instance.collect(all_hosts, period, availability_data_cache, df_prev_month=sla_prev_month_df)
+                else:
                             html_part = collector_instance.collect(all_hosts, period, availability_data_cache)
                     else:
                         html_part = "<p>Dados de disponibilidade indisponÃƒÂ­veis para este mÃƒÂ³dulo.</p>"

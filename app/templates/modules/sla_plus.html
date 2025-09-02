@@ -1,0 +1,19 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'SLA Plus VIP' }}</h2>
+  {% if data.cards %}
+    <div class="mb-3">{{ data.cards | safe }}</div>
+  {% endif %}
+  {% if data.below_table %}
+    <h5>Hosts abaixo da meta</h5>
+    <div class="table-responsive">{{ data.below_table | safe }}</div>
+  {% endif %}
+  {% if data.reg_table %}
+    <h5>Maiores Pioras</h5>
+    <div class="table-responsive">{{ data.reg_table | safe }}</div>
+  {% endif %}
+  {% if data.imp_table %}
+    <h5>Maiores Melhoras</h5>
+    <div class="table-responsive">{{ data.imp_table | safe }}</div>
+  {% endif %}
+</div>
+
