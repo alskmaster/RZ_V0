@@ -236,8 +236,7 @@ class ReportGenerator:
                     sla_prev_month_df = prev_data['df_sla_problems'].rename(columns={'SLA (%)': 'SLA_anterior'})
                     self.cached_data['prev_month_sla_df'] = prev_data['df_sla_problems']
 
-        # Montagem dos mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³dulos
-                # Montagem dos módulos
+        # Montagem dos módulos
         for module_config in (report_layout or []):
             module_type = module_config.get('type')
             collector_class = COLLECTOR_MAP.get(module_type)
@@ -262,11 +261,11 @@ class ReportGenerator:
                 final_html_parts.append(html_part)
             except Exception as e:
                 current_app.logger.error(f"Erro ao executar o plugin '{module_type}': {e}", exc_info=True)
-                final_html_parts.append(f"<p>Erro crítico ao processar módulo '{module_type}'.</p>")\n', ' ').replace('\r', ' ')).strip()
+                final_html_parts.append(f"<p>Erro crítico ao processar módulo '{module_type}'.</p>")
 
     def get_hosts(self, groupids):
         """Coleta hosts de um ou mais grupos com IP e nomes normalizados."""
-        self._update_status("Coletando dados de hostsÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦")
+        self._update_status("Coletando dados de hosts")
         body = {
             'jsonrpc': '2.0',
             'method': 'host.get',
@@ -317,14 +316,14 @@ class ReportGenerator:
 
 
 
-    # -------------------- Itens e SÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©ries (Trends/History) --------------------
+    # -------------------- Itens e Tendências --------------------
     def get_items(self, hostids, filter_key, search_by_key=False, exact_key_search=False, include_triggers=False):
         """Busca itens do Zabbix por hosts, filtrando por key ou name.
         - search_by_key: usa 'search' em key_ (substring) ou 'filter' (exato) se exact_key_search=True
         - include_triggers: inclui 'selectTriggers' = 'extend'
         Retorna lista (possivelmente vazia).
         """
-        self._update_status(f"Buscando itens com filtro '{filter_key}'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦")
+        self._update_status(f"Buscando itens com filtro '{filter_key}' em {len(hostids)} hosts...")
         params = {
             'output': ['itemid', 'hostid', 'name', 'key_', 'value_type'],
             'hostids': hostids,

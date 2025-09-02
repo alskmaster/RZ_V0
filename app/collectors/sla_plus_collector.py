@@ -79,15 +79,24 @@ class SlaPlusCollector(BaseCollector):
 
         # Abaixo da meta
         below_html = ''
+        below_csv = ''
         if show_below and target_sla is not None:
             df_below = df[df['SLA (%)'] < float(target_sla)].copy()
             df_below['Gap Meta'] = float(target_sla) - df_below['SLA (%)']
             df_below = df_below.sort_values(by='SLA (%)').head(top_n)
             below_html = self._simple_table(df_below[['Host', 'SLA (%)', 'Gap Meta', 'Delta']])
+            try:
+                import base64
+                csv = df_below[['Host', 'SLA (%)', 'Gap Meta', 'Delta']].to_csv(index=False, sep=';')
+                below_csv = base64.b64encode(csv.encode('utf-8')).decode('ascii')
+            except Exception:
+                below_csv = ''
 
         # Top regressões e melhoras
         reg_html = ''
         imp_html = ''
+        reg_csv = ''
+        imp_csv = ''
         if df_prev is not None:
             try:
                 df_valid = df.dropna(subset=['Delta']).copy()
@@ -99,9 +108,19 @@ class SlaPlusCollector(BaseCollector):
                 if show_reg:
                     reg = df_reg.sort_values(by='Delta').head(top_n)
                     reg_html = self._simple_table(reg[['Host', 'SLA_anterior', 'SLA (%)', 'Delta']])
+                    try:
+                        import base64
+                        reg_csv = base64.b64encode(reg[['Host', 'SLA_anterior', 'SLA (%)', 'Delta']].to_csv(index=False, sep=';').encode('utf-8')).decode('ascii')
+                    except Exception:
+                        reg_csv = ''
                 if show_imp:
                     imp = df_imp.sort_values(by='Delta', ascending=False).head(top_n)
                     imp_html = self._simple_table(imp[['Host', 'SLA_anterior', 'SLA (%)', 'Delta']])
+                    try:
+                        import base64
+                        imp_csv = base64.b64encode(imp[['Host', 'SLA_anterior', 'SLA (%)', 'Delta']].to_csv(index=False, sep=';').encode('utf-8')).decode('ascii')
+                    except Exception:
+                        imp_csv = ''
             except Exception:
                 pass
 
@@ -109,7 +128,10 @@ class SlaPlusCollector(BaseCollector):
             'cards': cards_html,
             'below_table': below_html,
             'reg_table': reg_html,
-            'imp_table': imp_html
+            'imp_table': imp_html,
+            'below_csv': below_csv,
+            'reg_csv': reg_csv,
+            'imp_csv': imp_csv
         })
 
     def _simple_table(self, df):
@@ -120,4 +142,3 @@ class SlaPlusCollector(BaseCollector):
             if df2[c].dtype == float:
                 df2[c] = df2[c].map(lambda v: f"{v:.2f}".replace('.', ',') if pd.notna(v) else '')
         return df2.to_html(classes='table', index=False, escape=False)
-
