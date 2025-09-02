@@ -48,6 +48,13 @@ class SlaTableCollector(BaseCollector):
             df_sla['Meta'] = df_sla[current_sla_col].apply(lambda x: "Atingido" if x >= sla_goal else "Não Atingido")
             cols.append('Meta')
 
+        # Apenas abaixo da meta (opcional)
+        if opts.get('only_below_goal') and sla_goal is not None and current_sla_col in df_sla.columns:
+            try:
+                df_sla = df_sla[df_sla[current_sla_col] < float(sla_goal)]
+            except Exception:
+                pass
+
         # Sorting/top
         sort_by = opts.get('sort_by') or current_sla_col
         sort_dir = bool(opts.get('sort_asc', False))
