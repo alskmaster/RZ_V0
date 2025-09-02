@@ -34,7 +34,7 @@ def discover_metric_keys():
     client_id = request.args.get('client_id', type=int)
     metric_type = (request.args.get('metric_type') or '').strip()
 
-    if not client_id or metric_type not in {'memory', 'cpu', 'disk'}:
+    if not client_id or metric_type not in {'memory', 'cpu', 'disk', 'wifi_clients'}:
         return jsonify({'error': 'Parâmetros inválidos.'}), 400
 
     client = db.session.get(Client, client_id)
@@ -130,6 +130,19 @@ def discover_metric_keys():
         if cnt_free > 0:
             candidates.append({'key_string': 'vfs.fs.size', 'suggested_calc_type': 'INVERSE', 'found_count': cnt_free})
 
+    elif metric_type == 'wifi_clients':
+        # Chaves comuns de contagem de clientes Wi‑Fi (vendors variados)
+        wifi_defs = [
+            ('clientcountnumber', 'DIRECT'),
+            ('wlan.bss.numsta', 'DIRECT'),
+            ('StationsConnected', 'DIRECT'),
+            ('wlan.client.count', 'DIRECT'),
+        ]
+        for key_pattern, calc in wifi_defs:
+            cnt = _count_items_by_key_pattern(key_pattern)
+            if cnt > 0:
+                candidates.append({'key_string': key_pattern, 'suggested_calc_type': calc, 'found_count': cnt})
+
     # Marca os que já existem (mesma key + cálculo) para evitar duplicatas
     existing = MetricKeyProfile.query.filter_by(metric_type=metric_type).all()
     existing_set = {(e.key_string, (e.calculation_type.name if hasattr(e.calculation_type, 'name') else str(e.calculation_type))) for e in existing}
@@ -151,7 +164,7 @@ def bulk_add_metric_keys():
 
     metric_type = (data.get('metric_type') or '').strip()
     items = data.get('items') or []
-    if metric_type not in {'memory', 'cpu', 'disk'} or not isinstance(items, list) or not items:
+    if metric_type not in {'memory', 'cpu', 'disk', 'wifi_clients'} or not isinstance(items, list) or not items:
         return jsonify({'error': 'Parâmetros inválidos.'}), 400
 
     from sqlalchemy import func

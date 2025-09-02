@@ -675,6 +675,31 @@ class ReportGenerator:
             combined.extend(hist_rows)
         return combined
 
+    def get_history_points(self, itemids, time_from, time_till, history_value_type=0, chunk_size=200):
+        """
+        Retorna pontos crús de history.get para itemids.
+        Cada ponto possui pelo menos: itemid, clock, value.
+        """
+        all_rows = []
+        for chunk in self._iter_chunks([str(i) for i in itemids], chunk_size):
+            body = {
+                'jsonrpc': '2.0',
+                'method': 'history.get',
+                'params': {
+                    'output': ['itemid', 'clock', 'value'],
+                    'history': int(history_value_type),
+                    'itemids': chunk,
+                    'time_from': int(time_from),
+                    'time_till': int(time_till)
+                },
+                'auth': self.token,
+                'id': 1
+            }
+            rows = fazer_request_zabbix(body, self.url)
+            if isinstance(rows, list):
+                all_rows.extend(rows)
+        return all_rows
+
     def obter_eventos(self, object_ids, periodo, id_type='hostids', max_depth=3):
         time_from, time_till = periodo['start'], periodo['end']
         if max_depth <= 0:

@@ -1,4 +1,3 @@
-# app/collectors/wifi_collector.py
 import io
 import base64
 import datetime as dt
@@ -14,18 +13,13 @@ from .base_collector import BaseCollector
 
 class WiFiCollector(BaseCollector):
     """
-    Módulo Wi-Fi (Contagem de Clientes por AP/SSID)
-    - Segue o padrão dos módulos customizáveis (usa BaseCollector + template).
-    - Configurações aceitas em custom_options:
-        chart: 'bar' | 'line' | 'both' (default: 'bar')
-        table: 'summary' | 'detailed' | 'both' (default: 'both')
-        heatmap: 'global' | 'per_ap' | 'both' | 'none' (default: 'global')
-        capacity_per_ap: int (default: 50)
-        max_charts: int (default: 6)
+    Módulo Wi‑Fi (Contagem de Clientes por AP/SSID)
+    - Usa perfis/detecção e trends com fallback para history (unsigned) por período.
+    - Mantém gráficos e tabelas atuais.
     """
 
     def collect(self, all_hosts, period):
-        self._update_status("Coletando dados Wi-Fi...")
+        self._update_status("Coletando dados Wi‑Fi...")
 
         opts = (self.module_config or {}).get("custom_options", {}) or {}
         chart_mode = str(opts.get("chart", "bar")).lower()
@@ -38,22 +32,38 @@ class WiFiCollector(BaseCollector):
         host_ids = [h["hostid"] for h in all_hosts]
         host_map = {h["hostid"]: h["nome_visivel"] for h in all_hosts}
 
-        # Busca itens
+        # Busca itens e escolhe 1 por host via prioridade de wifi_keys
         items = []
         for key in wifi_keys:
             items.extend(self.generator.get_items(host_ids, key, search_by_key=True))
         if not items:
-            return self.render("wifi", {"error": "Nenhum item Wi-Fi encontrado."})
+            return self.render("wifi", {"error": "Nenhum item Wi‑Fi encontrado."})
 
-        seen = set()
-        items = [it for it in items if not (it["itemid"] in seen or seen.add(it["itemid"]))]
+        key_prio = {k: i for i, k in enumerate(wifi_keys)}
+        best_per_host = {}
+        for it in items:
+            hid, key = it.get("hostid"), it.get("key_", "")
+            pr = min([key_prio[k] for k in key_prio if k in key] or [999])
+            cur = best_per_host.get(hid)
+            if (not cur) or pr < cur.get("_prio", 999):
+                it2 = dict(it)
+                it2["_prio"] = pr
+                best_per_host[hid] = it2
+        items = list(best_per_host.values())
+        if not items:
+            return self.render("wifi", {"error": "Nenhum item Wi‑Fi elegível por host."})
 
-        # Trends do período atual
-        trends = self.generator.get_trends([it["itemid"] for it in items], period)
-        if not trends:
-            return self.render("wifi", {"error": "Sem dados de Wi-Fi para o período."})
+        item_ids = [it["itemid"] for it in items]
+        trends = self.generator.get_trends(item_ids, period)
+        if not trends or not isinstance(trends, list) or len(trends) == 0:
+            points = self.generator.get_history_points(item_ids, period['start'], period['end'], history_value_type=3)
+            if not points:
+                return self.render("wifi", {"error": "Sem dados de Wi‑Fi para o período."})
+            df = pd.DataFrame(points)
+            df.rename(columns={"value": "value_avg"}, inplace=True)
+        else:
+            df = pd.DataFrame(trends)
 
-        df = pd.DataFrame(trends)
         for c in ["clock", "value_avg"]:
             df[c] = pd.to_numeric(df[c], errors="coerce")
         df = df.dropna(subset=["clock", "value_avg"])
@@ -82,9 +92,9 @@ class WiFiCollector(BaseCollector):
             for _, r in total_current.iterrows():
                 summary_rows.append({
                     "host": r["host"],
-                    "ap": "-",                # manter coluna AP no template
+                    "ap": "-",
                     "total_current": int(r["value_avg"]),
-                    "total_prev": 0           # TODO: comparar mês anterior (se necessário)
+                    "total_prev": 0
                 })
 
         if table_mode in ("detailed", "both"):
@@ -106,15 +116,13 @@ class WiFiCollector(BaseCollector):
 
         if chart_mode in ("line", "both"):
             global_daily = daily_ap.groupby("date")["value_avg"].sum().reset_index()
-            line_chart = self._render_line_chart(global_daily, "Clientes Wi-Fi – soma dos máximos diários")
+            line_chart = self._render_line_chart(global_daily, "Clientes Wi‑Fi – soma dos máximos diários")
 
         # Heatmaps
         heatmap_global = None
         heatmap_per_ap = []
-
         if heatmap_mode in ("global", "both"):
             heatmap_global = self._render_heatmap_global(df)
-
         if heatmap_mode in ("per_ap", "both"):
             for host, part in df.groupby("host"):
                 heatmap_per_ap.append(self._render_heatmap_single(part, f"{host}"))
@@ -136,9 +144,6 @@ class WiFiCollector(BaseCollector):
             "show_table_summary": table_mode in ("summary", "both"),
             "show_table_detailed": table_mode in ("detailed", "both")
         }
-
-        # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> CORREÇÃO AQUI <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-        # BaseCollector.render já prefixa 'modules/', então passamos apenas 'wifi'
         return self.render("wifi", data)
 
     # ---------------- Helpers ----------------
@@ -198,3 +203,4 @@ class WiFiCollector(BaseCollector):
         ax.set_yticks([])
         ax.set_title(f"Heatmap – {title}")
         return self._fig_to_img(fig)
+

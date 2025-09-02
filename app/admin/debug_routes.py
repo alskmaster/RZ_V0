@@ -26,7 +26,9 @@ def debug_collect():
     if module not in {'cpu', 'mem', 'disk'} or not client_id:
         return jsonify({'error': 'Parâmetros inválidos.'}), 400
 
-    metric_type = {'cpu': 'cpu', 'mem': 'memory', 'disk': 'disk'}[module]
+    metric_type = {'cpu': 'cpu', 'mem': 'memory', 'disk': 'disk', 'wifi': 'wifi_clients'}.get(module)
+    if not metric_type:
+        return jsonify({'error': 'Módulo inválido.'}), 400
 
     client = db.session.get(Client, client_id)
     if not client:
@@ -83,7 +85,11 @@ def debug_collect():
     item_ids = [it['itemid'] for it in all_items]
     data_points = 0
     if item_ids:
-        trends = generator.get_trends_with_fallback(item_ids, period['start'], period['end'], history_value_type=0)
+        if module == 'wifi':
+            # unsigned counters usually
+            trends = generator.robust_aggregate(item_ids, period['start'], period['end'], items_meta=all_items)
+        else:
+            trends = generator.robust_aggregate(item_ids, period['start'], period['end'], items_meta=all_items)
         data_points = len(trends) if isinstance(trends, list) else 0
 
     return jsonify({
@@ -95,4 +101,3 @@ def debug_collect():
         'total_items': len(all_items),
         'data_points': data_points
     })
-
