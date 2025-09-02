@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const moduleName = availableModules.find(m => m.type === module.type)?.name || module.type;
             const titleDisplay = module.title ? `"${module.title}"` : '';
-            const isCustomizable = module.type in moduleCustomizers;
+            const isCustomizable = (module.type in moduleCustomizers) || (window.ModuleCustomizers && (module.type in window.ModuleCustomizers));
 
             li.innerHTML = `
                 <div class="d-flex align-items-center">
@@ -283,10 +283,25 @@ document.addEventListener('DOMContentLoaded', function () {
             renderLayoutList();
         } else if (targetBtn.classList.contains('customize-module-btn')) {
             currentModuleToCustomize = module;
-            const customizer = moduleCustomizers[module.type];
-            if (customizer && customizer.modal) {
-                customizer.load(module.custom_options || {});
-                customizer.modal.show();
+            const customizer = moduleCustomizers[module.type] || (window.ModuleCustomizers && window.ModuleCustomizers[module.type]);
+            if (customizer) {
+                // Garante que o modal exista, mesmo para plugins carregados depois
+                if (!customizer.modal && typeof customizer._ensure === 'function') {
+                    customizer._ensure();
+                }
+                if (typeof customizer.load === 'function') {
+                    customizer.load(module.custom_options || {});
+                }
+                if (customizer.modal && typeof customizer.modal.show === 'function') {
+                    // expõe callback para salvar no layout
+                    if (customizer.elements && customizer.elements.saveBtn && !customizer._onSave) {
+                        customizer._onSave = (opts) => {
+                            module.custom_options = opts || {};
+                            renderLayoutList();
+                        };
+                    }
+                    customizer.modal.show();
+                }
             }
         }
     });
