@@ -56,6 +56,19 @@ Este documento resume as principais evoluções realizadas e como utilizá‑las
 - Disco: `vfs.fs.size[/fs,pused]` (DIRECT) ou `...,[pfree|pavailable]` (INVERSE). A engine escolhe por host a melhor opção.
 - Wi‑Fi: chaves comuns como `clientcountnumber`, `wlan.bss.numsta`, `StationsConnected`, `wlan.client.count`.
 
+### Opções (Engrenagem) – SLA
+- sla_chart (gráfico):
+  - `top_n`: limita número de hosts (0 = todos)
+  - `order`: `asc` ou `desc`
+  - `color`: cor padrão das barras (hex)
+  - `target_sla`: meta de SLA (ex.: 98). Desenha linha e destaca abaixo da meta
+  - `below_color`: cor para barras abaixo da meta (default `#e55353`)
+  - `x_axis_0_100`: força eixo X de 0 a 100 (default true)
+- sla_table (tabela):
+  - `target_sla`: sobrescreve a meta (se não informado, usa a do cliente)
+  - `show_goal`: adiciona coluna “Meta” (Atingido/Não Atingido)
+  - Demais já existentes: `show_ip`, `compare_to_previous_month`, `show_previous_sla`, `show_improvement`, `sort_by`, `sort_asc`, `top_n`, `hide_summary`, `show_downtime`.
+
 ## Boas Práticas
 - Defina prioridade baixa (ex.: 1) para a key preferencial e mantenha alternativas com prioridades maiores.
 - Evite perfis DIRECT e INVERSE ativos ao mesmo tempo para o mesmo contexto se não quiser inversões automáticas — a engine já seleciona por host, mas o cadastro claro ajuda a leitura.
@@ -75,4 +88,3 @@ Este documento resume as principais evoluções realizadas e como utilizá‑las
 
 ---
 Qualquer dúvida ou sugestão de evolução, abra uma issue interna ou me acione.
-
