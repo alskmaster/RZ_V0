@@ -129,6 +129,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         // -------------------------------------------------------------
     };
+
+    // Registro pluginável: permite que arquivos JS externos adicionem customizações
+    if (window.ModuleCustomizers && typeof window.ModuleCustomizers === 'object') {
+        Object.assign(moduleCustomizers, window.ModuleCustomizers);
+    }
     // ===================================================================================
 
     // --- FUNÇÕES AUXILIARES ---
@@ -406,3 +411,4 @@ document.addEventListener('DOMContentLoaded', function () {
     monthInput.value = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
     renderLayoutList();
 });
+
