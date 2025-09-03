@@ -28,6 +28,10 @@ from .collectors.disk_collector import DiskCollector
 from .collectors.traffic_collector import TrafficCollector
 from .collectors.latency_collector import LatencyCollector
 from .collectors.loss_collector import LossCollector
+from .collectors.latency_table_collector import LatencyTableCollector
+from .collectors.latency_chart_collector import LatencyChartCollector
+from .collectors.loss_table_collector import LossTableCollector
+from .collectors.loss_chart_collector import LossChartCollector
 from .collectors.inventory_collector import InventoryCollector
 from .collectors.html_collector import HtmlCollector
 from .collectors.sla_collector import SlaCollector
@@ -53,8 +57,12 @@ COLLECTOR_MAP = {
     'disk': DiskCollector,
     'traffic_in': TrafficCollector,
     'traffic_out': TrafficCollector,
-    'latency': LatencyCollector,
-    'loss': LossCollector,
+    'latency': LatencyCollector,  # compatibilidade (misto)
+    'latency_table': LatencyTableCollector,
+    'latency_chart': LatencyChartCollector,
+    'loss': LossCollector,        # compatibilidade (misto)
+    'loss_table': LossTableCollector,
+    'loss_chart': LossChartCollector,
     'inventory': InventoryCollector,
     'html': HtmlCollector,
     'kpi': KpiCollector,

@@ -300,6 +300,17 @@ def get_available_modules(client_id):
     except Exception:
         pass
 
+    # Ping (Latência e Perda) – novos módulos separados
+    try:
+        if check_key('icmppingsec'):
+            available_modules.append({'type': 'latency_table', 'name': 'Latência (Tabela)'})
+            available_modules.append({'type': 'latency_chart', 'name': 'Latência (Gráficos)'})
+        if check_key('icmppingloss'):
+            available_modules.append({'type': 'loss_table', 'name': 'Perda de Pacotes (Tabela)'})
+            available_modules.append({'type': 'loss_chart', 'name': 'Perda de Pacotes (Gráficos)'})
+    except Exception:
+        pass
+
     if check_key('vfs.fs.size'):
         available_modules.append({'type': 'disk', 'name': 'Uso de Disco'})
 
