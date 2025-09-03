@@ -1,7 +1,9 @@
-# app/collectors/incidents_collector.py
 from .base_collector import BaseCollector
 import datetime
 import pandas as pd
+import matplotlib.pyplot as plt
+import io
+import base64
 
 class IncidentsCollector(BaseCollector):
     """
@@ -51,6 +53,23 @@ class IncidentsCollector(BaseCollector):
             return " ".join(parts)
         except (ValueError, TypeError):
             return "Inválido"
+
+    def _generate_severity_pie_chart(self, severity_counts):
+        if not severity_counts:
+            return None
+
+        labels = list(severity_counts.keys())
+        sizes = list(severity_counts.values())
+        colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'] # Example colors
+
+        fig1, ax1 = plt.subplots(figsize=(8, 8))
+        ax1.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors[:len(labels)])
+        ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        plt.close(fig1)
+        return base64.b64encode(buf.getvalue()).decode('utf-8')
 
     def collect(self, all_hosts, period):
         """
@@ -126,6 +145,11 @@ class IncidentsCollector(BaseCollector):
         host_name_map = {h['hostid']: h['nome_visivel'] for h in all_hosts}
         df_problems['host_name'] = df_problems['hosts'].apply(lambda x: host_name_map.get(x[0].get('hostid')) if x and x[0] and x[0].get('hostid') else 'Desconhecido')
 
+        # New Customization: Host Name Contains filter
+        host_name_contains = custom_options.get('host_name_contains', '')
+        if host_name_contains:
+            df_problems = df_problems[df_problems['host_name'].str.contains(host_name_contains, case=False, na=False)]
+
         # Formatar colunas para exibição
         df_problems['severity_name'] = df_problems['severity'].astype(str).map(severity_map).fillna('Desconhecido')
         df_problems['formatted_clock'] = df_problems['clock'].apply(self._format_timestamp)
@@ -155,6 +179,11 @@ class IncidentsCollector(BaseCollector):
 
         # New Customization: Primary Grouping
         primary_grouping = custom_options.get('primary_grouping', 'host') # 'host' or 'problem'
+
+        # Calculate Summary Statistics
+        total_incidents = len(df_problems)
+        severity_counts = df_problems['severity_name'].value_counts().to_dict()
+        severity_pie_chart = self._generate_severity_pie_chart(severity_counts)
 
         # Agrupar e preparar para o template
         grouped_data = []
@@ -219,6 +248,10 @@ class IncidentsCollector(BaseCollector):
             "selected_severities": selected_severities_names,
             "show_duration": custom_options.get('show_duration', True),
             "show_acknowledgements": custom_options.get('show_acknowledgements', True),
-            "primary_grouping": primary_grouping
+            "primary_grouping": primary_grouping,
+            "total_incidents": total_incidents,
+            "severity_counts": severity_counts,
+            "severity_pie_chart": severity_pie_chart
         }
         return self.render("incidents", data)
+

@@ -2,6 +2,36 @@
 <div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
     <h2>{{ title or 'Incidentes' }}</h2>
 
+    {% if data.severity_pie_chart %}
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    Resumo de Incidentes por Severidade (Total: {{ data.total_incidents }})
+                </div>
+                <div class="card-body text-center">
+                    <img src="data:image/png;base64,{{ data.severity_pie_chart }}" alt="Gráfico de Severidade" class="img-fluid">
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    Contagem por Severidade
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for severity, count in data.severity_counts.items() %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ severity }}
+                            <span class="badge bg-primary rounded-pill">{{ count }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     {% if data.error %}
         <div class="alert alert-warning" role="alert">
             {{ data.error }}

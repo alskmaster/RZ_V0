@@ -123,6 +123,10 @@ document.addEventListener('DOMContentLoaded', function () {
                                         <input type="number" class="form-control" id="incidentsNumHosts" min="1" placeholder="Deixe em branco para todos">
                                     </div>
                                     <div class="mb-3">
+                                        <label for="incidentsHostNameContains" class="form-label">Filtrar hosts (contém):</label>
+                                        <input type="text" class="form-control" id="incidentsHostNameContains" placeholder="Parte do nome do host">
+                                    </div>
+                                    <div class="mb-3">
                                         <label for="incidentsPrimaryGrouping" class="form-label">Agrupamento Principal:</label>
                                         <select class="form-select" id="incidentsPrimaryGrouping">
                                             <option value="host">Por Host</option>
