@@ -37,7 +37,9 @@ from .collectors.top_hosts_collector import TopHostsCollector
 from .collectors.top_problems_collector import TopProblemsCollector
 from .collectors.stress_collector import StressCollector
 from .collectors.wifi_collector import WiFiCollector
-from .collectors.incidents_collector import IncidentsCollector
+from .collectors.incidents_collector import IncidentsCollector  # legado (agora tabela)
+from .collectors.incidents_table_collector import IncidentsTableCollector
+from .collectors.incidents_chart_collector import IncidentsChartCollector
 
 
 # Registry of collectors
@@ -60,7 +62,10 @@ COLLECTOR_MAP = {
     'top_problems': TopProblemsCollector,
     'stress': StressCollector,
     'wifi': WiFiCollector,
-    'incidents': IncidentsCollector,
+    # Incidentes divididos em dois módulos
+    'incidents': IncidentsCollector,           # compatibilidade (tabelas)
+    'incidents_table': IncidentsTableCollector,
+    'incidents_chart': IncidentsChartCollector,
 }
 
 

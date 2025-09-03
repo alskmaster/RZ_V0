@@ -2,34 +2,78 @@
 <div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
     <h2>{{ title or 'Incidentes' }}</h2>
 
-    {% if data.severity_pie_chart %}
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    Resumo de Incidentes por Severidade (Total: {{ data.total_incidents }})
+    {% if data.show_charts %}
+        {% if data.chart_type == 'severity_pie' and data.severity_pie_chart %}
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        Resumo de Incidentes por Severidade (Total: {{ data.total_incidents }})
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="data:image/png;base64,{{ data.severity_pie_chart }}" alt="Gráfico de Severidade" class="img-fluid">
+                    </div>
                 </div>
-                <div class="card-body text-center">
-                    <img src="data:image/png;base64,{{ data.severity_pie_chart }}" alt="Gráfico de Severidade" class="img-fluid">
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        Contagem por Severidade
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        {% for severity, count in data.severity_counts.items() %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ severity }}
+                                <span class="badge bg-primary rounded-pill">{{ count }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    Contagem por Severidade
+        {% elif data.chart_type == 'severity_bar' and data.severity_bar_chart %}
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        Incidentes por Severidade (Total: {{ data.total_incidents }})
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="data:image/png;base64,{{ data.severity_bar_chart }}" alt="Gráfico de Barras por Severidade" class="img-fluid">
+                    </div>
                 </div>
-                <ul class="list-group list-group-flush">
-                    {% for severity, count in data.severity_counts.items() %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ severity }}
-                            <span class="badge bg-primary rounded-pill">{{ count }}</span>
-                        </li>
-                    {% endfor %}
-                </ul>
             </div>
         </div>
-    </div>
+        {% elif data.chart_type == 'problem_type_bar' and data.problem_type_bar_chart %}
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        Top Incidentes por Tipo de Problema
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="data:image/png;base64,{{ data.problem_type_bar_chart }}" alt="Gráfico de Barras por Tipo de Problema" class="img-fluid">
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% elif (data.chart_type == 'daily_volume' or data.chart_type == 'daily_volume_severity') and data.daily_volume_chart %}
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        Volume Diário de Incidentes
+                        {% if data.chart_type == 'daily_volume_severity' and data.daily_volume_severities %}
+                            (Severidades: {{ data.daily_volume_severities | join(", ") }})
+                        {% endif %}
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="data:image/png;base64,{{ data.daily_volume_chart }}" alt="Gráfico de Volume Diário" class="img-fluid">
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     {% endif %}
 
     {% if data.error %}

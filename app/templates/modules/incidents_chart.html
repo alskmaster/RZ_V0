@@ -1,0 +1,76 @@
+<!-- app/templates/modules/incidents_chart.html -->
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Incidentes (Gráficos)' }}</h2>
+
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+  {% else %}
+    <div class="row g-3">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">Resumo</div>
+          <div class="card-body">
+            <p class="mb-1">Total de incidentes: <strong>{{ data.total_incidents }}</strong></p>
+            {% if data.severity_counts %}
+              <ul class="list-inline mb-0">
+                {% for sev, cnt in data.severity_counts.items() %}
+                  <li class="list-inline-item"><span class="badge bg-primary">{{ sev }}: {{ cnt }}</span></li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if data.charts.severity_pie %}
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">Incidentes por Severidade (Pizza)</div>
+            <div class="card-body text-center">
+              <img src="data:image/png;base64,{{ data.charts.severity_pie }}" class="img-fluid" alt="Pizza Severidade" />
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if data.charts.severity_bar %}
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">Incidentes por Severidade (Barras)</div>
+            <div class="card-body text-center">
+              <img src="data:image/png;base64,{{ data.charts.severity_bar }}" class="img-fluid" alt="Barras Severidade" />
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if data.charts.problem_type_bar %}
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">Top Incidentes por Tipo de Problema</div>
+            <div class="card-body text-center">
+              <img src="data:image/png;base64,{{ data.charts.problem_type_bar }}" class="img-fluid" alt="Top Problemas" />
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if data.charts.daily_volume %}
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              Volume Diário de Incidentes
+              {% if data.chart_type == 'daily_volume_severity' and data.daily_volume_severities %}
+                (Severidades: {{ data.daily_volume_severities | join(', ') }})
+              {% endif %}
+            </div>
+            <div class="card-body text-center">
+              <img src="data:image/png;base64,{{ data.charts.daily_volume }}" class="img-fluid" alt="Volume Diário" />
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+

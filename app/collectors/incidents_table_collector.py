@@ -3,10 +3,12 @@ import datetime
 import pandas as pd
 
 
-class IncidentsCollector(BaseCollector):
+class IncidentsTableCollector(BaseCollector):
     """
-    Módulo Incidentes (legado) – agora somente TABELAS.
-    Para gráficos, utilize o módulo 'incidents_chart'.
+    Módulo Incidentes (Tabela): apenas informações tabulares, sem gráficos.
+    - Filtros por severidade, sub-período e nome do host.
+    - Agrupamento por host ou por problema.
+    - Campos opcionais: duração e acknowledgements.
     """
 
     _SEVERITY_MAP = {
@@ -17,8 +19,14 @@ class IncidentsCollector(BaseCollector):
         '4': 'Alta',
         '5': 'Desastre'
     }
+
     _SEVERITY_FILTER_MAP = {
-        'info': '1', 'warning': '2', 'average': '3', 'high': '4', 'disaster': '5', 'not_classified': '0'
+        'info': '1',
+        'warning': '2',
+        'average': '3',
+        'high': '4',
+        'disaster': '5',
+        'not_classified': '0',
     }
 
     def _format_timestamp(self, ts):
@@ -76,19 +84,20 @@ class IncidentsCollector(BaseCollector):
         all_host_ids = [h['hostid'] for h in all_hosts]
         problems = self.generator.obter_eventos_wrapper(all_host_ids, period, 'hostids')
         if problems is None:
-            self.generator._update_status("Erro ao coletar eventos de incidentes (tabela).")
+            self._update_status("Erro ao coletar eventos de incidentes (tabela).")
             return self.render('incidents_table', {"error": "Não foi possível coletar dados de incidentes."})
 
         df = pd.DataFrame(problems)
         if df.empty:
             return self.render('incidents_table', {
-                'grouped_data': [],
-                'selected_severities': selected_names,
-                'show_duration': show_duration,
-                'show_acknowledgements': show_ack,
-                'primary_grouping': primary_grouping,
+                "grouped_data": [],
+                "selected_severities": selected_names,
+                "show_duration": show_duration,
+                "show_acknowledgements": show_ack,
+                "primary_grouping": primary_grouping,
             })
 
+        # Filtros essenciais
         for c in ('source', 'object', 'value', 'severity'):
             if c in df.columns:
                 df[c] = df[c].astype(str)
@@ -97,25 +106,39 @@ class IncidentsCollector(BaseCollector):
             df = df[df['severity'].astype(str).isin(selected_ids)]
         if df.empty:
             return self.render('incidents_table', {
-                'grouped_data': [],
-                'selected_severities': selected_names,
-                'show_duration': show_duration,
-                'show_acknowledgements': show_ack,
-                'primary_grouping': primary_grouping,
+                "grouped_data": [],
+                "selected_severities": selected_names,
+                "show_duration": show_duration,
+                "show_acknowledgements": show_ack,
+                "primary_grouping": primary_grouping,
             })
 
+        # Host visível
         host_name_map = {h['hostid']: h['nome_visivel'] for h in all_hosts}
         df['host_name'] = df['hosts'].apply(lambda x: host_name_map.get(x[0].get('hostid')) if isinstance(x, list) and x and isinstance(x[0], dict) and x[0].get('hostid') else 'Desconhecido')
         if host_name_contains:
             df = df[df['host_name'].str.contains(host_name_contains, case=False, na=False)]
+        if df.empty:
+            return self.render('incidents_table', {
+                "grouped_data": [],
+                "selected_severities": selected_names,
+                "show_duration": show_duration,
+                "show_acknowledgements": show_ack,
+                "primary_grouping": primary_grouping,
+            })
 
+        # Campos de exibição
         df['severity_name'] = df['severity'].astype(str).map(self._SEVERITY_MAP).fillna('Desconhecido')
         df['formatted_clock'] = df['clock'].apply(self._format_timestamp)
         df['duration_seconds'] = df.apply(lambda row: (int(row['r_event'].get('clock')) - int(row['clock'])) if isinstance(row.get('r_event'), dict) and row['r_event'].get('clock') else 0, axis=1)
         df['formatted_duration'] = df['duration_seconds'].apply(self._format_duration)
         df['formatted_duration'] = df.apply(lambda row: row['formatted_duration'] if row['duration_seconds'] > 0 else 'Em aberto', axis=1)
         df['processed_acknowledgements'] = df['acknowledges'].apply(lambda acks: [
-            {'alias': ack.get('alias', 'N/A'), 'message': ack.get('message', 'N/A'), 'clock': self._format_timestamp(ack.get('clock', 0))}
+            {
+                'alias': ack.get('alias', 'N/A'),
+                'message': ack.get('message', 'N/A'),
+                'clock': self._format_timestamp(ack.get('clock', 0)),
+            }
             for ack in (acks or []) if isinstance(acks, list) and isinstance(ack, dict)
         ])
 
@@ -138,7 +161,7 @@ class IncidentsCollector(BaseCollector):
                         'acknowledges': row.get('processed_acknowledgements'),
                     })
                 grouped_data.append({'primary_key_name': key, 'incidents': incidents_list})
-        else:
+        else:  # problem
             counts = df.groupby('name').size().reset_index(name='incident_count')
             sorted_keys = counts.sort_values(by='incident_count', ascending=False)['name'].tolist()
             for key in sorted_keys:

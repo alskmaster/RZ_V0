@@ -18,6 +18,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 showDuration: el.querySelector('#incidentsShowDuration'),
                 showAcknowledgements: el.querySelector('#incidentsShowAcknowledgements'),
                 primaryGrouping: el.querySelector('#incidentsPrimaryGrouping'),
+                showCharts: el.querySelector('#incidentsShowCharts'),
+                chartType: el.querySelector('#incidentsChartType'),
+                problemTypeTopN: el.querySelector('#incidentsProblemTypeTopN'),
+                dailyVolumeChartType: el.querySelector('#incidentsDailyVolumeChartType'),
+                dailyVolumeSeveritySelect: el.querySelector('#incidentsDailyVolumeSeveritySelect'),
+                xAxisRotateLabels: el.querySelector('#incidentsXAxisRotateLabels'),
+                xAxisAlternateDays: el.querySelector('#incidentsXAxisAlternateDays'),
                 saveBtn: el.querySelector('#saveIncidentsCustomizationBtn')
             };
         },
@@ -42,6 +49,17 @@ document.addEventListener('DOMContentLoaded', function () {
             el.showAcknowledgements.checked = o.show_acknowledgements !== false; // Default true
             el.primaryGrouping.value = o.primary_grouping || 'host'; // Default to host grouping
 
+            el.showCharts.checked = o.show_charts !== false; // Default true
+            el.chartType.value = o.chart_type || 'severity_pie';
+            el.problemTypeTopN.value = o.problem_type_top_n || '';
+            el.dailyVolumeChartType.value = o.daily_volume_chart_type || 'bar';
+            // Handle multi-select for dailyVolumeSeveritySelect
+            Array.from(el.dailyVolumeSeveritySelect.options).forEach(option => {
+                option.selected = o.daily_volume_severities && o.daily_volume_severities.includes(option.value);
+            });
+            el.xAxisRotateLabels.checked = o.x_axis_rotate_labels !== false; // Default true
+            el.xAxisAlternateDays.checked = o.x_axis_alternate_days !== false; // Default true
+
             el.saveBtn.addEventListener('click', ()=>{
                 if (this._onSave) this._onSave(this.save());
                 this.modal.hide();
@@ -65,7 +83,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 num_hosts: el.numHosts.value ? parseInt(el.numHosts.value) : null,
                 show_duration: el.showDuration.checked,
                 show_acknowledgements: el.showAcknowledgements.checked,
-                primary_grouping: el.primaryGrouping.value
+                primary_grouping: el.primaryGrouping.value,
+                show_charts: el.showCharts.checked,
+                chart_type: el.chartType.value,
+                problem_type_top_n: el.problemTypeTopN.value ? parseInt(el.problemTypeTopN.value) : null,
+                daily_volume_chart_type: el.dailyVolumeChartType.value,
+                daily_volume_severities: Array.from(el.dailyVolumeSeveritySelect.selectedOptions).map(option => option.value),
+                x_axis_rotate_labels: el.xAxisRotateLabels.checked,
+                x_axis_alternate_days: el.xAxisAlternateDays.checked
             };
         },
 
@@ -89,24 +114,70 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <div class="col-md-6">
                                     <label class="form-label">Filtrar por Severidade:</label>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="incidentsSeverityInfo">
+                                        <input class="form-check-input" type="checkbox" id="incidentsSeverityInfo" value="info">
                                         <label class="form-check-label" for="incidentsSeverityInfo">Informação</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="incidentsSeverityWarning">
+                                        <input class="form-check-input" type="checkbox" id="incidentsSeverityWarning" value="warning">
                                         <label class="form-check-label" for="incidentsSeverityWarning">Atenção</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="incidentsSeverityAverage">
+                                        <input class="form-check-input" type="checkbox" id="incidentsSeverityAverage" value="average">
                                         <label class="form-check-label" for="incidentsSeverityAverage">Média</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="incidentsSeverityHigh">
+                                        <input class="form-check-input" type="checkbox" id="incidentsSeverityHigh" value="high">
                                         <label class="form-check-label" for="incidentsSeverityHigh">Alta</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="incidentsSeverityDisaster">
+                                        <input class="form-check-input" type="checkbox" id="incidentsSeverityDisaster" value="disaster">
                                         <label class="form-check-label" for="incidentsSeverityDisaster">Desastre</label>
+                                    </div>
+                                    <hr>
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="incidentsShowCharts">
+                                        <label class="form-check-label" for="incidentsShowCharts">Exibir Gráficos</label>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="incidentsChartType" class="form-label">Tipo de Gráfico:</label>
+                                        <select class="form-select" id="incidentsChartType">
+                                            <option value="none">Nenhum</option>
+                                            <option value="severity_pie">Severidade (Pizza)</option>
+                                            <option value="severity_bar">Severidade (Barras)</option>
+                                            <option value="problem_type_bar">Tipo de Problema (Barras)</option>
+                                            <option value="daily_volume">Volume Diário (Geral)</option>
+                                            <option value="daily_volume_severity">Volume Diário (Por Severidade)</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="incidentsProblemTypeTopN" class="form-label">Top N Problemas (para gráfico de Tipo de Problema):</label>
+                                        <input type="number" class="form-control" id="incidentsProblemTypeTopN" min="1" placeholder="Deixe em branco para todos">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="incidentsDailyVolumeChartType" class="form-label">Tipo de Gráfico de Volume Diário:</label>
+                                        <select class="form-select" id="incidentsDailyVolumeChartType">
+                                            <option value="bar">Barras</option>
+                                            <option value="line">Linha</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="incidentsDailyVolumeSeveritySelect" class="form-label">Severidades para Gráfico de Volume Diário (Por Severidade):</label>
+                                        <select class="form-select" id="incidentsDailyVolumeSeveritySelect" multiple size="5">
+                                            <option value="info">Informação</option>
+                                            <option value="warning">Atenção</option>
+                                            <option value="average">Média</option>
+                                            <option value="high">Alta</option>
+                                            <option value="disaster">Desastre</option>
+                                        </select>
+                                        <small class="form-text text-muted">Segure Ctrl/Cmd para selecionar múltiplas.</small>
+                                    </div>
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="incidentsXAxisRotateLabels">
+                                        <label class="form-check-label" for="incidentsXAxisRotateLabels">Rotacionar Rótulos do Eixo X (45º)</label>
+                                    </div>
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="incidentsXAxisAlternateDays">
+                                        <label class="form-check-label" for="incidentsXAxisAlternateDays">Dias Alternados no Eixo X</label>
                                     </div>
                                 </div>
                                 <div class="col-md-6">

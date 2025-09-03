@@ -1,0 +1,102 @@
+<!-- app/templates/modules/incidents_table.html -->
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Incidentes (Tabela)' }}</h2>
+
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+  {% elif not data.grouped_data %}
+    <div class="alert alert-info" role="alert">
+      Nenhum incidente encontrado para os filtros selecionados.
+      {% if data.selected_severities %}(Severidades: {{ data.selected_severities | join(", ") }}){% endif %}
+    </div>
+  {% else %}
+    <p class="text-muted small">
+      Incidentes exibidos para as severidades: <strong>{{ data.selected_severities | join(", ") }}</strong>
+    </p>
+
+    {% for primary_group in data.grouped_data %}
+      <div class="card mb-4">
+        <div class="card-header">
+          {% if data.primary_grouping == 'host' %}
+            <h5 class="mb-0">Host: {{ primary_group.primary_key_name }}</h5>
+          {% else %}
+            <h5 class="mb-0">Problema: {{ primary_group.primary_key_name }}</h5>
+          {% endif %}
+        </div>
+        <div class="card-body p-0">
+          {% if data.primary_grouping == 'host' %}
+            <div class="table-responsive">
+              <table class="table table-sm table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th scope="col">Problema</th>
+                    <th scope="col">Severidade</th>
+                    <th scope="col">Início</th>
+                    {% if data.show_duration %}<th scope="col">Duração</th>{% endif %}
+                    {% if data.show_acknowledgements %}<th scope="col">Reconhecimentos</th>{% endif %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for incident in primary_group.incidents %}
+                    <tr>
+                      <td>{{ incident.name }}</td>
+                      <td>{{ incident.severity }}</td>
+                      <td>{{ incident.clock }}</td>
+                      {% if data.show_duration %}<td>{{ incident.duration }}</td>{% endif %}
+                      {% if data.show_acknowledgements %}
+                        <td>
+                          {% if incident.acknowledges %}
+                            {% for ack in incident.acknowledges %}
+                              <span class="badge bg-secondary">{{ ack.alias }}: {{ ack.message }} ({{ ack.clock }})</span><br>
+                            {% endfor %}
+                          {% else %}Nenhum{% endif %}
+                        </td>
+                      {% endif %}
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            {% for host_affected in primary_group.hosts_affected %}
+              <div class="card-body p-0 ps-4 pt-2 pb-2">
+                <h6 class="mb-2">Host: {{ host_affected.host_name }}</h6>
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th scope="col">Severidade</th>
+                        <th scope="col">Início</th>
+                        {% if data.show_duration %}<th scope="col">Duração</th>{% endif %}
+                        {% if data.show_acknowledgements %}<th scope="col">Reconhecimentos</th>{% endif %}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for incident in host_affected.incidents %}
+                        <tr>
+                          <td>{{ incident.severity }}</td>
+                          <td>{{ incident.clock }}</td>
+                          {% if data.show_duration %}<td>{{ incident.duration }}</td>{% endif %}
+                          {% if data.show_acknowledgements %}
+                            <td>
+                              {% if incident.acknowledges %}
+                                {% for ack in incident.acknowledges %}
+                                  <span class="badge bg-secondary">{{ ack.alias }}: {{ ack.message }} ({{ ack.clock }})</span><br>
+                                {% endfor %}
+                              {% else %}Nenhum{% endif %}
+                            </td>
+                          {% endif %}
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+</div>
+

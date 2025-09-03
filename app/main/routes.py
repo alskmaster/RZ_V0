@@ -278,7 +278,9 @@ def get_available_modules(client_id):
         available_modules.append({'type': 'top_hosts', 'name': 'Diagnóstico dos Ofensores'})
         available_modules.append({'type': 'top_problems', 'name': 'Painel de Vilões Sistêmicos'})
         available_modules.append({'type': 'stress', 'name': 'Eletrocardiograma do Ambiente'})
-        available_modules.append({'type': 'incidents', 'name': 'Incidentes'})
+        # Incidentes divididos
+        available_modules.append({'type': 'incidents_table', 'name': 'Incidentes (Tabela)'})
+        available_modules.append({'type': 'incidents_chart', 'name': 'Incidentes (Gráficos)'})
     
     if check_key('icmppingsec'):
         available_modules.append({'type': 'latency', 'name': 'Latência de Rede (Ping)'})
@@ -451,4 +453,3 @@ def test_events(client_id, mes_ref):
         "diagnostico": "Coleta em lote está INCOMPLETA." if total_diario > total_lote else "Coleta em lote parece COMPLETA.",
         "detalhes_diarios": dias_com_eventos
     })
-
