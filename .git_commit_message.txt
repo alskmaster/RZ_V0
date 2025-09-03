@@ -1,0 +1,10 @@
+feat: Implementa agrupamento avançado e filtro por nome de host no módulo de Incidentes
+
+Este commit aprimora o módulo de Incidentes com novas funcionalidades e melhorias de usabilidade:
+
+- **Agrupamento Principal:** Adiciona a opção de agrupar incidentes primariamente por 'Host' (padrão) ou por 'Problema', permitindo uma visualização mais flexível dos dados.
+- **Filtro por Nome de Host:** Inclui um campo de texto para filtrar incidentes por parte do nome do host, facilitando a busca por hosts específicos.
+- **Refatoração de Código:** Ajusta a lógica de processamento de dados no coletor e a renderização no template para suportar as novas opções de agrupamento.
+- **Correção de Carregamento JS:** Reorganiza a ordem de carregamento dos scripts JavaScript em `gerar_form.html` para garantir que os customizadores de módulo sejam carregados corretamente, resolvendo o problema da "engrenagem" de customização que desaparecia.
+
+Estas melhorias visam tornar o módulo mais robusto, intuitivo e útil para a análise de incidentes.
