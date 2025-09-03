@@ -344,6 +344,12 @@ def get_available_modules(client_id):
     available_modules.append({'type': 'inventory', 'name': 'Inventário de Hosts'})
     available_modules.append({'type': 'html', 'name': 'Texto/HTML Customizado'})
     
+    # Limpa módulos legados do backend (mostrar apenas versões novas)
+    legacy_types = {'cpu', 'mem', 'latency', 'loss', 'sla'}
+    try:
+        available_modules = [m for m in available_modules if m.get('type') not in legacy_types]
+    except Exception:
+        pass
     return jsonify({'available_modules': sorted(available_modules, key=lambda x: x['name'])})
 
 @main.route('/get_client_interfaces/<int:client_id>')
