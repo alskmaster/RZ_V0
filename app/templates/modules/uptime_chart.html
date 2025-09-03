@@ -1,0 +1,10 @@
+﻿<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  {% if title %}<h2>{{ title }}</h2>{% endif %}
+  <div class="chart-container">
+    {% if data.img_b64 %}
+      <img src="data:image/png;base64,{{ data.img_b64 }}" alt="uptime-chart" style="max-width:100%;height:auto;"/>
+    {% else %}
+      <p><i>Sem imagem para exibir.</i></p>
+    {% endif %}
+  </div>
+</div>
