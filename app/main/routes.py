@@ -85,6 +85,65 @@ def gerar_relatorio():
     client_id = request.form.get('client_id')
     ref_month = request.form.get('mes_ref')
     report_layout_json = request.form.get('report_layout')
+
+    # Migração automática de módulos legados para novos (Tabela/Gráficos)
+    def _migrate_layout(layout):
+        import copy, json
+        try:
+            mods = json.loads(layout) if isinstance(layout, str) else (layout or [])
+        except Exception:
+            return layout
+
+        out = []
+        for m in (mods or []):
+            t = (m or {}).get('type')
+            co = (m or {}).get('custom_options') or {}
+            base = {k: v for k, v in m.items() if k != 'custom_options'}
+
+            def _mk(new_type, title_suffix=None, extra_opts=None):
+                nm = copy.deepcopy(base)
+                nm['type'] = new_type
+                nm['custom_options'] = {k: v for k, v in co.items()}
+                for k in ('show_table', 'show_chart'):
+                    nm['custom_options'].pop(k, None)
+                if title_suffix:
+                    nm['title'] = (nm.get('title') or '') + title_suffix
+                if extra_opts:
+                    nm['custom_options'].update(extra_opts)
+                return nm
+
+            if t == 'cpu':
+                wants_table = co.get('show_table', True)
+                wants_chart = co.get('show_chart', True)
+                if wants_table:
+                    out.append(_mk('cpu_table', ''))
+                if wants_chart:
+                    out.append(_mk('cpu_chart', ''))
+            elif t == 'mem':
+                wants_table = co.get('show_table', True)
+                wants_chart = co.get('show_chart', True)
+                if wants_table:
+                    out.append(_mk('mem_table', ''))
+                if wants_chart:
+                    out.append(_mk('mem_chart', ''))
+            elif t == 'latency':
+                out.append(_mk('latency_table', ''))
+                out.append(_mk('latency_chart', ''))
+            elif t == 'loss':
+                out.append(_mk('loss_table', ''))
+                out.append(_mk('loss_chart', ''))
+            elif t == 'sla':
+                out.append(_mk('sla_table', ''))
+            else:
+                out.append(m)
+        return out
+
+    try:
+        migrated = _migrate_layout(report_layout_json)
+        import json as _json
+        report_layout_json = _json.dumps(migrated)
+    except Exception:
+        pass
     thread = threading.Thread(target=run_generation_in_thread, args=(current_app.app_context(), task_id, client_id, ref_month, current_user.id, report_layout_json))
     thread.daemon = True
     thread.start()
@@ -195,6 +254,43 @@ def save_template():
     data = request.json
     template_name = data.get('name')
     layout_json = data.get('layout')
+    # migra antes de salvar
+    def _migrate(layout):
+        import json
+        try:
+            from copy import deepcopy
+            mods = json.loads(layout) if isinstance(layout, str) else (layout or [])
+        except Exception:
+            return layout
+        out = []
+        for m in (mods or []):
+            t = (m or {}).get('type')
+            co = (m or {}).get('custom_options') or {}
+            base = {k: v for k, v in m.items() if k != 'custom_options'}
+            def mk(tp):
+                mm = deepcopy(base); mm['type'] = tp; mm['custom_options'] = {k: v for k, v in co.items()};
+                for k in ('show_table','show_chart'): mm['custom_options'].pop(k, None)
+                return mm
+            if t == 'cpu':
+                if co.get('show_table', True): out.append(mk('cpu_table'))
+                if co.get('show_chart', True): out.append(mk('cpu_chart'))
+            elif t == 'mem':
+                if co.get('show_table', True): out.append(mk('mem_table'))
+                if co.get('show_chart', True): out.append(mk('mem_chart'))
+            elif t == 'latency':
+                out += [mk('latency_table'), mk('latency_chart')]
+            elif t == 'loss':
+                out += [mk('loss_table'), mk('loss_chart')]
+            elif t == 'sla':
+                out.append(mk('sla_table'))
+            else:
+                out.append(m)
+        return json.dumps(out)
+
+    try:
+        layout_json = _migrate(layout_json)
+    except Exception:
+        pass
     
     if not template_name or not layout_json:
         return jsonify({'success': False, 'error': 'Nome do template e layout são obrigatórios.'}), 400
@@ -217,7 +313,23 @@ def save_template():
 @login_required
 def get_templates():
     templates = ReportTemplate.query.order_by(ReportTemplate.name).all()
-    templates_list = [{'id': t.id, 'name': t.name, 'layout_json': t.layout_json} for t in templates]
+    out = []
+    for t in templates:
+        lj = getattr(t, 'layout_json', None)
+        # aplica migração apenas na visualização
+        try:
+            import json
+            mods = json.loads(lj) if lj else []
+            # troca simples dos tipos legados, sem duplicar
+            mapping = {'cpu':'cpu_table','mem':'mem_table','latency':'latency_table','loss':'loss_table','sla':'sla_table'}
+            for m in (mods or []):
+                if m.get('type') in mapping:
+                    m['type'] = mapping[m['type']]
+            lj = json.dumps(mods)
+        except Exception:
+            pass
+        out.append({'id': t.id, 'name': t.name, 'layout_json': lj})
+    templates_list = out
     return jsonify(templates_list)
 
 
