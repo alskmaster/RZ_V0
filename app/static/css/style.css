@@ -5,3 +5,14 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* Callouts para o módulo Texto/HTML */
+.callout { border-left: 4px solid #6c757d; padding: 12px 14px; margin: 8px 0; background: #f8f9fa; }
+.callout-note { border-color: #6c757d; }
+.callout-info { border-color: #0d6efd; background: #eef6ff; }
+.callout-success { border-color: #198754; background: #eef9f3; }
+.callout-warning { border-color: #ffc107; background: #fff8e1; }
+.callout-danger { border-color: #dc3545; background: #fff0f1; }
+
+.text-small { font-size: 90%; }
+.text-big { font-size: 120%; }
