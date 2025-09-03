@@ -12,7 +12,7 @@
         <button type="button" class="btn btn-outline-secondary btn-sm" data-cmd="insertUnorderedList"><i class="bi bi-list-ul"></i></button>
         <button type="button" class="btn btn-outline-secondary btn-sm" data-cmd="insertOrderedList"><i class="bi bi-list-ol"></i></button>
         <button type="button" class="btn btn-outline-secondary btn-sm" data-link>Link</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-hr>—</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-hr>&mdash;</button>
         <div class="btn-group" role="group">
           <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">Inserir</button>
           <ul class="dropdown-menu">
@@ -83,7 +83,7 @@
                 ${htmlToolbarHtml()}
                 <div id="htmlEditor" class="form-control" style="min-height: 220px;" contenteditable="true"></div>
                 <textarea id="htmlSource" class="form-control mt-2 d-none" style="min-height: 220px; font-family: monospace;"></textarea>
-                <div class="small text-muted mt-2">Dica: cole conteúdo do Word/Docs ou edite aqui. Tags básicas são suportadas (negrito, itálico, listas, títulos).</n>
+                <div class="small text-muted mt-2">Dica: cole conteúdo do Word/Docs ou edite aqui. Tags básicas são suportadas (negrito, itálico, listas, títulos).</div>
               </div>
             </div>
             <hr/>
@@ -122,29 +122,29 @@
         </div>
       </div>
     </div>`;
-    document.body.appendChild(tpl.firstElementChild);
+    document.body.appendChild(tpl.firstElementChild); const modal = document.getElementById("customizeHtmlModal");
 
     // Toolbar handlers
     const editor = document.getElementById('htmlEditor');
     const source = document.getElementById('htmlSource');
-    tpl.querySelectorAll('[data-cmd]').forEach(btn => {
+    modal.querySelectorAll('[data-cmd]').forEach(btn => {
       btn.addEventListener('click', () => document.execCommand(btn.getAttribute('data-cmd'), false, null));
     });
-    tpl.querySelectorAll('[data-tag]').forEach(btn => {
+    modal.querySelectorAll('[data-tag]').forEach(btn => {
       btn.addEventListener('click', () => {
         const tag = btn.getAttribute('data-tag');
         document.execCommand('formatBlock', false, tag);
       });
     });
-    const linkBtn = tpl.querySelector('[data-link]');
+    const linkBtn = modal.querySelector('[data-link]');
     linkBtn.addEventListener('click', () => {
       const url = prompt('URL do link:');
       if (url) document.execCommand('createLink', false, url);
     });
-    const hrBtn = tpl.querySelector('[data-hr]');
+    const hrBtn = modal.querySelector('[data-hr]');
     hrBtn.addEventListener('click', () => document.execCommand('insertHorizontalRule'));
     // Inserções
-    tpl.querySelector('[data-table]').addEventListener('click', (e)=>{
+    modal.querySelector('[data-table]').addEventListener('click', (e)=>{
       e.preventDefault();
       const html = '<table style="width:100%; border-collapse: collapse;" border="1"><tbody>'+
                    '<tr><td>&nbsp;</td><td>&nbsp;</td></tr>'+
@@ -153,12 +153,12 @@
                    '</tbody></table>';
       insertHtmlAtCursor(editor, html);
     });
-    tpl.querySelector('[data-image]').addEventListener('click', (e)=>{
+    modal.querySelector('[data-image]').addEventListener('click', (e)=>{
       e.preventDefault();
       const url = prompt('URL da imagem:');
       if (url) insertHtmlAtCursor(editor, `<img src="${url}" style="max-width:100%;"/>`);
     });
-    tpl.querySelectorAll('[data-callout]').forEach(a => {
+    modal.querySelectorAll('[data-callout]').forEach(a => {
       a.addEventListener('click', (e)=>{
         e.preventDefault();
         const kind = a.getAttribute('data-callout');
@@ -166,7 +166,7 @@
       });
     });
     // Alinhamento local
-    tpl.querySelectorAll('[data-align]').forEach(btn => {
+    modal.querySelectorAll('[data-align]').forEach(btn => {
       btn.addEventListener('click', ()=>{
         const m = btn.getAttribute('data-align');
         const cmd = {left:'justifyLeft',center:'justifyCenter',right:'justifyRight',justify:'justifyFull'}[m];
@@ -174,14 +174,14 @@
       });
     });
     // Tamanho do texto
-    tpl.querySelectorAll('[data-size]').forEach(btn => {
+    modal.querySelectorAll('[data-size]').forEach(btn => {
       btn.addEventListener('click', ()=>{
         const kind = btn.getAttribute('data-size');
         wrapSelectionWithSpan(editor, kind === 'small' ? 'text-small' : 'text-big');
       });
     });
     // Toggle fonte
-    tpl.querySelector('#toggleHtmlSrc').addEventListener('click', ()=>{
+    modal.querySelector('#toggleHtmlSrc').addEventListener('click', ()=>{
       const showing = !source.classList.contains('d-none');
       if (showing) {
         editor.innerHTML = source.value;
@@ -194,7 +194,7 @@
       }
     });
     // Placeholders insertion
-    tpl.querySelectorAll('.placeholder-chip').forEach(chip => {
+    modal.querySelectorAll('.placeholder-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const ph = chip.getAttribute('data-ph');
         document.execCommand('insertText', false, ph);
@@ -202,7 +202,7 @@
       });
     });
     // Quick templates
-    tpl.querySelectorAll('.quick-tpl').forEach(btn => {
+    modal.querySelectorAll('.quick-tpl').forEach(btn => {
       btn.addEventListener('click', () => {
         const kind = btn.getAttribute('data-tpl');
         const content = quickTemplate(kind);
@@ -303,3 +303,4 @@
     range.surroundContents(span);
   }
 })();
+
