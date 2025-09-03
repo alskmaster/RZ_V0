@@ -289,6 +289,9 @@ def get_available_modules(client_id):
 
     if check_key('system.cpu.util'):
         available_modules.append({'type': 'cpu', 'name': 'Desempenho de CPU'})
+        # CPU (novos módulos)
+        available_modules.append({'type': 'cpu_table', 'name': 'CPU (Tabela)'})
+        available_modules.append({'type': 'cpu_chart', 'name': 'CPU (Gráficos)'})
     if check_key('vm.memory.size[pused]') or check_key('vm.memory.size[pavailable]'):
         available_modules.append({'type': 'mem', 'name': 'Desempenho de Memória'})
     

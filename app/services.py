@@ -20,7 +20,9 @@ from .zabbix_api import fazer_request_zabbix
 from .pdf_builder import PDFBuilder
 
 # Collectors
-from .collectors.cpu_collector import CpuCollector
+from .collectors.cpu_collector import CpuCollector  # legado
+from .collectors.cpu_table_collector import CpuTableCollector
+from .collectors.cpu_chart_collector import CpuChartCollector
 from .collectors.mem_collector import MemCollector  # legado (tabela+gráfico)
 from .collectors.mem_table_collector import MemTableCollector
 from .collectors.mem_chart_collector import MemChartCollector
@@ -51,6 +53,8 @@ from .collectors.incidents_chart_collector import IncidentsChartCollector
 # Registry of collectors
 COLLECTOR_MAP = {
     'cpu': CpuCollector,
+    'cpu_table': CpuTableCollector,
+    'cpu_chart': CpuChartCollector,
     'mem': MemCollector,                 # compatibilidade
     'mem_table': MemTableCollector,
     'mem_chart': MemChartCollector,

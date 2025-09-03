@@ -1,0 +1,11 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'CPU (Gráficos)' }}</h2>
+  <div class="chart-container">
+    {% if data.img %}
+      <img src="data:image/png;base64,{{ data.img }}" alt="Gráfico de CPU"/>
+    {% else %}
+      <p><i>Gráfico de CPU indisponível.</i></p>
+    {% endif %}
+  </div>
+</div>
+
