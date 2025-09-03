@@ -182,6 +182,7 @@ class ReportGenerator:
 
         availability_data_cache = None
         sla_prev_month_df = None
+        wifi_prev_month_df = None
         availability_module_types = {
             'sla', 'sla_table', 'sla_chart', 'sla_plus', 'kpi', 'top_hosts', 'top_problems', 'stress'
         }
@@ -222,6 +223,21 @@ class ReportGenerator:
                     sla_prev_month_df = prev_data['df_sla_problems'].rename(columns={'SLA (%)': 'SLA_anterior'})
                     self.cached_data['prev_month_sla_df'] = prev_data['df_sla_problems']
 
+        # Previous month (for WiFi)
+        if any(mod.get('type') == 'wifi' for mod in (report_layout or [])):
+            self._update_status("Coletando dados do mes anterior para comparacao de Wi-Fi.")
+            prev_ref_date = ref_date - dt.timedelta(days=1)
+            prev_month_start = prev_ref_date.replace(day=1)
+            prev_month_end = (prev_month_start.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(seconds=1)
+            prev_period = {'start': int(prev_month_start.timestamp()), 'end': int(prev_month_end.timestamp())}
+            try:
+                temp_wifi_collector = WiFiCollector(self, {})
+                _, prev_daily_ap, _ = temp_wifi_collector._get_wifi_dataframe(all_hosts, prev_period)
+                if not prev_daily_ap.empty:
+                    wifi_prev_month_df = prev_daily_ap.groupby("host")["value_avg"].sum().reset_index()
+            except Exception as e:
+                current_app.logger.error("[ReportGenerator.generate] Falha ao coletar dados Wi-Fi do mes anterior", exc_info=True)
+
         # Assemble modules
         for module_config in (report_layout or []):
             module_type = module_config.get('type')
@@ -240,7 +256,10 @@ class ReportGenerator:
                     else:
                         html_part = "<p>Dados de disponibilidade indisponiveis para este modulo.</p>"
                 else:
-                    html_part = collector_instance.collect(all_hosts, period)
+                    if module_type == 'wifi':
+                        html_part = collector_instance.collect(all_hosts, period, previous_month_data=wifi_prev_month_df)
+                    else:
+                        html_part = collector_instance.collect(all_hosts, period)
                 final_html_parts.append(html_part)
             except Exception as e:
                 current_app.logger.error(f"Erro ao executar o plugin '{module_type}': {e}", exc_info=True)

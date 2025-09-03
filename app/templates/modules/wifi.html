@@ -2,58 +2,118 @@
 <div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
   <h2 class="mb-3">{{ title or 'Wi-Fi (Utilização por AP/SSID)' }}</h2>
 
+  <style>
+      .kpi-grid-embed {
+          display: -webkit-flex;
+          display: flex;
+          -webkit-flex-wrap: wrap;
+          flex-wrap: wrap;
+          justify-content: space-between;
+          gap: 12px;
+          margin-top: 20px;
+          margin-bottom: 20px; /* Added margin */
+          font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      }
+      .kpi-card-embed {
+          background-color: #f8f9fa;
+          border: 1px solid #dee2e6;
+          border-radius: 8px;
+          padding: 15px;
+          box-sizing: border-box;
+          border-left-width: 5px;
+          width: 48%;
+          display: -webkit-flex;
+          display: flex;
+          align-items: center;
+          page-break-inside: avoid;
+      }
+      .kpi-card-embed.status-atingido { border-left-color: #28a745; }
+      .kpi-card-embed.status-nao-atingido { border-left-color: #dc3545; }
+      .kpi-card-embed.status-critico { border-left-color: #ffc107; }
+      .kpi-card-embed.status-ok { border-left-color: #17a2b8; }
+      .kpi-card-embed.status-info { border-left-color: #6c757d; }
+
+      .kpi-icon-embed {
+          margin-right: 15px;
+          flex-shrink: 0;
+      }
+      .kpi-icon-embed svg {
+          width: 40px;
+          height: 40px;
+          fill: #6c757d; /* Default icon color */
+      }
+
+      .kpi-text-content {
+          flex-grow: 1;
+          display: -webkit-flex;
+          display: flex;
+          -webkit-flex-direction: column;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center; /* Align text to the center */
+          text-align: center;
+          overflow: hidden;
+      }
+
+      .kpi-value-embed {
+          font-size: 2em;
+          font-weight: bold;
+          margin: 0; padding: 0; line-height: 1.1;
+          word-wrap: break-word;
+      }
+      .kpi-card-embed.status-atingido .kpi-value-embed { color: #28a745; }
+      .kpi-card-embed.status-nao-atingido .kpi-value-embed { color: #dc3545; }
+      .kpi-card-embed.status-critico .kpi-value-embed { color: #ffc107; }
+      .kpi-card-embed.status-ok .kpi-value-embed { color: #17a2b8; }
+      .kpi-card-embed.status-info .kpi-value-embed { color: #343a40; }
+
+      .kpi-label-embed {
+          font-size: 0.95em;
+          font-weight: 500;
+          color: #495057;
+          margin: 0;
+      }
+      .kpi-sublabel-embed {
+          font-size: 0.8em;
+          color: #6c757d;
+          margin-top: 2px;
+      }
+  </style>
+
   {% if data.error %}
     <div class="alert alert-warning">{{ data.error }}</div>
   {% endif %}
 
   {# ===================== KPIs ===================== #}
-  {% if data.kpis %}
-  <div class="row g-3 mb-3">
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body py-3">
-          <div class="text-muted small">Pico Global</div>
-          <div class="fs-5 fw-bold">{{ data.kpis.pico_global }}</div>
-        </div>
+  {% if data.kpis_data %}
+  <div class="kpi-grid-embed">
+      {% for kpi in data.kpis_data %}
+      <div class="kpi-card-embed status-{{ kpi.status }}">
+          <div class="kpi-icon-embed">
+              {{ kpi.icon | safe }}
+          </div>
+          <div class="kpi-text-content">
+              <p class="kpi-label-embed">{{ kpi.label }}</p>
+              <p class="kpi-value-embed">{{ kpi.value }}</p>
+              <p class="kpi-sublabel-embed">{{ kpi.sublabel }}</p>
+          </div>
       </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body py-3">
-          <div class="text-muted small">p95 Global</div>
-          <div class="fs-5 fw-bold">{{ data.kpis.p95_global }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body py-3">
-          <div class="text-muted small">Total de APs</div>
-          <div class="fs-5 fw-bold">{{ data.kpis.total_aps }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body py-3">
-          <div class="text-muted small">Capacidade de Referência</div>
-          <div class="fs-5 fw-bold">{{ data.kpis.capacity }}</div>
-          <div class="text-muted small">p/ AP (usada para saturação)</div>
-        </div>
-      </div>
-    </div>
+      {% endfor %}
   </div>
   {% endif %}
 
   {# ========== Gráfico de linha agregado (opcional) ========== #}
+  <div {% if data.opts.pb_line_chart %}style="page-break-before: always;"{% endif %}>
   {% if data.line_chart %}
     <div class="chart-container mb-3" style="page-break-inside: avoid;">
       <img src="data:image/png;base64,{{ data.line_chart }}" alt="Tendência Global Wi-Fi"
            style="width:100%;height:auto;">
     </div>
   {% endif %}
+  </div>
 
   {# ========== Gráficos por AP (barras) ========== #}
+  <div {% if data.opts.pb_bar_charts %}style="page-break-before: always;"{% endif %}>
   {% if data.charts_ap and data.charts_ap|length > 0 %}
     <h4 class="mt-2" style="font-size: 11pt; color: #333;">Gráficos por AP (máximo diário)</h4>
     {% for img in data.charts_ap %}
@@ -63,8 +123,10 @@
       </div>
     {% endfor %}
   {% endif %}
+  </div>
 
   {# ===================== TABELAS ===================== #}
+  <div {% if data.opts.pb_summary_table %}style="page-break-before: always;"{% endif %}>
   {% if data.show_table_summary and data.summary_rows and data.summary_rows|length > 0 %}
     <h4 class="mt-2" style="font-size: 11pt; color: #333;">Resumo – Soma dos Máximos Diários por AP</h4>
     <div class="table-responsive mb-3">
@@ -90,7 +152,9 @@
       </table>
     </div>
   {% endif %}
+  </div>
 
+  <div {% if data.opts.pb_detailed_tables %}style="page-break-before: always;"{% endif %}>
   {% if data.show_table_detailed and data.detailed_blocks and data.detailed_blocks|length > 0 %}
     <h4 class="mt-2" style="font-size: 11pt; color: #333;">Detalhamento por AP (Máximo diário)</h4>
     {% for block in data.detailed_blocks %}
@@ -107,8 +171,10 @@
       </div>
     {% endfor %}
   {% endif %}
+  </div>
 
   {# ===================== HEATMAPS ===================== #}
+  <div {% if data.opts.pb_global_heatmap %}style="page-break-before: always;"{% endif %}>
   {% if data.heatmap_global %}
     <h4 class="mt-2" style="font-size: 11pt; color: #333;">Heatmap Global – Média por Hora</h4>
     <div class="chart-container mb-3" style="page-break-inside: avoid;">
@@ -116,7 +182,9 @@
            style="width:100%;height:auto;">
     </div>
   {% endif %}
+  </div>
 
+  <div {% if data.opts.pb_per_ap_heatmap %}style="page-break-before: always;"{% endif %}>
   {% if data.heatmap_per_ap and data.heatmap_per_ap|length > 0 %}
     <h4 class="mt-2" style="font-size: 11pt; color: #333;">Heatmap por AP (média por hora)</h4>
     {% for img in data.heatmap_per_ap %}
@@ -126,4 +194,5 @@
       </div>
     {% endfor %}
   {% endif %}
+  </div>
 </div>
