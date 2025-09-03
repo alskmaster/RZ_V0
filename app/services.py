@@ -21,7 +21,9 @@ from .pdf_builder import PDFBuilder
 
 # Collectors
 from .collectors.cpu_collector import CpuCollector
-from .collectors.mem_collector import MemCollector
+from .collectors.mem_collector import MemCollector  # legado (tabela+gráfico)
+from .collectors.mem_table_collector import MemTableCollector
+from .collectors.mem_chart_collector import MemChartCollector
 from .collectors.disk_collector import DiskCollector
 from .collectors.traffic_collector import TrafficCollector
 from .collectors.latency_collector import LatencyCollector
@@ -45,7 +47,9 @@ from .collectors.incidents_chart_collector import IncidentsChartCollector
 # Registry of collectors
 COLLECTOR_MAP = {
     'cpu': CpuCollector,
-    'mem': MemCollector,
+    'mem': MemCollector,                 # compatibilidade
+    'mem_table': MemTableCollector,
+    'mem_chart': MemChartCollector,
     'disk': DiskCollector,
     'traffic_in': TrafficCollector,
     'traffic_out': TrafficCollector,

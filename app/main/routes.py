@@ -292,6 +292,14 @@ def get_available_modules(client_id):
     if check_key('vm.memory.size[pused]') or check_key('vm.memory.size[pavailable]'):
         available_modules.append({'type': 'mem', 'name': 'Desempenho de Memória'})
     
+    # Memória (novos módulos separados)
+    try:
+        if check_key('vm.memory.size[pused]') or check_key('vm.memory.size[pavailable]'):
+            available_modules.append({'type': 'mem_table', 'name': 'Memória (Tabela)'})
+            available_modules.append({'type': 'mem_chart', 'name': 'Memória (Gráficos)'})
+    except Exception:
+        pass
+
     if check_key('vfs.fs.size'):
         available_modules.append({'type': 'disk', 'name': 'Uso de Disco'})
 
