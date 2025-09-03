@@ -323,13 +323,56 @@ class ReportGenerator:
         if all_group_events is None:
             return None, "Falha ao coletar eventos do grupo."
         all_problems = [p for p in all_group_events if p.get('source') == '0' and p.get('object') == '0' and p.get('value') == '1']
-        df_top_incidents = self._count_problems_by_host(all_problems, all_hosts)
 
-        # Basic KPIs
-        avg_sla = df_sla['SLA (%)'].mean() if not df_sla.empty else 100.0
-        kpis_data = {'avg_sla': float(avg_sla)}
+        # Constrói dataframe detalhado de incidentes por host/problema/clock
+        host_map = {str(h['hostid']): h['nome_visivel'] for h in (all_hosts or [])}
+        detailed_rows = []
+        severity_counts = {}
+        sev_map = {
+            '0': 'Não Classificado', '1': 'Informação', '2': 'Atenção',
+            '3': 'Média', '4': 'Alta', '5': 'Desastre'
+        }
+        for ev in (all_problems or []):
+            try:
+                hosts = ev.get('hosts') or []
+                hostid = str((hosts[0] or {}).get('hostid')) if hosts else None
+                host_name = host_map.get(hostid, f'Host {hostid}') if hostid else 'Desconhecido'
+                prob_name = ev.get('name') or f"Trigger {ev.get('objectid') or ev.get('triggerid') or '?'}"
+                clk = int(ev.get('clock', 0))
+                detailed_rows.append({'Host': host_name, 'Problema': prob_name, 'Ocorrências': 1, 'clock': clk})
+                sev_raw = ev.get('severity', 'Desconhecido')
+                sev_key = sev_map.get(str(sev_raw), 'Desconhecido')
+                severity_counts[sev_key] = severity_counts.get(sev_key, 0) + 1
+            except Exception:
+                continue
+        import pandas as _pd
+        df_top_incidents = _pd.DataFrame(detailed_rows, columns=['Host', 'Problema', 'Ocorrências', 'clock']) if detailed_rows else _pd.DataFrame(columns=['Host', 'Problema', 'Ocorrências', 'clock'])
 
-        return {'df_sla_problems': df_sla, 'df_top_incidents': df_top_incidents, 'kpis': kpis_data}, None
+        # KPIs em lista (conforme coletor KPI)
+        avg_sla = float(df_sla['SLA (%)'].mean()) if not df_sla.empty else 100.0
+        total_hosts = len(self.cached_data.get('all_hosts', [])) or len(all_hosts)
+        try:
+            goal = float(sla_goal) if sla_goal is not None else None
+        except Exception:
+            goal = None
+        try:
+            hosts_ok = int(df_sla[df_sla.get('SLA (%)', _pd.Series(dtype=float)) >= float(goal if goal is not None else 100)].shape[0]) if not df_sla.empty else 0
+        except Exception:
+            hosts_ok = 0
+        top_offender = None
+        try:
+            if not df_top_incidents.empty:
+                top_offender = df_top_incidents.groupby('Host')['Ocorrências'].sum().sort_values(ascending=False).index.tolist()[0]
+        except Exception:
+            top_offender = None
+        kpis_data = [
+            {'label': 'Média de SLA', 'value': f"{avg_sla:.2f}%", 'sublabel': 'Mês atual', 'trend': None, 'status': 'atingido' if (goal and avg_sla >= float(goal)) else 'nao-atingido'},
+            {'label': 'Hosts com SLA', 'value': f"{hosts_ok}/{total_hosts}", 'sublabel': 'SLA >= meta', 'trend': None, 'status': 'ok' if hosts_ok == total_hosts and total_hosts > 0 else 'info'},
+            {'label': 'Total de Incidentes', 'value': str(int(df_top_incidents['Ocorrências'].sum())) if not df_top_incidents.empty else '0', 'sublabel': 'no período', 'trend': None, 'status': 'info'},
+            {'label': 'Principal Ofensor', 'value': top_offender or '—', 'sublabel': 'mais incidentes', 'trend': None, 'status': 'critico' if top_offender else 'info'},
+        ]
+
+        return {'df_sla_problems': df_sla, 'df_top_incidents': df_top_incidents, 'kpis': kpis_data, 'severity_counts': severity_counts}, None
 
     # -------------------- Helpers --------------------
     def _normalize_string(self, s):
@@ -423,6 +466,27 @@ class ReportGenerator:
             return []
         return trends
 
+    def get_trends_chunked(self, itemids, time_from, time_till, chunk_size=150):
+        """
+        Busca trends em lotes menores para evitar sobrecarga/erros 500 no Zabbix.
+        """
+        if not itemids:
+            return []
+        all_trends = []
+        items_list = list(itemids)
+        total = len(items_list)
+        for i in range(0, total, int(chunk_size)):
+            chunk = items_list[i:i+int(chunk_size)]
+            try:
+                self._update_status(f"Buscando trends em lote {i+1}-{min(i+len(chunk), total)} de {total}...")
+                part = self.get_trends(chunk, time_from, time_till)
+                if isinstance(part, list) and part:
+                    all_trends.extend(part)
+            except Exception:
+                current_app.logger.warning("Falha em um lote de trend.get; seguindo para o proximo.", exc_info=True)
+                continue
+        return all_trends
+
     def _iter_chunks(self, seq, size):
         for i in range(0, len(seq), size):
             yield seq[i:i + size]
@@ -450,6 +514,65 @@ class ReportGenerator:
             out[c] *= unit_conversion_factor
         out['Host'] = out['hostid'].map(host_map)
         return out[['Host', 'Min', 'Max', 'Avg']]
+
+    # -------------- Trends/History helpers --------------
+    def get_history_aggregated(self, itemids, time_from, time_till, value_type=0, agg_method='mean'):
+        """
+        Fallback para agregar via history.get quando trend.get não retorna dados.
+        Retorna uma lista de dicts com chaves: itemid, value_min, value_avg, value_max.
+        """
+        if not itemids:
+            return []
+        results = []
+        for chunk in self._iter_chunks(list(itemids), 100):
+            params = {
+                'output': ['itemid', 'clock', 'value'],
+                'itemids': chunk,
+                'time_from': int(time_from),
+                'time_till': int(time_till),
+                'history': int(value_type)
+            }
+            body = {'jsonrpc': '2.0', 'method': 'history.get', 'params': params, 'auth': self.token, 'id': 1}
+            data = fazer_request_zabbix(body, self.url)
+            if not isinstance(data, list) or not data:
+                continue
+            try:
+                df = pd.DataFrame(data)
+                df['itemid'] = df['itemid'].astype(str)
+                df['value'] = pd.to_numeric(df['value'], errors='coerce')
+                agg = df.groupby('itemid')['value'].agg(value_min='min', value_avg=agg_method, value_max='max').reset_index()
+                results.extend(agg.to_dict('records'))
+            except Exception:
+                continue
+        return results
+
+    def get_trends_with_fallback(self, itemids, time_from, time_till, history_value_type=0, agg_method='mean'):
+        """Tenta trend.get (em lotes); se vazio, usa history.get agregado."""
+        trends = self.get_trends_chunked(itemids, time_from, time_till)
+        if isinstance(trends, list) and trends:
+            return trends
+        return self.get_history_aggregated(itemids, time_from, time_till, value_type=history_value_type, agg_method=agg_method)
+
+    def robust_aggregate(self, itemids, time_from, time_till, items_meta=None, chunk_size=None):
+        """
+        API usada pelos coletores resilientes (CPU/Mem/Disk): retorna estrutura tipo trends
+        (itemid, value_min, value_avg, value_max), usando trend.get e fallback para history.get com value_type
+        inferido quando possível a partir de items_meta.
+        """
+        if not itemids:
+            return []
+        trends = self.get_trends_chunked(itemids, time_from, time_till, chunk_size=chunk_size or 150)
+        if isinstance(trends, list) and trends:
+            return trends
+        vt = 0
+        try:
+            if items_meta:
+                vts = [int((it.get('value_type', 0))) for it in items_meta if it is not None]
+                if vts:
+                    vt = max(set(vts), key=vts.count)
+        except Exception:
+            vt = 0
+        return self.get_history_aggregated(itemids, time_from, time_till, value_type=vt)
 
     # -------------------- Events --------------------
     def obter_eventos(self, object_ids, periodo, id_type='hostids', max_depth=3):
@@ -552,7 +675,19 @@ class ReportGenerator:
         rows = []
         for hid, d in downtime.items():
             sla = max(0.0, min(100.0, 100.0 * (1.0 - (d / total))))
-            rows.append({'Host': host_map.get(hid, f'Host {hid}'), 'SLA (%)': float(sla)})
+            try:
+                hours = int(d // 3600)
+                minutes = int((d % 3600) // 60)
+                seconds = int(d % 60)
+                downtime_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+            except Exception:
+                downtime_str = "00:00:00"
+            rows.append({
+                'Host': host_map.get(hid, f'Host {hid}'),
+                'SLA (%)': float(sla),
+                'Tempo Indisponível': downtime_str,
+                'Downtime (s)': int(d)
+            })
         return rows
 
     def _count_problems_by_host(self, problems, all_hosts):
@@ -566,4 +701,3 @@ class ReportGenerator:
         import pandas as pd
         rows = [{'Host': host_map.get(h, f'Host {h}'), 'Problemas': c} for h, c in cnt.items()]
         return pd.DataFrame(rows)
-

@@ -204,3 +204,100 @@ class RobustMetricEngine:
         if not final_rows:
             return pd.DataFrame(columns=['Host', 'Filesystem', 'Min', 'Avg', 'Max'])
         return pd.DataFrame(final_rows, columns=['Host', 'Filesystem', 'Min', 'Avg', 'Max'])
+
+    def collect_disk_smart(self, all_hosts, period, *, filters=None):
+        """
+        Versão otimizada com filtros: percent_only, include/exclude_regex, fs_selector('root_only'|'worst'),
+        e chunk_size para a agregação.
+        """
+        host_ids = [h['hostid'] for h in all_hosts]
+        host_map = {h['hostid']: h['nome_visivel'] for h in all_hosts}
+
+        items = self._items_from_profiles(host_ids, 'disk') or self._discover_disk_items(host_ids)
+        if not items:
+            return pd.DataFrame(columns=['Host', 'Filesystem', 'Min', 'Avg', 'Max'])
+
+        f = (filters or {})
+        include_regex = f.get('include_regex')
+        exclude_regex = f.get('exclude_regex') or r"(?i)(tmpfs|overlay|loop|snap|docker|containerd|kubelet|/proc|/sys|/run|/dev)"
+        fs_selector = f.get('fs_selector', 'worst')
+        percent_only = f.get('percent_only', True)
+        chunk_size = f.get('chunk_size')
+
+        def _parse_key(key_):
+            try:
+                m = re.search(r"vfs\.fs\.size\[(.*?),(.*?)\]", key_)
+                if m:
+                    return m.group(1), m.group(2)
+            except Exception:
+                pass
+            return None, None
+
+        filtered_items = []
+        for it in items:
+            keyv = it.get('key_', '') or ''
+            fs_name, arg2 = _parse_key(keyv)
+            if percent_only and arg2 and not re.search(r"pused|pfree|pavailable", str(arg2), re.IGNORECASE):
+                continue
+            if fs_name:
+                if exclude_regex and re.search(exclude_regex, fs_name):
+                    continue
+                if include_regex and not re.search(include_regex, fs_name):
+                    continue
+                if fs_selector == 'root_only' and not (fs_name == '/' or re.fullmatch(r"[A-Za-z]:", fs_name)):
+                    continue
+            filtered_items.append(it)
+
+        if not filtered_items:
+            return pd.DataFrame(columns=['Host', 'Filesystem', 'Min', 'Avg', 'Max'])
+
+        item_ids = [it['itemid'] for it in filtered_items]
+        trends = self.g.robust_aggregate(item_ids, period['start'], period['end'], items_meta=filtered_items, chunk_size=chunk_size)
+        if not isinstance(trends, list) or not trends:
+            return pd.DataFrame(columns=['Host', 'Filesystem', 'Min', 'Avg', 'Max'])
+
+        df = pd.DataFrame(trends)
+        df[['value_min', 'value_avg', 'value_max']] = df[['value_min', 'value_avg', 'value_max']].astype(float)
+        items_map = {str(it['itemid']): it for it in filtered_items}
+        df['itemid'] = df['itemid'].astype(str)
+        df['hostid'] = df['itemid'].map(lambda x: items_map.get(x, {}).get('hostid'))
+        def _fs_from_key(key_: str):
+            return (_parse_key(items_map.get(key_, {}).get('key_', ''))[0])
+        df['fs_name'] = df['itemid'].map(lambda x: (_parse_key(items_map.get(x, {}).get('key_', ''))[0]) or items_map.get(x, {}).get('name'))
+        df['priority'] = df['itemid'].map(lambda x: items_map.get(x, {}).get('profile_priority', 9999))
+        df['calc_type'] = df['itemid'].map(lambda x: items_map.get(x, {}).get('profile_calc_type', CalculationType.DIRECT))
+        df.dropna(subset=['hostid', 'fs_name'], inplace=True)
+
+        best = df.groupby('hostid')['priority'].transform('min')
+        df = df[df['priority'] == best]
+
+        final_rows = []
+        for host_id, group in df.groupby('hostid'):
+            if fs_selector == 'root_only':
+                sel = group
+                fs_name = sel['fs_name'].iloc[0] if not sel.empty else None
+            else:
+                agg_fs = group.groupby('fs_name')['value_avg'].mean().reset_index()
+                if agg_fs.empty:
+                    continue
+                fs_name = agg_fs.loc[agg_fs['value_avg'].idxmax(), 'fs_name']
+                sel = group[group['fs_name'] == fs_name]
+            if sel.empty:
+                continue
+            calc_type = sel['calc_type'].iloc[0]
+            min_val = sel['value_min'].mean()
+            avg_val = sel['value_avg'].mean()
+            max_val = sel['value_max'].mean()
+            if calc_type == CalculationType.INVERSE:
+                min_val, max_val = (100 - max_val), (100 - min_val)
+                avg_val = 100 - avg_val
+            final_rows.append({
+                'Host': host_map.get(host_id, f'Host {host_id}'),
+                'Filesystem': fs_name,
+                'Min': float(min_val),
+                'Avg': float(avg_val),
+                'Max': float(max_val),
+            })
+        if not final_rows:
+            return pd.DataFrame(columns=['Host', 'Filesystem', 'Min', 'Avg', 'Max'])
+        return pd.DataFrame(final_rows, columns=['Host', 'Filesystem', 'Min', 'Avg', 'Max'])

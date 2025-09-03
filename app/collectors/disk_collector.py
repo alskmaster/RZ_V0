@@ -16,13 +16,33 @@ class DiskCollector(BaseCollector):
 
     def collect(self, all_hosts, period):
         self._update_status("Coletando dados de Disco...")
-        opts = self.module_config.get('custom_options', {})
+        opts = self.module_config.get('custom_options', {}) or {}
         show_table = opts.get('show_table', True)
         show_chart = opts.get('show_chart', True)
-        top_n = opts.get('top_n', 0)
+        top_n = int(opts.get('top_n', 0) or 0)
+
+        # Filtros de performance (surpresa boa):
+        # - host_contains/limit_hosts reduzem hosts antes da coleta
+        # - fs_selector root_only limita um FS por host (raiz ou unidade principal)
+        host_contains = str(opts.get('host_contains') or '').strip()
+        limit_hosts = int(opts.get('limit_hosts', 0) or 0)
+        if host_contains:
+            try:
+                all_hosts = [h for h in all_hosts if host_contains.lower() in str(h.get('nome_visivel','')).lower()]
+            except Exception:
+                pass
+        if limit_hosts > 0:
+            all_hosts = all_hosts[:limit_hosts]
 
         engine = RobustMetricEngine(self.generator)
-        df_disk = engine.collect_disk(all_hosts, period)
+        filters = {
+            'include_regex': opts.get('include_regex'),
+            'exclude_regex': opts.get('exclude_regex'),
+            'fs_selector': opts.get('fs_selector', 'root_only' if opts.get('fast_mode', True) else 'worst'),
+            'percent_only': opts.get('percent_only', True),
+            'chunk_size': int(opts.get('chunk_size')) if str(opts.get('chunk_size') or '').strip().isdigit() else None,
+        }
+        df_disk = engine.collect_disk_smart(all_hosts, period, filters=filters)
         if df_disk is None or df_disk.empty:
             # Fallback legado
             data, error_msg = self._collect_disk_data(all_hosts, period)
@@ -115,4 +135,3 @@ class DiskCollector(BaseCollector):
         except Exception as e:
             current_app.logger.error(f"[Disco fallback] Exceção inesperada - {e}", exc_info=True)
             return None, "Ocorreu uma falha inesperada durante a coleta de dados de disco."
-
