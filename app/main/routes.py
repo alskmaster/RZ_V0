@@ -278,6 +278,7 @@ def get_available_modules(client_id):
         available_modules.append({'type': 'top_hosts', 'name': 'Diagnóstico dos Ofensores'})
         available_modules.append({'type': 'top_problems', 'name': 'Painel de Vilões Sistêmicos'})
         available_modules.append({'type': 'stress', 'name': 'Eletrocardiograma do Ambiente'})
+        available_modules.append({'type': 'incidents', 'name': 'Incidentes'})
     
     if check_key('icmppingsec'):
         available_modules.append({'type': 'latency', 'name': 'Latência de Rede (Ping)'})

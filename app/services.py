@@ -37,6 +37,7 @@ from .collectors.top_hosts_collector import TopHostsCollector
 from .collectors.top_problems_collector import TopProblemsCollector
 from .collectors.stress_collector import StressCollector
 from .collectors.wifi_collector import WiFiCollector
+from .collectors.incidents_collector import IncidentsCollector
 
 
 # Registry of collectors
@@ -59,6 +60,7 @@ COLLECTOR_MAP = {
     'top_problems': TopProblemsCollector,
     'stress': StressCollector,
     'wifi': WiFiCollector,
+    'incidents': IncidentsCollector,
 }
 
 
