@@ -1,0 +1,23 @@
+# TIPO(ESCOPO): Resumo conciso em português
+
+# Tipos: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+# Escopo: arquivo/módulo/área (opcional)
+
+# Exemplo:
+# feat(mem): separar módulos de memória em tabela e gráficos
+
+# Corpo (opcional) — explique o contexto e a motivação
+#
+# - O que mudou e por quê
+# - Decisões de design relevantes
+# - Flags/variáveis de ambiente impactadas
+
+# Como testar (opcional)
+# - Passos práticos para validar
+
+# Impacto/Riscos (opcional)
+# - Efeitos colaterais esperados
+
+# Relacionamentos (opcional)
+# - Closes #123, Relates-to #456
+
