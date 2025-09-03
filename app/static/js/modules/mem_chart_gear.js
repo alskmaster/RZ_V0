@@ -13,6 +13,7 @@
         colorMin: document.getElementById('memChColorMin'),
         colorAvg: document.getElementById('memChColorAvg'),
         colorMax: document.getElementById('memChColorMax'),
+        labelWrap: document.getElementById('memChLabelWrap'),
         saveBtn: document.getElementById('saveMemChBtn')
       };
     },
@@ -34,6 +35,7 @@
         color_min: el.colorMin.value,
         color_avg: el.colorAvg.value,
         color_max: el.colorMax.value,
+        label_wrap: el.labelWrap && el.labelWrap.value ? parseInt(el.labelWrap.value) : 45,
       };
     }
   };
@@ -70,6 +72,10 @@
               <label class="form-label" for="memChColorMin">Cor Mínimo</label>
               <input type="color" class="form-control form-control-color" id="memChColorMin" value="#0047b3"/>
             </div>
+            <div class="col-4">
+              <label class="form-label" for="memChLabelWrap">Quebra de rótulo (caracteres)</label>
+              <input type="number" class="form-control" id="memChLabelWrap" min="10" value="45"/>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -82,4 +88,3 @@
     return document.getElementById('customizeMemChModal');
   }
 })();
-

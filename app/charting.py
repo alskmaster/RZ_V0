@@ -205,7 +205,7 @@ def generate_chart(
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 
-def generate_multi_bar_chart(df, title, x_label, colors):
+def generate_multi_bar_chart(df, title, x_label, colors, *, label_wrap=45):
     """
     Gera gráfico horizontal de barras múltiplas (Min/Avg/Max) para hosts.
 
@@ -241,7 +241,11 @@ def generate_multi_bar_chart(df, title, x_label, colors):
         # Pega as maiores 'Avg' (mais relevantes) mantendo ordem
         df_sorted = df_sorted.nlargest(MAX_BARS, 'Avg').sort_values(by='Avg', ascending=True)
 
-    y_labels = ['\n'.join(textwrap.wrap(str(label), width=45)) for label in df_sorted['Host']]
+    try:
+        wrap = int(label_wrap) if label_wrap is not None else 45
+    except Exception:
+        wrap = 45
+    y_labels = ['\n'.join(textwrap.wrap(str(label), width=wrap)) for label in df_sorted['Host']]
 
     plt.style.use('seaborn-v0_8-whitegrid')
     fig, ax = plt.subplots(figsize=(12, max(8, len(df_sorted) * 0.4)))

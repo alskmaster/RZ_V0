@@ -14,6 +14,7 @@ class LossChartCollector(BaseCollector):
         host_contains = (o.get('host_name_contains') or '').strip()
         top_n = int(o.get('top_n') or 0)
         colors = [o.get('color_max') or '#ffdf80', o.get('color_avg') or '#ffc61a', o.get('color_min') or '#cc9900']
+        label_wrap = int(o.get('label_wrap') or 45)
 
         cache_key = 'latency_loss_data'
         if cache_key not in self.generator.cached_data:
@@ -35,5 +36,5 @@ class LossChartCollector(BaseCollector):
                 df = df.sort_values(by='Avg', ascending=False).head(top_n)
             except Exception:
                 df = df.head(top_n)
-        img = generate_multi_bar_chart(df, 'Perda de Pacotes Média (%)', 'Perda (%)', colors)
+        img = generate_multi_bar_chart(df, 'Perda de Pacotes Média (%)', 'Perda (%)', colors, label_wrap=label_wrap)
         return self.render('loss_chart', {'img': img})

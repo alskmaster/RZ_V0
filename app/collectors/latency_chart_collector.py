@@ -14,6 +14,7 @@ class LatencyChartCollector(BaseCollector):
         host_contains = (o.get('host_name_contains') or '').strip()
         top_n = int(o.get('top_n') or 0)
         colors = [o.get('color_max') or '#ffb3b3', o.get('color_avg') or '#ff6666', o.get('color_min') or '#cc0000']
+        label_wrap = int(o.get('label_wrap') or 45)
 
         cache_key = 'latency_loss_data'
         if cache_key not in self.generator.cached_data:
@@ -35,5 +36,5 @@ class LatencyChartCollector(BaseCollector):
                 df = df.sort_values(by='Avg', ascending=False).head(top_n)
             except Exception:
                 df = df.head(top_n)
-        img = generate_multi_bar_chart(df, 'Latência Média (ms)', 'Latência (ms)', colors)
+        img = generate_multi_bar_chart(df, 'Latência Média (ms)', 'Latência (ms)', colors, label_wrap=label_wrap)
         return self.render('latency_chart', {'img': img})

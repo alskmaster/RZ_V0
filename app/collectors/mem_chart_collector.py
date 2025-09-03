@@ -21,6 +21,7 @@ class MemChartCollector(BaseCollector):
         host_contains = (o.get('host_name_contains') or '').strip()
         top_n = int(o.get('top_n') or 0)
         colors = [o.get('color_max') or '#66b3ff', o.get('color_avg') or '#3385ff', o.get('color_min') or '#0047b3']
+        label_wrap = int(o.get('label_wrap') or 45)
 
         engine = RobustMetricEngine(self.generator)
         df = engine.collect_cpu_or_mem('memory', all_hosts, period)
@@ -39,6 +40,5 @@ class MemChartCollector(BaseCollector):
             except Exception:
                 df = df.head(top_n)
 
-        img = generate_multi_bar_chart(df, 'Uso de Memória (%)', 'Uso de Memória (%)', colors)
+        img = generate_multi_bar_chart(df, 'Uso de Memória (%)', 'Uso de Memória (%)', colors, label_wrap=label_wrap)
         return self.render('mem_chart', {'img': img})
-

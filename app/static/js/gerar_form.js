@@ -186,6 +186,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             availableModules = Array.isArray(data.available_modules) ? data.available_modules : [];
+            // Remover legados duplicados (latency/loss) do builder
+            availableModules = availableModules.filter(m => !['latency','loss'].includes(m.type));
             logDebug('fetchClientData.success', { count: availableModules.length });
 
             moduleTypeSelect.innerHTML = '';
@@ -391,4 +393,3 @@ document.addEventListener('DOMContentLoaded', function () {
     monthInput.value = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
     renderLayoutList();
 });
-
