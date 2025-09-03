@@ -90,7 +90,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     };
-    };
 
     // Registro pluginável: permite que arquivos JS externos adicionem customizações
     if (window.ModuleCustomizers && typeof window.ModuleCustomizers === 'object') {
