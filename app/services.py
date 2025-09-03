@@ -1,12 +1,17 @@
-# app/services.py
+"""
+Clean services.py (ASCII only)
+Consolidates the prior working logic with new modules (sla_chart, sla_table, sla_plus).
+"""
+
 import os
 import json
 import re
 import datetime as dt
 import threading
 import traceback
-import pandas as pd
 from collections import defaultdict
+
+import pandas as pd
 from flask import render_template, current_app
 
 from . import db
@@ -14,7 +19,7 @@ from .models import AuditLog, Report
 from .zabbix_api import fazer_request_zabbix
 from .pdf_builder import PDFBuilder
 
-# ImportaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o dos nossos Plugins (Collectors)
+# Collectors
 from .collectors.cpu_collector import CpuCollector
 from .collectors.mem_collector import MemCollector
 from .collectors.disk_collector import DiskCollector
@@ -24,16 +29,17 @@ from .collectors.loss_collector import LossCollector
 from .collectors.inventory_collector import InventoryCollector
 from .collectors.html_collector import HtmlCollector
 from .collectors.sla_collector import SlaCollector
-from .collectors.sla_plus_collector import SlaPlusCollector
 from .collectors.sla_table_collector import SlaTableCollector
 from .collectors.sla_chart_collector import SlaChartCollector
+from .collectors.sla_plus_collector import SlaPlusCollector
 from .collectors.kpi_collector import KpiCollector
 from .collectors.top_hosts_collector import TopHostsCollector
 from .collectors.top_problems_collector import TopProblemsCollector
 from .collectors.stress_collector import StressCollector
-from .collectors.wifi_collector import WiFiCollector   # <-- NOVO
+from .collectors.wifi_collector import WiFiCollector
 
-# --- Registro de Plugins ---
+
+# Registry of collectors
 COLLECTOR_MAP = {
     'cpu': CpuCollector,
     'mem': MemCollector,
@@ -46,18 +52,20 @@ COLLECTOR_MAP = {
     'html': HtmlCollector,
     'kpi': KpiCollector,
     'sla': SlaCollector,
-    'sla_plus': SlaPlusCollector,
     'sla_table': SlaTableCollector,
     'sla_chart': SlaChartCollector,
+    'sla_plus': SlaPlusCollector,
     'top_hosts': TopHostsCollector,
     'top_problems': TopProblemsCollector,
     'stress': StressCollector,
-    'wifi': WiFiCollector,    # <-- NOVO
+    'wifi': WiFiCollector,
 }
 
-# --- Gerenciador de Tarefas e Auditoria ---
+
+# Task manager
 REPORT_GENERATION_TASKS = {}
 TASK_LOCK = threading.Lock()
+
 
 def update_status(task_id, message):
     with TASK_LOCK:
@@ -95,158 +103,134 @@ class ReportGenerator:
         self.system_config = None
         self.cached_data = {}
         if not self.token or not self.url:
-            raise ValueError("ConfiguraÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o do Zabbix nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o encontrada ou token invÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡lido.")
+            raise ValueError("Configuracao do Zabbix nao encontrada ou token invalido.")
 
     def _update_status(self, message):
         update_status(self.task_id, message)
 
-    # -------------------- SLA Helper (resiliente) --------------------
+    # -------------------- SLA helper --------------------
     def _get_client_sla_contract(self):
-        """
-        Tenta obter a meta de SLA do cliente de forma resiliente.
-        - Procura por atributos comuns no objeto Client (futuro-compatÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­vel).
-        - Caso nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o exista, tenta fallback em system_config (chave DEFAULT_SLA_CONTRACT se disponÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­vel).
-        - Se nada for encontrado, retorna None e loga aviso.
-        """
         try:
-            current_app.logger.debug(f"[ReportGenerator] Buscando SLA do cliente id={getattr(self.client, 'id', 'N/A')}")
+            current_app.logger.debug(
+                f"[ReportGenerator] Buscando SLA do cliente id={getattr(self.client, 'id', 'N/A')}"
+            )
             for attr in ("sla_contract", "sla", "sla_policy", "sla_plan", "sla_goal"):
                 val = getattr(self.client, attr, None)
                 if val is not None:
                     try:
-                        fval = float(val)
-                        current_app.logger.debug(f"[ReportGenerator] SLA encontrado em Client.{attr} = {fval}")
-                        return fval
+                        return float(val)
                     except Exception:
-                        current_app.logger.debug(f"[ReportGenerator] SLA encontrado em Client.{attr} (nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o numÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©rico): {val}")
                         return val
         except Exception as e:
-            current_app.logger.warning(f"[ReportGenerator] Falha ao inspecionar SLA no Client: {e}", exc_info=True)
-
-        # Fallback: system_config pode ser objeto ORM ou dict
+            current_app.logger.warning("[ReportGenerator] Falha ao inspecionar SLA no Client", exc_info=True)
         fallback = None
         try:
             if isinstance(self.system_config, dict):
                 fallback = self.system_config.get("DEFAULT_SLA_CONTRACT")
             else:
                 fallback = getattr(self.system_config, "DEFAULT_SLA_CONTRACT", None)
-        except Exception as e:
-            current_app.logger.debug(f"[ReportGenerator] Erro ao consultar fallback de SLA em system_config: {e}")
-
+        except Exception:
+            pass
         if fallback is not None:
-            current_app.logger.debug(f"[ReportGenerator] Usando fallback DEFAULT_SLA_CONTRACT = {fallback}")
             try:
                 return float(fallback)
             except Exception:
                 return fallback
-
-        current_app.logger.warning("[ReportGenerator] Nenhuma meta de SLA definida para o cliente; prosseguindo sem meta.")
+        current_app.logger.warning("[ReportGenerator] Nenhuma meta de SLA definida para o cliente")
         return None
-    # ----------------------------------------------------------------
 
+    # -------------------- Pipeline --------------------
     def generate(self, client, ref_month_str, system_config, author, report_layout_json):
-        """Gera o relatÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³rio com base no layout configurado (JSON)."""
         self.client = client
         self.system_config = system_config
         self.cached_data = {}
 
-        self._update_status("Iniciando geraÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o do relatÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³rioÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦")
+        self._update_status("Iniciando geracao do relatorio.")
 
-        # --- PerÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­odo de referÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia ---
+        # Periodo
         try:
-            ref_date = dt.datetime.strptime(f'{ref_month_str}-01', '%Y-%m-%d')
+            ref_date = dt.datetime.strptime(f"{ref_month_str}-01", "%Y-%m-%d")
         except ValueError:
-            return None, "Formato de mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªs de referÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia invÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡lido. Use YYYY-MM."
+            return None, "Formato de mes de referencia invalido. Use YYYY-MM."
         start_date = ref_date.replace(day=1, hour=0, minute=0, second=0)
         end_date = (start_date.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(seconds=1)
-        period = {'start': int(start_date.timestamp()), 'end': int(end_date.timestamp())}
-        current_app.logger.debug(f"[ReportGenerator.generate] perÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­odo={period} ref={ref_month_str}")
+        period = {"start": int(start_date.timestamp()), "end": int(end_date.timestamp())}
 
-        # --- Grupos do cliente (RELACIONAMENTO DINÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡MICO) ---
+        # Grupos do cliente
         try:
             groups_rel = client.zabbix_groups.all() if hasattr(client.zabbix_groups, "all") else client.zabbix_groups
             group_ids = [g.group_id for g in groups_rel if getattr(g, "group_id", None)]
         except Exception as e:
             current_app.logger.error(f"[ReportGenerator.generate] Falha ao obter grupos do cliente {client.id}: {e}", exc_info=True)
             group_ids = []
-
-        current_app.logger.debug(f"[ReportGenerator.generate] client_id={client.id} group_ids={group_ids}")
-
         if not group_ids:
-            return None, f"O cliente '{client.name}' nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o possui Grupos Zabbix associados."
+            return None, f"O cliente '{client.name}' nao possui Grupos Zabbix associados."
 
-        # --- Hosts do cliente ---
+        # Hosts
         self._update_status("Coletando hosts do cliente...")
         all_hosts = self.get_hosts(group_ids)
         if not all_hosts:
             return None, f"Nenhum host encontrado para os grupos Zabbix do cliente {client.name}."
         self.cached_data['all_hosts'] = all_hosts
-        current_app.logger.debug(f"[ReportGenerator.generate] hosts_carregados={len(all_hosts)}")
 
-        # --- Layout solicitado ---
+        # Layout
         try:
             report_layout = json.loads(report_layout_json) if isinstance(report_layout_json, str) else report_layout_json
         except Exception as e:
-            current_app.logger.error(f"[ReportGenerator.generate] Layout JSON invÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡lido: {e}", exc_info=True)
-            return None, "Layout invÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡lido (JSON)."
+            current_app.logger.error("[ReportGenerator.generate] Layout JSON invalido", exc_info=True)
+            return None, "Layout invalido (JSON)."
 
         availability_data_cache = None
         sla_prev_month_df = None
-
-        availability_module_types = {'sla', 'sla_table', 'sla_chart', 'sla_plus', 'kpi', 'top_hosts', 'top_problems', 'stress'}
-
+        availability_module_types = {
+            'sla', 'sla_table', 'sla_chart', 'sla_plus', 'kpi', 'top_hosts', 'top_problems', 'stress'
+        }
         final_html_parts = []
 
-        # PrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©-coleta de disponibilidade (SLA/KPI/Top)
+        # Pre-collect SLA if needed
         if any(mod.get('type') in availability_module_types for mod in (report_layout or [])):
-            self._update_status("Coletando dados de Disponibilidade (SLA)ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦")
+            self._update_status("Coletando dados de disponibilidade (SLA)...")
             sla_contract = self._get_client_sla_contract()
             try:
                 availability_data_cache, error_msg = self._collect_availability_data(all_hosts, period, sla_contract)
             except Exception as e:
-                current_app.logger.error(f"[ReportGenerator.generate] Excecao na pre-coleta de SLA: {e}", exc_info=True)
-                final_html_parts.append("<p>Erro critico ao coletar dados de disponibilidade (falha inesperada).</p>")
-                availability_data_cache = {}
-                error_msg = "Falha inesperada na pre-coleta de SLA"
+                current_app.logger.error("[ReportGenerator.generate] Falha na pre-coleta de SLA", exc_info=True)
+                final_html_parts.append("<p>Erro critico ao coletar dados de disponibilidade.</p>")
+                availability_data_cache, error_msg = {}, "pre-coleta falhou"
             if error_msg:
-                current_app.logger.warning(f"[ReportGenerator.generate] Erro SLA primÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio: {error_msg}")
-                final_html_parts.append(f"<p>Erro crÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­tico ao coletar dados de disponibilidade: {error_msg}</p>")
+                current_app.logger.warning(f"[ReportGenerator.generate] Erro SLA primario: {error_msg}")
+                final_html_parts.append(f"<p>Erro critico ao coletar dados de disponibilidade: {error_msg}</p>")
                 availability_data_cache = {}
 
-        # MÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªs anterior para SLA comparativo
-        sla_module_config = next((mod for mod in (report_layout or []) if mod.get('type') == 'sla'), None)
+        # Previous month (for legacy SLA)
+        sla_module_config = next((m for m in (report_layout or []) if m.get('type') == 'sla'), None)
         if sla_module_config and availability_data_cache:
             custom_options = sla_module_config.get('custom_options', {})
             if custom_options.get('compare_to_previous_month'):
-                self._update_status("Coletando dados do mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªs anterior para comparaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o de SLAÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦")
+                self._update_status("Coletando dados do mes anterior para comparacao de SLA.")
                 prev_ref_date = ref_date - dt.timedelta(days=1)
                 prev_month_start = prev_ref_date.replace(day=1)
                 prev_month_end = (prev_month_start.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(seconds=1)
                 prev_period = {'start': int(prev_month_start.timestamp()), 'end': int(prev_month_end.timestamp())}
-
                 sla_contract = self._get_client_sla_contract()
                 try:
                     prev_data, prev_error = self._collect_availability_data(all_hosts, prev_period, sla_contract, trends_only=True)
                 except Exception as e:
-                    current_app.logger.error(f"[ReportGenerator.generate] Excecao na coleta do mes anterior (SLA): {e}", exc_info=True)
-                    prev_data, prev_error = None, "Falha inesperada na coleta do mes anterior"
-                if prev_error:
-                    self._update_status(f"Aviso: Falha ao coletar dados do mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªs anterior: {prev_error}")
-                elif prev_data and 'df_sla_problems' in prev_data:
+                    current_app.logger.error("[ReportGenerator.generate] Falha ao coletar mes anterior", exc_info=True)
+                    prev_data, prev_error = None, "erro coleta mes anterior"
+                if not prev_error and prev_data and 'df_sla_problems' in prev_data:
                     sla_prev_month_df = prev_data['df_sla_problems'].rename(columns={'SLA (%)': 'SLA_anterior'})
                     self.cached_data['prev_month_sla_df'] = prev_data['df_sla_problems']
 
-        # Montagem dos módulos
+        # Assemble modules
         for module_config in (report_layout or []):
             module_type = module_config.get('type')
             collector_class = COLLECTOR_MAP.get(module_type)
             if not collector_class:
                 self._update_status(f"Aviso: Nenhum plugin encontrado para o tipo '{module_type}'.")
                 continue
-
             try:
                 collector_instance = collector_class(self, module_config)
-                html_part = ""
                 if module_type in availability_module_types:
                     if availability_data_cache:
                         if module_type in {'sla', 'sla_table', 'sla_chart', 'sla_plus'}:
@@ -254,18 +238,105 @@ class ReportGenerator:
                         else:
                             html_part = collector_instance.collect(all_hosts, period, availability_data_cache)
                     else:
-                        html_part = "<p>Dados de disponibilidade indisponíveis para este módulo.</p>"
+                        html_part = "<p>Dados de disponibilidade indisponiveis para este modulo.</p>"
                 else:
                     html_part = collector_instance.collect(all_hosts, period)
-
                 final_html_parts.append(html_part)
             except Exception as e:
                 current_app.logger.error(f"Erro ao executar o plugin '{module_type}': {e}", exc_info=True)
-                final_html_parts.append(f"<p>Erro crítico ao processar módulo '{module_type}'.</p>")
+                final_html_parts.append(f"<p>Erro critico ao processar modulo '{module_type}'.</p>")
+
+        # Render HTML and build PDF
+        dados_gerais = {
+            'group_name': client.name,
+            'periodo_referencia': start_date.strftime('%B de %Y').capitalize(),
+            'data_emissao': dt.datetime.now().strftime('%d/%m/%Y'),
+            'report_content': ''.join(final_html_parts)
+        }
+        try:
+            miolo_html = render_template('_MIOLO_BASE.html', **dados_gerais, modules={'pandas': pd})
+        except Exception as e:
+            current_app.logger.error("[ReportGenerator.generate] Falha ao renderizar HTML", exc_info=True)
+            return None, "Falha ao renderizar o conteudo do relatorio."
+
+        self._update_status("Montando o relatorio final.")
+        try:
+            pdf_builder = PDFBuilder(self.task_id)
+            err = pdf_builder.add_cover_page(system_config.report_cover_path)
+            if err:
+                return None, err
+            err = pdf_builder.add_miolo_from_html(miolo_html)
+            if err:
+                return None, err
+            err = pdf_builder.add_final_page(system_config.report_final_page_path)
+            if err:
+                return None, err
+        except Exception as e:
+            current_app.logger.error("[ReportGenerator.generate] Falha ao montar PDF", exc_info=True)
+            return None, "Falha ao montar o PDF do relatorio."
+
+        pdf_filename = f"Relatorio_Custom_{client.name.replace(' ', '_')}_{ref_month_str}_{os.urandom(4).hex()}.pdf"
+        pdf_path = os.path.join(current_app.config['GENERATED_REPORTS_FOLDER'], pdf_filename)
+        final_file_path = pdf_builder.save_and_cleanup(pdf_path)
+
+        report_record = Report(
+            filename=pdf_filename,
+            file_path=pdf_path,
+            reference_month=ref_month_str,
+            user_id=author.id,
+            client_id=client.id,
+            report_type='custom'
+        )
+        db.session.add(report_record)
+        db.session.commit()
+        AuditService.log(f"Gerou relatorio customizado para '{client.name}' referente a {ref_month_str}", user=author)
+        return pdf_path, None
+
+    # -------------------- Availability data --------------------
+    def _collect_availability_data(self, all_hosts, period, sla_goal, trends_only=False):
+        all_host_ids = [h['hostid'] for h in all_hosts]
+        # icmpping items with triggers (to correlate problems)
+        ping_items = self.get_items(all_host_ids, 'icmpping', search_by_key=True, include_triggers=True)
+        if not ping_items:
+            return None, "Nenhum item 'icmpping' encontrado."
+        hosts_with_ping_ids = {it['hostid'] for it in ping_items}
+        hosts_for_sla = [h for h in all_hosts if h['hostid'] in hosts_with_ping_ids]
+        if not hosts_for_sla:
+            return None, "Nenhum host com PING para calcular SLA."
+        ping_trigger_ids = list({t['triggerid'] for it in ping_items for t in (it.get('triggers') or [])})
+        if not ping_trigger_ids:
+            return None, "Nenhum trigger de PING encontrado."
+
+        ping_events = self.obter_eventos_wrapper(ping_trigger_ids, period, 'objectids')
+        if ping_events is None:
+            return None, "Falha ao coletar eventos de PING."
+
+        ping_problems = [p for p in ping_events if p.get('source') == '0' and p.get('object') == '0' and p.get('value') == '1']
+        correlated = self._correlate_problems(ping_problems, ping_events, period)
+        df_sla = pd.DataFrame(self._calculate_sla(correlated, hosts_for_sla, period))
+
+        if trends_only:
+            return {'df_sla_problems': df_sla}, None
+
+        # Count problems for all hosts (group scope)
+        all_group_events = self.obter_eventos_wrapper(all_host_ids, period, 'hostids')
+        if all_group_events is None:
+            return None, "Falha ao coletar eventos do grupo."
+        all_problems = [p for p in all_group_events if p.get('source') == '0' and p.get('object') == '0' and p.get('value') == '1']
+        df_top_incidents = self._count_problems_by_host(all_problems, all_hosts)
+
+        # Basic KPIs
+        avg_sla = df_sla['SLA (%)'].mean() if not df_sla.empty else 100.0
+        kpis_data = {'avg_sla': float(avg_sla)}
+
+        return {'df_sla_problems': df_sla, 'df_top_incidents': df_top_incidents, 'kpis': kpis_data}, None
+
+    # -------------------- Helpers --------------------
+    def _normalize_string(self, s):
+        return re.sub(r"\s+", " ", str(s).replace("\n", " ").replace("\r", " ")).strip()
 
     def get_hosts(self, groupids):
-        """Coleta hosts de um ou mais grupos com IP e nomes normalizados."""
-        self._update_status("Coletando dados de hosts")
+        self._update_status("Coletando dados de hosts.")
         body = {
             'jsonrpc': '2.0',
             'method': 'host.get',
@@ -293,37 +364,23 @@ class ReportGenerator:
     def shared_collect_latency_and_loss(self, all_hosts, period):
         host_ids = [h['hostid'] for h in all_hosts]
         host_map = {h['hostid']: h['nome_visivel'] for h in all_hosts}
-
         lat_items = self.get_items(host_ids, 'icmppingsec', search_by_key=True)
         df_lat = pd.DataFrame()
         if lat_items:
-            lat_trends = self.get_trends([item['itemid'] for item in lat_items], period['start'], period['end'])
+            lat_trends = self.get_trends([it['itemid'] for it in lat_items], period['start'], period['end'])
             df_lat = self._process_trends(lat_trends, lat_items, host_map, unit_conversion_factor=1000)
-
         loss_items = self.get_items(host_ids, 'icmppingloss', search_by_key=True)
         df_loss = pd.DataFrame()
         if loss_items:
-            loss_trends = self.get_trends([item['itemid'] for item in loss_items], period['start'], period['end'])
+            loss_trends = self.get_trends([it['itemid'] for it in loss_items], period['start'], period['end'])
             df_loss = self._process_trends(loss_trends, loss_items, host_map)
-
         if df_lat.empty and df_loss.empty:
-            return None, "Nenhum item de LatÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncia ('icmppingsec') ou Perda ('icmppingloss') encontrado."
-
+            return None, "Nenhum item de icmppingsec/icmppingloss encontrado."
         return {'df_lat': df_lat, 'df_loss': df_loss}, None
 
-
-
-
-
-
-    # -------------------- Itens e Tendências --------------------
+    # -------------- Zabbix data access --------------
     def get_items(self, hostids, filter_key, search_by_key=False, exact_key_search=False, include_triggers=False):
-        """Busca itens do Zabbix por hosts, filtrando por key ou name.
-        - search_by_key: usa 'search' em key_ (substring) ou 'filter' (exato) se exact_key_search=True
-        - include_triggers: inclui 'selectTriggers' = 'extend'
-        Retorna lista (possivelmente vazia).
-        """
-        self._update_status(f"Buscando itens com filtro '{filter_key}' em {len(hostids)} hosts...")
+        self._update_status(f"Buscando itens com filtro '{filter_key}'.")
         params = {
             'output': ['itemid', 'hostid', 'name', 'key_', 'value_type'],
             'hostids': hostids,
@@ -338,13 +395,7 @@ class ReportGenerator:
             params['search'] = {'name': filter_key}
         if include_triggers:
             params['selectTriggers'] = 'extend'
-        body = {
-            'jsonrpc': '2.0',
-            'method': 'item.get',
-            'params': params,
-            'auth': self.token,
-            'id': 1
-        }
+        body = {'jsonrpc': '2.0', 'method': 'item.get', 'params': params, 'auth': self.token, 'id': 1}
         return fazer_request_zabbix(body, self.url) or []
 
     def get_trends(self, itemids, time_from=None, time_till=None):
@@ -352,130 +403,31 @@ class ReportGenerator:
             period = time_from
             time_from = int(period.get('start'))
             time_till = int(period.get('end'))
-            current_app.logger.debug("[ReportGenerator.get_trends] Back-compat: recebido dict 'period'.")
+            current_app.logger.debug("[ReportGenerator.get_trends] Back-compat: period dict.")
         if time_from is None or time_till is None:
-            raise TypeError("get_trends() requer time_from e time_till, ou um dict 'period' como 2ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âº argumento.")
-        self._update_status(f"Buscando tendÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªncias para {len(itemids)} itensÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦")
+            raise TypeError("get_trends requires time_from and time_till or a period dict as second arg.")
+        self._update_status(f"Buscando tendencias para {len(itemids)} itens.")
         body = {
-            'jsonrpc': '2.0',
-            'method': 'trend.get',
+            'jsonrpc': '2.0', 'method': 'trend.get',
             'params': {
                 'output': ['itemid', 'clock', 'num', 'value_min', 'value_avg', 'value_max'],
                 'itemids': itemids,
                 'time_from': int(time_from),
                 'time_till': int(time_till)
             },
-            'auth': self.token,
-            'id': 1
+            'auth': self.token, 'id': 1
         }
         trends = fazer_request_zabbix(body, self.url)
         if not isinstance(trends, list):
-            current_app.logger.error(f"Falha ao buscar trends para {len(itemids)} itens. Resposta invÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡lida do Zabbix.")
+            current_app.logger.error("Falha ao buscar trends: resposta invalida do Zabbix.")
             return []
         return trends
 
     def _iter_chunks(self, seq, size):
         for i in range(0, len(seq), size):
-            yield seq[i:i+size]
-
-    def _aggregate_trends(self, itemids, time_from, time_till, chunk_size=200):
-        all_rows = []
-        for chunk in self._iter_chunks(itemids, chunk_size):
-            body = {
-                'jsonrpc': '2.0',
-                'method': 'trend.get',
-                'params': {
-                    'output': ['itemid', 'clock', 'num', 'value_min', 'value_avg', 'value_max'],
-                    'itemids': chunk,
-                    'time_from': int(time_from),
-                    'time_till': int(time_till)
-                },
-                'auth': self.token,
-                'id': 1
-            }
-            rows = fazer_request_zabbix(body, self.url)
-            if isinstance(rows, list):
-                all_rows.extend(rows)
-        return all_rows
-
-    def get_history_aggregate(self, itemids, time_from, time_till, history_value_type=0, chunk_size=200):
-        import pandas as pd
-        all_rows = []
-        ids = [str(i) for i in itemids]
-        for chunk in self._iter_chunks(ids, chunk_size):
-            body = {
-                'jsonrpc': '2.0',
-                'method': 'history.get',
-                'params': {
-                    'output': ['itemid', 'clock', 'value'],
-                    'history': int(history_value_type),
-                    'itemids': chunk,
-                    'time_from': int(time_from),
-                    'time_till': int(time_till)
-                },
-                'auth': self.token,
-                'id': 1
-            }
-            rows = fazer_request_zabbix(body, self.url)
-            if isinstance(rows, list):
-                all_rows.extend(rows)
-        if not all_rows:
-            return []
-        df = pd.DataFrame(all_rows)
-        df['itemid'] = df['itemid'].astype(str)
-        df['value'] = pd.to_numeric(df['value'], errors='coerce')
-        agg = df.groupby('itemid')['value'].agg(value_min='min', value_avg='mean', value_max='max').reset_index()
-        return agg.to_dict(orient='records')
-
-    def robust_aggregate(self, itemids, time_from, time_till, items_meta=None):
-        rows = self._aggregate_trends(itemids, time_from, time_till)
-        if isinstance(rows, list) and len(rows) > 0:
-            return rows
-        groups = {0: [], 3: []}
-        if items_meta:
-            for it in items_meta:
-                iid = str(it.get('itemid'))
-                try:
-                    vt = int(it.get('value_type'))
-                except Exception:
-                    vt = 0
-                if vt in (0, 3):
-                    groups[vt].append(iid)
-                else:
-                    groups[0].append(iid)
-        else:
-            groups[0] = [str(i) for i in itemids]
-        combined = []
-        for vt, ids in groups.items():
-            if not ids:
-                continue
-            combined.extend(self.get_history_aggregate(ids, time_from, time_till, history_value_type=vt))
-        return combined
-
-    def get_history_points(self, itemids, time_from, time_till, history_value_type=0, chunk_size=200):
-        all_rows = []
-        ids = [str(i) for i in itemids]
-        for chunk in self._iter_chunks(ids, chunk_size):
-            body = {
-                'jsonrpc': '2.0',
-                'method': 'history.get',
-                'params': {
-                    'output': ['itemid', 'clock', 'value'],
-                    'history': int(history_value_type),
-                    'itemids': chunk,
-                    'time_from': int(time_from),
-                    'time_till': int(time_till)
-                },
-                'auth': self.token,
-                'id': 1
-            }
-            rows = fazer_request_zabbix(body, self.url)
-            if isinstance(rows, list):
-                all_rows.extend(rows)
-        return all_rows
+            yield seq[i:i + size]
 
     def _process_trends(self, trends, items, host_map, unit_conversion_factor=1, is_pavailable=False, agg_method='mean'):
-        import pandas as pd
         if not isinstance(trends, list) or not trends:
             return pd.DataFrame(columns=['Host', 'Min', 'Max', 'Avg'])
         df = pd.DataFrame(trends)
@@ -483,86 +435,83 @@ class ReportGenerator:
         item_to_host_map = {str(item['itemid']): item['hostid'] for item in items}
         df['itemid'] = df['itemid'].astype(str)
         df['hostid'] = df['itemid'].map(item_to_host_map)
-        agg_functions = {'Min': ('value_min', agg_method), 'Max': ('value_max', agg_method), 'Avg': ('value_avg', agg_method)}
-        agg_results = df.groupby('hostid').agg(**agg_functions).reset_index()
+        agg_functions = {
+            'Min': ('value_min', agg_method),
+            'Max': ('value_max', agg_method),
+            'Avg': ('value_avg', agg_method)
+        }
+        out = df.groupby('hostid').agg(**agg_functions).reset_index()
         if is_pavailable:
-            agg_results['Min_old'], agg_results['Max_old'] = agg_results['Min'], agg_results['Max']
-            agg_results['Min'], agg_results['Max'] = 100 - agg_results['Max_old'], 100 - agg_results['Min_old']
-            agg_results['Avg'] = 100 - agg_results['Avg']
-            agg_results.drop(columns=['Min_old', 'Max_old'], inplace=True)
-        for col in ['Min', 'Max', 'Avg']:
-            agg_results[col] *= unit_conversion_factor
-        agg_results['Host'] = agg_results['hostid'].map(host_map)
-        return agg_results[['Host', 'Min', 'Max', 'Avg']]
+            out['Min_old'], out['Max_old'] = out['Min'], out['Max']
+            out['Min'], out['Max'] = 100 - out['Max_old'], 100 - out['Min_old']
+            out['Avg'] = 100 - out['Avg']
+            out.drop(columns=['Min_old', 'Max_old'], inplace=True)
+        for c in ['Min', 'Max', 'Avg']:
+            out[c] *= unit_conversion_factor
+        out['Host'] = out['hostid'].map(host_map)
+        return out[['Host', 'Min', 'Max', 'Avg']]
 
+    # -------------------- Events --------------------
     def obter_eventos(self, object_ids, periodo, id_type='hostids', max_depth=3):
         time_from, time_till = periodo['start'], periodo['end']
         if max_depth <= 0:
-            current_app.logger.error("ERRO: Limite de profundidade de recursÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o atingido para obter eventos.")
+            current_app.logger.error("Limite de profundidade atingido em obter_eventos.")
             return None
         params = {
-            'output': 'extend', 'selectHosts': ['hostid'], 'time_from': time_from, 'time_till': time_till,
-            id_type: object_ids, 'sortfield': ["eventid"], 'sortorder': "ASC", 'select_acknowledges': 'extend'
+            'output': 'extend',
+            'selectHosts': ['hostid'],
+            'time_from': time_from,
+            'time_till': time_till,
+            id_type: object_ids,
+            'sortfield': ['eventid'],
+            'sortorder': 'ASC',
+            'select_acknowledges': 'extend'
         }
         body = {'jsonrpc': '2.0', 'method': 'event.get', 'params': params, 'auth': self.token, 'id': 1}
         resposta = fazer_request_zabbix(body, self.url, allow_retry=False)
         if isinstance(resposta, dict) and 'error' in resposta:
-            self._update_status("Consulta pesada detectada, quebrando o perÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­odoÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦")
-            mid_point = time_from + (time_till - time_from) // 2
-            periodo1 = {'start': time_from, 'end': mid_point}
-            periodo2 = {'start': mid_point + 1, 'end': time_till}
-            eventos1 = self.obter_eventos(object_ids, periodo1, id_type, max_depth - 1)
-            if eventos1 is None:
+            self._update_status("Consulta pesada detectada, quebrando o periodo.")
+            mid = time_from + (time_till - time_from) // 2
+            p1 = {'start': time_from, 'end': mid}
+            p2 = {'start': mid + 1, 'end': time_till}
+            e1 = self.obter_eventos(object_ids, p1, id_type, max_depth - 1)
+            if e1 is None:
                 return None
-            eventos2 = self.obter_eventos(object_ids, periodo2, id_type, max_depth - 1)
-            if eventos2 is None:
+            e2 = self.obter_eventos(object_ids, p2, id_type, max_depth - 1)
+            if e2 is None:
                 return None
-            return eventos1 + eventos2
+            return e1 + e2
         return resposta
 
     def obter_eventos_wrapper(self, object_ids, periodo, id_type='objectids'):
         if not object_ids:
             return []
-        self._update_status(f"Processando eventos para {len(object_ids)} objetos em uma ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âºnica chamadaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦")
-        all_events = self.obter_eventos(object_ids, periodo, id_type)
-        if all_events is None:
-            current_app.logger.critical("Falha crÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­tica ao coletar eventos para os IDs. Abortando.")
+        self._update_status(f"Processando eventos para {len(object_ids)} objetos em uma unica chamada...")
+        evs = self.obter_eventos(object_ids, periodo, id_type)
+        if evs is None:
+            current_app.logger.critical("Falha critica ao coletar eventos.")
             return None
-        return sorted(all_events, key=lambda x: int(x['clock']))
+        return sorted(evs, key=lambda x: int(x['clock']))
 
-    # -------------------- Helpers de SLA (correlaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o e agregaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âµes) --------------------
     def _correlate_problems(self, problems, all_events, period=None):
-        """
-        Pareia eventos de problema (value='1') com o primeiro evento subsequente de recuperaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o (value='0')
-        do mesmo trigger (objectid). Se nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o houver recuperaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o, encerra no fim do perÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­odo consultado.
-        Retorna lista de dicts com: triggerid, hostid, start, end.
-        """
         if not problems:
             return []
-        events_by_trigger = {}
+        events_by_trigger = defaultdict(list)
         for ev in (all_events or []):
             tid = ev.get('objectid') or ev.get('triggerid')
-            if tid is None:
-                continue
-            key = str(tid)
-            events_by_trigger.setdefault(key, []).append(ev)
+            if tid is not None:
+                events_by_trigger[str(tid)].append(ev)
         for evs in events_by_trigger.values():
-            try:
-                evs.sort(key=lambda e: int(e.get('clock', 0)))
-            except Exception:
-                pass
-
-        correlated = []
+            evs.sort(key=lambda e: int(e.get('clock', 0)))
+        out = []
         for p in problems:
             try:
                 tid = str(p.get('objectid') or p.get('triggerid'))
-                if not tid:
-                    continue
                 evs = events_by_trigger.get(tid, [])
                 p_clock = int(p.get('clock'))
                 hostid = None
                 hosts = p.get('hosts') or []
-                if hosts and isinstance(hosts, list):
+                if hosts:
                     hostid = (hosts[0] or {}).get('hostid')
                 end_clock = None
                 for ev in evs:
@@ -570,7 +519,6 @@ class ReportGenerator:
                         end_clock = int(ev['clock'])
                         break
                 if end_clock is None:
-                    # Se nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o tiver recuperaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o, usa o fim do perÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­odo (se fornecido) ou o ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âºltimo evento
                     if period and 'end' in period:
                         try:
                             end_clock = int(period['end'])
@@ -580,67 +528,42 @@ class ReportGenerator:
                     end_clock = int(evs[-1].get('clock', p_clock))
                 if end_clock is None:
                     end_clock = p_clock
-                correlated.append({
-                    'triggerid': tid,
-                    'hostid': hostid,
-                    'start': p_clock,
-                    'end': end_clock if end_clock >= p_clock else p_clock
-                })
+                out.append({'triggerid': tid, 'hostid': hostid, 'start': p_clock, 'end': max(end_clock, p_clock)})
             except Exception:
                 continue
-        return correlated
+        return out
 
     def _calculate_sla(self, correlated_problems, hosts_for_sla, period):
-        """
-        Calcula SLA por host a partir de janelas de indisponibilidade correlacionadas.
-        Retorna lista de dicts com Host, SLA (%) e Tempo IndisponÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­vel (horas).
-        """
         if not hosts_for_sla:
             return []
         host_map = {str(h['hostid']): h['nome_visivel'] for h in hosts_for_sla}
-        p_start = int(period.get('start', 0))
-        p_end = int(period.get('end', 0))
-        period_seconds = max(1, p_end - p_start + 1)
-        downtime_by_host = {hid: 0 for hid in host_map.keys()}
-
+        p_start = int(period['start'])
+        p_end = int(period['end'])
+        total = max(1, p_end - p_start)
+        downtime = {str(h['hostid']): 0 for h in hosts_for_sla}
         for pr in (correlated_problems or []):
-            hid = pr.get('hostid')
-            if hid is None:
-                continue
-            hid = str(hid)
-            if hid not in downtime_by_host:
+            hid = str(pr.get('hostid')) if pr.get('hostid') is not None else None
+            if hid not in downtime:
                 continue
             s = max(p_start, int(pr.get('start', p_start)))
             e = min(p_end, int(pr.get('end', p_end)))
             if e > s:
-                downtime_by_host[hid] += (e - s)
-
+                downtime[hid] += (e - s)
         rows = []
-        for hid, down in downtime_by_host.items():
-            sla = max(0.0, min(100.0, 100.0 * (1.0 - (down / period_seconds))))
-            rows.append({
-                'Host': host_map.get(hid, f'Host {hid}'),
-                'SLA (%)': float(sla),
-                'Tempo IndisponÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­vel': round(down / 3600.0, 2)
-            })
+        for hid, d in downtime.items():
+            sla = max(0.0, min(100.0, 100.0 * (1.0 - (d / total))))
+            rows.append({'Host': host_map.get(hid, f'Host {hid}'), 'SLA (%)': float(sla)})
         return rows
 
     def _count_problems_by_host(self, problems, all_hosts):
-        """
-        Conta eventos de problema por host e retorna DataFrame (ou lista compatÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­vel) ordenado.
-        """
-        import pandas as pd
-        from collections import Counter
         host_map = {str(h['hostid']): h['nome_visivel'] for h in (all_hosts or [])}
-        counter = Counter()
+        cnt = defaultdict(int)
         for p in (problems or []):
             hosts = p.get('hosts') or []
-            hid = None
             if hosts:
                 hid = str((hosts[0] or {}).get('hostid'))
-            if hid:
-                counter[hid] += 1
-        rows = [{'Host': host_map.get(hid, f'Host {hid}'), 'Problemas': count}
-                for hid, count in counter.most_common()]
+                cnt[hid] += 1
+        import pandas as pd
+        rows = [{'Host': host_map.get(h, f'Host {h}'), 'Problemas': c} for h, c in cnt.items()]
         return pd.DataFrame(rows)
 

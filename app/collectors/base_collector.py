@@ -48,3 +48,7 @@ class BaseCollector(ABC):
             new_page=self.module_config.get('newPage', False),
             system_config=self.generator.system_config
         )
+
+    # Renderiza um template parcial (caminho completo), útil para componentes internos
+    def render_partial(self, template_path, context):
+        return render_template(template_path, **(context or {}))
