@@ -153,43 +153,72 @@ class IncidentsCollector(BaseCollector):
             ]
         )
 
-        # Agrupar por host e preparar para o template
-        hosts_with_incidents = []
-        # New Customization: Number of Hosts
-        num_hosts_to_display = custom_options.get('num_hosts', None)
+        # New Customization: Primary Grouping
+        primary_grouping = custom_options.get('primary_grouping', 'host') # 'host' or 'problem'
 
-        # Sort by number of incidents per host (descending) if num_hosts is set
-        if num_hosts_to_display:
-            host_incident_counts = df_problems.groupby('host_name').size().reset_index(name='incident_count')
-            sorted_hosts = host_incident_counts.sort_values(by='incident_count', ascending=False).head(num_hosts_to_display)
-            sorted_host_names = sorted_hosts['host_name'].tolist()
-        else:
-            sorted_host_names = sorted(df_problems['host_name'].unique().tolist())
+        # Agrupar e preparar para o template
+        grouped_data = []
 
-        for host_name in sorted_host_names:
-            group_df = df_problems[df_problems['host_name'] == host_name]
-            incidents_list = []
-            for _, row in group_df.sort_values(by='clock', ascending=False).iterrows():
-                incidents_list.append({
-                    'name': row['name'],
-                    'severity': row['severity_name'],
-                    'clock': row['formatted_clock'],
-                    'duration': row['formatted_duration'],
-                    'acknowledges': row['processed_acknowledgements']
+        if primary_grouping == 'host':
+            # New Customization: Number of Hosts
+            num_hosts_to_display = custom_options.get('num_hosts', None)
+
+            # Sort by number of incidents per host (descending) if num_hosts is set
+            if num_hosts_to_display:
+                host_incident_counts = df_problems.groupby('host_name').size().reset_index(name='incident_count')
+                sorted_primary_keys = host_incident_counts.sort_values(by='incident_count', ascending=False).head(num_hosts_to_display)['host_name'].tolist()
+            else:
+                sorted_primary_keys = sorted(df_problems['host_name'].unique().tolist())
+
+            for primary_key in sorted_primary_keys:
+                group_df = df_problems[df_problems['host_name'] == primary_key]
+                incidents_list = []
+                for _, row in group_df.sort_values(by='clock', ascending=False).iterrows():
+                    incidents_list.append({
+                        'name': row['name'],
+                        'severity': row['severity_name'],
+                        'clock': row['formatted_clock'],
+                        'duration': row['formatted_duration'],
+                        'acknowledges': row['processed_acknowledgements']
+                    })
+                grouped_data.append({
+                    'primary_key_name': primary_key,
+                    'incidents': incidents_list
                 })
-            hosts_with_incidents.append({
-                'host_name': host_name,
-                'incidents': incidents_list
-            })
-        
-        # Ensure hosts are sorted by name if no num_hosts_to_display is set
-        if not num_hosts_to_display:
-            hosts_with_incidents = sorted(hosts_with_incidents, key=lambda x: x['host_name'])
+
+        elif primary_grouping == 'problem':
+            # Group by problem name first
+            problem_incident_counts = df_problems.groupby('name').size().reset_index(name='incident_count')
+            sorted_primary_keys = problem_incident_counts.sort_values(by='incident_count', ascending=False)['name'].tolist()
+
+            for primary_key in sorted_primary_keys:
+                group_df = df_problems[df_problems['name'] == primary_key]
+                # Then group by host within each problem
+                hosts_affected = []
+                for host_name, host_group_df in group_df.groupby('host_name'):
+                    incidents_list = []
+                    for _, row in host_group_df.sort_values(by='clock', ascending=False).iterrows():
+                        incidents_list.append({
+                            'name': row['name'], # Redundant but keeps structure consistent
+                            'severity': row['severity_name'],
+                            'clock': row['formatted_clock'],
+                            'duration': row['formatted_duration'],
+                            'acknowledges': row['processed_acknowledgements']
+                        })
+                    hosts_affected.append({
+                        'host_name': host_name,
+                        'incidents': incidents_list
+                    })
+                grouped_data.append({
+                    'primary_key_name': primary_key,
+                    'hosts_affected': sorted(hosts_affected, key=lambda x: x['host_name'])
+                })
 
         data = {
-            "hosts_with_incidents": hosts_with_incidents,
+            "grouped_data": grouped_data,
             "selected_severities": selected_severities_names,
             "show_duration": custom_options.get('show_duration', True),
-            "show_acknowledgements": custom_options.get('show_acknowledgements', True)
+            "show_acknowledgements": custom_options.get('show_acknowledgements', True),
+            "primary_grouping": primary_grouping
         }
         return self.render("incidents", data)

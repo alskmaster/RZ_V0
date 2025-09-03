@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 numHosts: el.querySelector('#incidentsNumHosts'),
                 showDuration: el.querySelector('#incidentsShowDuration'),
                 showAcknowledgements: el.querySelector('#incidentsShowAcknowledgements'),
+                primaryGrouping: el.querySelector('#incidentsPrimaryGrouping'),
                 saveBtn: el.querySelector('#saveIncidentsCustomizationBtn')
             };
         },
@@ -39,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
             el.numHosts.value = o.num_hosts || ''; // Default empty for no limit
             el.showDuration.checked = o.show_duration !== false; // Default true
             el.showAcknowledgements.checked = o.show_acknowledgements !== false; // Default true
+            el.primaryGrouping.value = o.primary_grouping || 'host'; // Default to host grouping
 
             el.saveBtn.addEventListener('click', ()=>{
                 if (this._onSave) this._onSave(this.save());
@@ -62,7 +64,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 period_sub_filter: el.periodSubFilter.value,
                 num_hosts: el.numHosts.value ? parseInt(el.numHosts.value) : null,
                 show_duration: el.showDuration.checked,
-                show_acknowledgements: el.showAcknowledgements.checked
+                show_acknowledgements: el.showAcknowledgements.checked,
+                primary_grouping: el.primaryGrouping.value
             };
         },
 
@@ -118,6 +121,13 @@ document.addEventListener('DOMContentLoaded', function () {
                                     <div class="mb-3">
                                         <label for="incidentsNumHosts" class="form-label">Número de Hosts (Top N):</label>
                                         <input type="number" class="form-control" id="incidentsNumHosts" min="1" placeholder="Deixe em branco para todos">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="incidentsPrimaryGrouping" class="form-label">Agrupamento Principal:</label>
+                                        <select class="form-select" id="incidentsPrimaryGrouping">
+                                            <option value="host">Por Host</option>
+                                            <option value="problem">Por Problema</option>
+                                        </select>
                                     </div>
                                     <div class="form-check mb-3">
                                         <input class="form-check-input" type="checkbox" id="incidentsShowDuration">
