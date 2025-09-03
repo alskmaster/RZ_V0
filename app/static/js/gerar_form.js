@@ -186,8 +186,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             availableModules = Array.isArray(data.available_modules) ? data.available_modules : [];
-            // Remover legados duplicados (latency/loss) do builder
-            availableModules = availableModules.filter(m => !['latency','loss'].includes(m.type));
+            // Remover legados duplicados (latency/loss/cpu) do builder
+            availableModules = availableModules.filter(m => !['latency','loss','cpu'].includes(m.type));
             logDebug('fetchClientData.success', { count: availableModules.length });
 
             moduleTypeSelect.innerHTML = '';
