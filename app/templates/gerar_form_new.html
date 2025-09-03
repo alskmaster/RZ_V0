@@ -294,6 +294,38 @@
                         <input type="number" id="wifiMaxCharts" class="form-control" value="6" min="1" step="1">
                     </div>
                 </div>
+                <hr class="my-4">
+                <h6>Quebras de Página</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="wifiPbLineChart">
+                            <label class="form-check-label" for="wifiPbLineChart">Nova página antes do Gráfico de Linha</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="wifiPbBarCharts">
+                            <label class="form-check-label" for="wifiPbBarCharts">Nova página antes dos Gráficos de Barra</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="wifiPbSummaryTable">
+                            <label class="form-check-label" for="wifiPbSummaryTable">Nova página antes da Tabela Resumo</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="wifiPbDetailedTables">
+                            <label class="form-check-label" for="wifiPbDetailedTables">Nova página antes das Tabelas Detalhadas</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="wifiPbGlobalHeatmap">
+                            <label class="form-check-label" for="wifiPbGlobalHeatmap">Nova página antes do Heatmap Global</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="wifiPbPerApHeatmap">
+                            <label class="form-check-label" for="wifiPbPerApHeatmap">Nova página antes dos Heatmaps por AP</label>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
@@ -304,19 +336,6 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
-{{ super() }}
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-<script>
-    const URLS = {
-        get_modules: "{{ url_for('main.get_available_modules', client_id=0) }}",
-        get_interfaces: "{{ url_for('main.get_client_interfaces', client_id=0) }}",
-        gerar_relatorio: "{{ url_for('main.gerar_relatorio') }}",
-        report_status: "{{ url_for('main.report_status', task_id=0) }}",
-        download_report: "{{ url_for('main.download_final_report', task_id=0) }}",
-        save_template: "{{ url_for('main.save_template') }}",
-    };
-</script>
 <script src="{{ url_for('static', filename='js/gerar_form.js') }}"></script>
 <script src="{{ url_for('static', filename='js/modules/sla_chart_gear.js') }}"></script>
 <script src="{{ url_for('static', filename='js/modules/sla_table_gear.js') }}"></script>
