@@ -220,9 +220,10 @@ class RobustMetricEngine:
         f = (filters or {})
         include_regex = f.get('include_regex')
         exclude_regex = f.get('exclude_regex') or r"(?i)(tmpfs|overlay|loop|snap|docker|containerd|kubelet|/proc|/sys|/run|/dev)"
-        fs_selector = f.get('fs_selector', 'worst')
+        fs_selector = f.get('fs_selector', 'worst')  # worst | root_only | root_plus_worst
         percent_only = f.get('percent_only', True)
         chunk_size = f.get('chunk_size')
+        per_host_limit = int(f.get('per_host_limit', 0) or 0)  # opcional: limitar quantos FS por host (0 = auto)
 
         def _parse_key(key_):
             try:
@@ -273,31 +274,65 @@ class RobustMetricEngine:
 
         final_rows = []
         for host_id, group in df.groupby('hostid'):
+            fs_to_include = []
             if fs_selector == 'root_only':
-                sel = group
-                fs_name = sel['fs_name'].iloc[0] if not sel.empty else None
+                # raiz Linux '/' ou unidade do sistema Windows (preferir C: se houver)
+                roots = group[group['fs_name'].isin(['/'])]['fs_name'].unique().tolist()
+                if not roots:
+                    # tenta letra de unidade típica
+                    drives = sorted([fs for fs in group['fs_name'].unique().tolist() if re.fullmatch(r"[A-Za-z]:", str(fs))])
+                    if 'C:' in drives:
+                        roots = ['C:']
+                    elif drives:
+                        roots = [drives[0]]
+                fs_to_include = roots[:1]
+            elif fs_selector == 'root_plus_worst':
+                # pior FS
+                agg_fs = group.groupby('fs_name')['value_avg'].mean().reset_index()
+                if not agg_fs.empty:
+                    worst_fs = agg_fs.loc[agg_fs['value_avg'].idxmax(), 'fs_name']
+                    fs_to_include.append(worst_fs)
+                # raiz, se diferente do pior
+                root_fs = None
+                if '/' in group['fs_name'].values:
+                    root_fs = '/'
+                else:
+                    drives = sorted([fs for fs in group['fs_name'].unique().tolist() if re.fullmatch(r"[A-Za-z]:", str(fs))])
+                    if 'C:' in drives:
+                        root_fs = 'C:'
+                    elif drives:
+                        root_fs = drives[0]
+                if root_fs and root_fs not in fs_to_include:
+                    fs_to_include.append(root_fs)
             else:
+                # worst
                 agg_fs = group.groupby('fs_name')['value_avg'].mean().reset_index()
                 if agg_fs.empty:
                     continue
-                fs_name = agg_fs.loc[agg_fs['value_avg'].idxmax(), 'fs_name']
+                fs_to_include = [agg_fs.loc[agg_fs['value_avg'].idxmax(), 'fs_name']]
+
+            # aplicar limite se solicitado
+            if per_host_limit and len(fs_to_include) > per_host_limit:
+                fs_to_include = fs_to_include[:per_host_limit]
+
+            for fs_name in fs_to_include:
                 sel = group[group['fs_name'] == fs_name]
-            if sel.empty:
-                continue
-            calc_type = sel['calc_type'].iloc[0]
-            min_val = sel['value_min'].mean()
-            avg_val = sel['value_avg'].mean()
-            max_val = sel['value_max'].mean()
-            if calc_type == CalculationType.INVERSE:
-                min_val, max_val = (100 - max_val), (100 - min_val)
-                avg_val = 100 - avg_val
-            final_rows.append({
-                'Host': host_map.get(host_id, f'Host {host_id}'),
-                'Filesystem': fs_name,
-                'Min': float(min_val),
-                'Avg': float(avg_val),
-                'Max': float(max_val),
-            })
+                if sel.empty:
+                    continue
+                calc_type = sel['calc_type'].iloc[0]
+                min_val = sel['value_min'].mean()
+                avg_val = sel['value_avg'].mean()
+                max_val = sel['value_max'].mean()
+                if calc_type == CalculationType.INVERSE:
+                    min_val, max_val = (100 - max_val), (100 - min_val)
+                    avg_val = 100 - avg_val
+                final_rows.append({
+                    'Host': host_map.get(host_id, f'Host {host_id}'),
+                    'Filesystem': fs_name,
+                    'Min': float(min_val),
+                    'Avg': float(avg_val),
+                    'Max': float(max_val),
+                })
         if not final_rows:
             return pd.DataFrame(columns=['Host', 'Filesystem', 'Min', 'Avg', 'Max'])
         return pd.DataFrame(final_rows, columns=['Host', 'Filesystem', 'Min', 'Avg', 'Max'])

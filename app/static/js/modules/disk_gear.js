@@ -15,7 +15,28 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
+            <div class="alert alert-info small">
+              Selecione o perfil do ambiente e a qualidade para equilibrar velocidade e detalhe.
+            </div>
             <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Perfil de Ambiente</label>
+                <select class="form-select" id="diskPreset">
+                  <option value="auto">Auto</option>
+                  <option value="windows">Windows (drives C:, D:, ...)</option>
+                  <option value="linux">Linux (/, /var, /home, ...)</option>
+                  <option value="vm">VM (Windows/Linux)</option>
+                  <option value="vmware">VMware/ESXi (datastores)</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Qualidade</label>
+                <select class="form-select" id="diskQuality">
+                  <option value="fast">Rápido (raiz por host)</option>
+                  <option value="balanced" selected>Equilíbrio (raiz + pior FS)</option>
+                  <option value="full">Completo (pior FS por host)</option>
+                </select>
+              </div>
               <div class="col-md-6">
                 <label class="form-label">Filtrar hosts (contém)</label>
                 <input type="text" class="form-control" id="diskHostContains" placeholder="ex.: SRV, DB, APP" />
@@ -43,6 +64,7 @@
                 <label class="form-label">Seleção por host</label>
                 <select class="form-select" id="diskFsSelector">
                   <option value="root_only">Apenas raiz (/, C:, D:)</option>
+                  <option value="root_plus_worst" selected>Raiz + pior FS</option>
                   <option value="worst">Pior FS por host (padrão clássico)</option>
                 </select>
               </div>
@@ -88,6 +110,8 @@
       const el = ensureModal();
       if (!this.modal) this.modal = new bootstrap.Modal(el);
       this.elements = {
+        preset: document.getElementById('diskPreset'),
+        quality: document.getElementById('diskQuality'),
         hostContains: document.getElementById('diskHostContains'),
         limitHosts: document.getElementById('diskLimitHosts'),
         chunkSize: document.getElementById('diskChunkSize'),
@@ -105,18 +129,42 @@
     load(options){
       this._ensure();
       const o = options || {};
+      this.elements.preset.value = o.preset || 'auto';
+      this.elements.quality.value = o.quality || 'balanced';
       this.elements.hostContains.value = o.host_contains || '';
       this.elements.limitHosts.value = o.limit_hosts || 0;
       this.elements.chunkSize.value = o.chunk_size || 150;
       this.elements.includeRegex.value = o.include_regex || '';
       this.elements.excludeRegex.value = o.exclude_regex || '(?i)(tmpfs|overlay|loop|snap|docker|containerd|kubelet|/proc|/sys|/run|/dev)';
-      this.elements.fsSelector.value = o.fs_selector || (o.fast_mode ? 'root_only' : 'worst') || 'root_only';
+      this.elements.fsSelector.value = o.fs_selector || (o.fast_mode ? 'root_only' : 'root_plus_worst');
       this.elements.percentOnly.checked = (o.percent_only !== false);
       this.elements.fastMode.checked = (o.fast_mode !== false);
       this.elements.topN.value = o.top_n || 0;
       this.elements.showTable.checked = (o.show_table !== false);
       this.elements.showChart.checked = (o.show_chart !== false);
       // wire save
+      const applyPreset = () => {
+        const p = this.elements.preset.value;
+        const q = this.elements.quality.value;
+        const fsSel = (q === 'fast') ? 'root_only' : (q === 'balanced' ? 'root_plus_worst' : 'worst');
+        this.elements.fsSelector.value = fsSel;
+        if (p === 'windows') {
+          this.elements.includeRegex.value = '^[A-Z]:$';
+          this.elements.excludeRegex.value = '';
+        } else if (p === 'linux') {
+          this.elements.includeRegex.value = '^/$|^/(var|home|opt|data|srv)$';
+          this.elements.excludeRegex.value = '(?i)(tmpfs|overlay|loop|snap|docker|containerd|kubelet|/proc|/sys|/run|/dev)';
+        } else if (p === 'vm') {
+          this.elements.includeRegex.value = '(^/$|^/(var|home|opt|data|srv)$)|(^[A-Z]:$)';
+          this.elements.excludeRegex.value = '(?i)(tmpfs|overlay|loop|snap|docker|containerd|kubelet|/proc|/sys|/run|/dev)';
+        } else if (p === 'vmware') {
+          this.elements.includeRegex.value = '^/vmfs/volumes';
+          this.elements.excludeRegex.value = '';
+        }
+      };
+      this.elements.preset.onchange = applyPreset;
+      this.elements.quality.onchange = applyPreset;
+      applyPreset();
       this.elements.saveBtn.onclick = null;
       this.elements.saveBtn.addEventListener('click', ()=>{
         if (this._onSave) this._onSave(this.save());
@@ -125,6 +173,8 @@
     },
     save(){
       return {
+        preset: this.elements.preset.value,
+        quality: this.elements.quality.value,
         host_contains: this.elements.hostContains.value || '',
         limit_hosts: parseInt(this.elements.limitHosts.value || '0', 10),
         chunk_size: parseInt(this.elements.chunkSize.value || '150', 10),
@@ -133,6 +183,7 @@
         fs_selector: this.elements.fsSelector.value,
         percent_only: !!this.elements.percentOnly.checked,
         fast_mode: !!this.elements.fastMode.checked,
+        per_host_limit: (this.elements.fsSelector.value === 'root_plus_worst') ? 2 : 1,
         top_n: parseInt(this.elements.topN.value || '0', 10),
         show_table: !!this.elements.showTable.checked,
         show_chart: !!this.elements.showChart.checked,
