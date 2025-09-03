@@ -21,7 +21,7 @@ class LatencyChartCollector(BaseCollector):
             if error:
                 return self.render('latency_chart', {'img': None})
             self.generator.cached_data[cache_key] = data
-        df = self.generator.cached_data[cache_key].get('df_lat') or pd.DataFrame()
+        df = self.generator.cached_data[cache_key].get('df_lat', pd.DataFrame())
         if df.empty:
             return self.render('latency_chart', {'img': None})
 
@@ -37,4 +37,3 @@ class LatencyChartCollector(BaseCollector):
                 df = df.head(top_n)
         img = generate_multi_bar_chart(df, 'Latência Média (ms)', 'Latência (ms)', colors)
         return self.render('latency_chart', {'img': img})
-

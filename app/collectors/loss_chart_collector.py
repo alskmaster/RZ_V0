@@ -21,7 +21,7 @@ class LossChartCollector(BaseCollector):
             if error:
                 return self.render('loss_chart', {'img': None})
             self.generator.cached_data[cache_key] = data
-        df = self.generator.cached_data[cache_key].get('df_loss') or pd.DataFrame()
+        df = self.generator.cached_data[cache_key].get('df_loss', pd.DataFrame())
         if df.empty:
             return self.render('loss_chart', {'img': None})
 
@@ -37,4 +37,3 @@ class LossChartCollector(BaseCollector):
                 df = df.head(top_n)
         img = generate_multi_bar_chart(df, 'Perda de Pacotes Média (%)', 'Perda (%)', colors)
         return self.render('loss_chart', {'img': img})
-

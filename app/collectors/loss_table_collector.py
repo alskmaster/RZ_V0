@@ -23,7 +23,7 @@ class LossTableCollector(BaseCollector):
             if error:
                 return f"<p><i>{error}</i></p>"
             self.generator.cached_data[cache_key] = data
-        df = self.generator.cached_data[cache_key].get('df_loss') or pd.DataFrame()
+        df = self.generator.cached_data[cache_key].get('df_loss', pd.DataFrame())
         if df.empty:
             return "<p><i>Sem dados de perda de pacotes.</i></p>"
 
@@ -47,4 +47,3 @@ class LossTableCollector(BaseCollector):
             df_fmt = df
         html = df_fmt.to_html(classes='table', index=False, escape=False)
         return self.render('loss_table', {'table_html': html})
-

@@ -23,7 +23,7 @@ class LatencyTableCollector(BaseCollector):
             if error:
                 return f"<p><i>{error}</i></p>"
             self.generator.cached_data[cache_key] = data
-        df = self.generator.cached_data[cache_key].get('df_lat') or pd.DataFrame()
+        df = self.generator.cached_data[cache_key].get('df_lat', pd.DataFrame())
         if df.empty:
             return "<p><i>Sem dados de latência.</i></p>"
 
@@ -47,4 +47,3 @@ class LatencyTableCollector(BaseCollector):
             df_fmt = df
         html = df_fmt.to_html(classes='table', index=False, escape=False)
         return self.render('latency_table', {'table_html': html})
-
