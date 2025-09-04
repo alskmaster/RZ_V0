@@ -207,21 +207,6 @@
         const kind = btn.getAttribute('data-tpl');
         const content = quickTemplate(kind);
         editor.innerHTML = content;
-        // Ajusta estilo sugerido por modelo
-        const boxSel = modal.querySelector('#htmlBoxStyle');
-        const suggest = ({
-          exec: 'none',
-          notes: 'none',
-          next: 'none',
-          destaques: 'info',
-          metodologia: 'none'
-        })[kind] || 'none';
-        if (boxSel) boxSel.value = suggest;
-        // Sincroniza fonte se visível
-        if (!source.classList.contains('d-none')) {
-          source.value = editor.innerHTML;
-        }
-        editor.focus();
       });
     });
     return document.getElementById('customizeHtmlModal');
