@@ -190,9 +190,59 @@ document.addEventListener('DOMContentLoaded', function () {
             availableModules = availableModules.filter(m => !['latency','loss','cpu'].includes(m.type));
             logDebug('fetchClientData.success', { count: availableModules.length });
 
+            // Agrupamento por categorias (optgroups) para melhor usabilidade
             moduleTypeSelect.innerHTML = '';
-            if (availableModules.length > 0) {
-                availableModules.forEach(mod => moduleTypeSelect.add(new Option(mod.name, mod.type)));
+            const TYPE_TO_CATEGORY = {
+                // Desempenho
+                'cpu_table': 'Desempenho', 'cpu_chart': 'Desempenho',
+                'mem_table': 'Desempenho', 'mem_chart': 'Desempenho',
+                'disk': 'Desempenho',
+                // Rede (Ping)
+                'latency_table': 'Rede (Ping)', 'latency_chart': 'Rede (Ping)',
+                'loss_table': 'Rede (Ping)', 'loss_chart': 'Rede (Ping)',
+                'traffic_in': 'Rede (Tráfego)', 'traffic_out': 'Rede (Tráfego)',
+                // Disponibilidade / SLA
+                'kpi': 'Disponibilidade / SLA', 'sla_table': 'Disponibilidade / SLA',
+                'sla_chart': 'Disponibilidade / SLA', 'sla_plus': 'Disponibilidade / SLA',
+                'top_hosts': 'Disponibilidade / SLA', 'top_problems': 'Disponibilidade / SLA',
+                'stress': 'Disponibilidade / SLA',
+                // Incidentes
+                'incidents_table': 'Incidentes', 'incidents_chart': 'Incidentes',
+                // Wi‑Fi
+                'wifi': 'Wi‑Fi',
+                // Inventário & Conteúdo
+                'inventory': 'Inventário & Conteúdo', 'html': 'Inventário & Conteúdo'
+            };
+            const CATEGORY_ORDER = [
+                'Disponibilidade / SLA',
+                'Incidentes',
+                'Desempenho',
+                'Rede (Ping)',
+                'Rede (Tráfego)',
+                'Wi‑Fi',
+                'Inventário & Conteúdo'
+            ];
+            const buckets = {};
+            availableModules.forEach(m => {
+                const cat = TYPE_TO_CATEGORY[m.type] || 'Outros';
+                if (!buckets[cat]) buckets[cat] = [];
+                buckets[cat].push(m);
+            });
+            const orderedCats = CATEGORY_ORDER.concat(Object.keys(buckets).filter(c => !CATEGORY_ORDER.includes(c)).sort());
+            let totalOptions = 0;
+            orderedCats.forEach(cat => {
+                if (!buckets[cat] || buckets[cat].length === 0) return;
+                const og = document.createElement('optgroup');
+                og.label = cat;
+                // Ordena alfabeticamente por nome amigável
+                buckets[cat].sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR'));
+                buckets[cat].forEach(m => {
+                    og.appendChild(new Option(m.name, m.type));
+                    totalOptions += 1;
+                });
+                moduleTypeSelect.appendChild(og);
+            });
+            if (totalOptions > 0) {
                 moduleTypeSelect.disabled = false;
                 addModuleBtn.disabled = false;
             } else {
