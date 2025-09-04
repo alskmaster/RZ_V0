@@ -137,6 +137,7 @@ def generate_chart(
     base_height=3.0,
     show_values=True,
     grid=True,
+    sort_ascending=True,
 ):
     logging.info(f"Gerando gráfico: {title}...")
     if df is None or df.empty:
@@ -152,7 +153,7 @@ def generate_chart(
     fig, ax = plt.subplots(figsize=(10, fig_height))
 
     try:
-        df_sorted = df.sort_values(by=x_col, ascending=True)
+        df_sorted = df.sort_values(by=x_col, ascending=(True if sort_ascending is None else bool(sort_ascending)))
     except Exception as e:
         logging.error(f"[charting.generate_chart] Falha ao ordenar por '{x_col}': {e}")
         df_sorted = df
@@ -287,3 +288,6 @@ def generate_multi_bar_chart(df, title, x_label, colors, *, label_wrap=45):
     plt.savefig(buffer, format='png', dpi=150, transparent=True)
     plt.close(fig)
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+
+

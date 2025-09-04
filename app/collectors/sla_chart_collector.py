@@ -92,5 +92,8 @@ class SlaChartCollector(BaseCollector):
             height_per_bar=height_per_bar,
             show_values=show_values,
             grid=grid,
+            sort_ascending=ascending,
         )
         return self.render('sla_chart', {'chart': chart, 'note': ''})
+
+
