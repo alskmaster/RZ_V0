@@ -117,7 +117,7 @@
       o = o || {};
       this.elements.hostFilter.value = o.host_contains || '';
       this.elements.problemFilter.value = o.problem_contains || '';
-      const sev = o.severities || ['info','warning','average','high','disaster'];
+      const sev = o.severities || ['high','disaster'];
       if (this.elements.sevInfo) this.elements.sevInfo.checked = sev.includes('info');
       if (this.elements.sevWarning) this.elements.sevWarning.checked = sev.includes('warning');
       if (this.elements.sevAverage) this.elements.sevAverage.checked = sev.includes('average');
@@ -158,3 +158,4 @@
     }
   };
 })();
+
