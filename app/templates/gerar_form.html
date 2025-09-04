@@ -266,6 +266,7 @@
     const URLS = {
         get_modules: "{{ url_for('main.get_available_modules', client_id=0) }}",
         get_interfaces: "{{ url_for('main.get_client_interfaces', client_id=0) }}",
+        search_items: "{{ url_for('main.search_items', client_id=0) }}",
         gerar_relatorio: "{{ url_for('main.gerar_relatorio') }}",
         report_status: "{{ url_for('main.report_status', task_id=0) }}",
         download_report: "{{ url_for('main.download_final_report', task_id=0) }}",
@@ -290,4 +291,11 @@
 <script src="{{ url_for('static', filename='js/modules/resilience_panel_gear.js') }}"></script>
 <script src="{{ url_for('static', filename='js/modules/unavailability_heatmap_gear.js') }}"></script>
 <script src="{{ url_for('static', filename='js/modules/root_cause_top_triggers_gear.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modules/recurring_problems_gear.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modules/critical_performance_gear.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modules/mttr_gear.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modules/agent_status_gear.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modules/capacity_forecast_gear.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modules/itil_availability_gear.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modules/executive_summary_gear.js') }}"></script>
 {% endblock %}

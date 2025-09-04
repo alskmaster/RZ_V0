@@ -1,0 +1,40 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Desempenho Crítico' }}</h2>
+
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}<br><span class="small text-muted">Dica: use a engrenagem para escolher itens específicos ou amplie o período.</span></div>
+  {% endif %}
+
+  {% if data.summary %}
+    <p class="small text-muted">Séries analisadas: {{ data.summary.series_total }} | Ativas: {{ data.summary.series_ativas }} | Inativas: {{ data.summary.series_inativas }}</p>
+  {% endif %}
+
+  {% if data.chart_b64 %}
+    <div class="mb-3 text-center">
+      <img src="data:image/png;base64,{{ data.chart_b64 }}" alt="Séries de Desempenho" style="max-width:100%; height:auto;" />
+    </div>
+  {% endif %}
+
+  {% if data.rows and data.rows|length > 0 %}
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th class="text-end">Pontos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data.rows %}
+            <tr>
+              <td title="{{ row.ItemID }}">{{ row.Item or row.ItemID }}</td>
+              <td class="text-end">{{ row.Pontos }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-info" role="alert">Sem séries no período. Ajuste o período ou selecione itens na engrenagem.</div>
+  {% endif %}
+</div>

@@ -457,8 +457,15 @@ def get_available_modules(client_id):
     available_modules.append({'type': 'html', 'name': 'Texto/HTML Customizado'})
     # Sempre disponivel: status do agente e MTTR
     available_modules.append({'type': 'agent_status', 'name': 'Status do Agente Zabbix'})
+    # Novos módulos
+    available_modules.append({'type': 'recurring_problems', 'name': 'Problemas Recorrentes'})
+    available_modules.append({'type': 'critical_performance', 'name': 'Desempenho Crítico (por ItemID)'})
     
     # Limpa módulos legados do backend (mostrar apenas versões novas)
+    # Extensoes adicionais
+    available_modules.append({'type': 'capacity_forecast', 'name': 'Previsão de Capacidade'})
+    available_modules.append({'type': 'itil_availability', 'name': 'Disponibilidade por Incidente (ITIL)'})
+    available_modules.append({'type': 'executive_summary', 'name': 'Sumário Executivo'})
     legacy_types = {'cpu', 'mem', 'latency', 'loss', 'sla', 'sla_table', 'sla_chart', 'sla_plus', 'kpi', 'top_hosts', 'top_problems', 'stress', 'sla_incidents_table'}
     try:
         available_modules = [m for m in available_modules if m.get('type') not in legacy_types]
@@ -473,7 +480,55 @@ def get_client_interfaces(client_id):
     # relacionamento é lazy='dynamic' -> use count()/all()
     if not client or client.zabbix_groups.count() == 0:
         current_app.logger.debug(f"[get_client_interfaces] Cliente sem grupos (client_id={client_id})")
-        return jsonify({'interfaces': []})
+    return jsonify({'interfaces': []})
+
+@main.route('/search_items/<int:client_id>')
+@login_required
+def search_items(client_id):
+    q = (request.args.get('q') or '').strip()
+    limit = int(request.args.get('limit') or 20)
+    client = db.session.get(Client, client_id)
+    if not client or client.zabbix_groups.count() == 0 or not q:
+        return jsonify({'items': []})
+
+    group_ids = [g.group_id for g in client.zabbix_groups.all()]
+    config_zabbix, erro = obter_config_e_token_zabbix(current_app.config)
+    if erro:
+        return jsonify({'items': [], 'error': erro})
+
+    # hosts by group
+    body_hosts = {
+        'jsonrpc': '2.0', 'method': 'host.get',
+        'params': {'groupids': group_ids, 'output': ['hostid','name']},
+        'auth': config_zabbix['ZABBIX_TOKEN'], 'id': 1
+    }
+    hosts = fazer_request_zabbix(body_hosts, config_zabbix['ZABBIX_URL'])
+    if not isinstance(hosts, list) or not hosts:
+        return jsonify({'items': []})
+    host_map = {str(h.get('hostid')): (h.get('name') or h.get('host') or str(h.get('hostid'))) for h in hosts}
+
+    # items search by key_ substring
+    body_items = {
+        'jsonrpc': '2.0', 'method': 'item.get',
+        'params': {
+            'output': ['itemid','name','key_','hostid'],
+            'hostids': [h['hostid'] for h in hosts],
+            'search': {'key_': q},
+            'limit': limit
+        },
+        'auth': config_zabbix['ZABBIX_TOKEN'], 'id': 1
+    }
+    items = fazer_request_zabbix(body_items, config_zabbix['ZABBIX_URL'])
+    out = []
+    if isinstance(items, list):
+        for it in items:
+            out.append({
+                'itemid': str(it.get('itemid')),
+                'name': it.get('name'),
+                'key_': it.get('key_'),
+                'host': host_map.get(str(it.get('hostid')), str(it.get('hostid')))
+            })
+    return jsonify({'items': out})
 
     # CORREÇÃO: atributo correto é 'group_id' e precisamos .all()
     group_ids = [g.group_id for g in client.zabbix_groups.all()]

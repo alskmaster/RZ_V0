@@ -1,0 +1,37 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Disponibilidade por Incidente (ITIL)' }}</h2>
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+  {% endif %}
+  {% if data.chart_b64 %}
+    <div class="mb-3 text-center">
+      <img src="data:image/png;base64,{{ data.chart_b64 }}" alt="Disponibilidade x Incidentes" style="max-width:100%; height:auto;" />
+    </div>
+    {% if data.intervals and data.intervals > 0 %}
+      <p class="small text-muted">Faixas em vermelho indicam incidentes registrados no período ({{ data.intervals }}).</p>
+    {% else %}
+      <p class="small text-muted">Sem incidentes registrados no período. A série é exibida apenas para contexto.</p>
+    {% endif %}
+  {% else %}
+    <div class="alert alert-info" role="alert">Sem dados históricos para o item no período. Ajuste o período ou escolha outro item na engrenagem.</div>
+  {% endif %}
+  {% if data.severity_counts %}
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle" style="max-width:520px">
+        <thead>
+          <tr>
+            <th>Severidade</th>
+            <th class="text-end">Incidentes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Informação</td><td class="text-end">{{ data.severity_counts['1'] }}</td></tr>
+          <tr><td>Atenção</td><td class="text-end">{{ data.severity_counts['2'] }}</td></tr>
+          <tr><td>Média</td><td class="text-end">{{ data.severity_counts['3'] }}</td></tr>
+          <tr><td>Alta</td><td class="text-end">{{ data.severity_counts['4'] }}</td></tr>
+          <tr><td>Desastre</td><td class="text-end">{{ data.severity_counts['5'] }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>

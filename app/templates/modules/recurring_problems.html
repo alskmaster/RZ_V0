@@ -1,0 +1,30 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Problemas Recorrentes' }}</h2>
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+  {% endif %}
+  {% if data.rows and data.rows|length > 0 %}
+    <p class="small text-muted">Exibindo gatilhos com ocorrências >= {{ data.min_count }}</p>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Trigger</th>
+            <th class="text-end">Ocorrências</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data.rows %}
+            <tr>
+              <td style="overflow-wrap:anywhere; word-break:break-word; hyphens:auto;">{{ row.Trigger }}</td>
+              <td class="text-end">{{ row.Ocorrencias }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-info" role="alert">Nenhum problema recorrente encontrado no período.</div>
+  {% endif %}
+</div>
+

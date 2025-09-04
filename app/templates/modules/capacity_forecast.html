@@ -1,0 +1,47 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Previsão de Capacidade' }}</h2>
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+  {% endif %}
+  {% if data.chart_b64 %}
+    <div class="mb-3 text-center">
+      <img src="data:image/png;base64,{{ data.chart_b64 }}" alt="Previsão de Capacidade" style="max-width:100%; height:auto;" />
+    </div>
+    {% if data.limit is not none %}
+      <p class="small text-muted">Linha pontilhada vermelha indica o limite configurado ({{ data.limit }}).</p>
+    {% endif %}
+  {% endif %}
+  {% if data.summary %}
+    <p class="small text-muted">Risco: <strong>{{ data.summary.critico }}</strong> críticos (&lt; {{ data.crit_days }}d), <strong>{{ data.summary.atencao }}</strong> atenção ({{ data.crit_days }}–{{ data.att_days }}d), <strong>{{ data.summary.estavel }}</strong> estáveis.</p>
+  {% endif %}
+  {% if data.rows and data.rows|length > 0 %}
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th class="text-end">Risco</th>
+            <th class="text-end">Tendência</th>
+            <th class="text-end">Inclinação/dia</th>
+            <th class="text-end">Intercepto</th>
+            <th class="text-end">ETA (limite)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data.rows %}
+            <tr>
+              <td>{{ row.Item or row.ItemID }}</td>
+              <td class="text-end">{{ row.Risk }}</td>
+              <td class="text-end">{{ row.Trend or '-' }}</td>
+              <td class="text-end">{{ row.Slope if row.Slope is not none else '-' }}</td>
+              <td class="text-end">{{ row.Intercept if row.Intercept is not none else '-' }}</td>
+              <td class="text-end">{{ row.ETA or '-' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-info" role="alert">Sem tendência relevante no período. Ajuste o período ou selecione itens específicos na engrenagem.</div>
+  {% endif %}
+</div>
