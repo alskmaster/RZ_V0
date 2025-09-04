@@ -1,0 +1,39 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'MTTR / MTTD por Severidade' }}</h2>
+
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+  {% endif %}
+
+  {% if data.chart_b64 %}
+    <div class="mb-3 text-center">
+      <img src="data:image/png;base64,{{ data.chart_b64 }}" alt="MTTR e MTTD" style="max-width:100%; height:auto;" />
+    </div>
+  {% endif %}
+
+  {% if data.rows and data.rows|length > 0 %}
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Severidade</th>
+            <th class="text-end">MTTR</th>
+            <th class="text-end">MTTD</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data.rows %}
+            <tr>
+              <td>{{ row.Severidade }}</td>
+              <td class="text-end">{{ row.MTTR }}</td>
+              <td class="text-end">{{ row.MTTD }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-info" role="alert">Sem dados para exibir no período selecionado.</div>
+  {% endif %}
+</div>
+

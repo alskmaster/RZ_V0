@@ -1,0 +1,12 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Status do Agente Zabbix' }}</h2>
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+  {% endif %}
+  <div class="row text-center">
+    <div class="col"><div class="card"><div class="card-body"><h4>OK</h4><p class="display-6">{{ data.ok or 0 }}</p></div></div></div>
+    <div class="col"><div class="card"><div class="card-body"><h4>Indisponível</h4><p class="display-6">{{ data.down or 0 }}</p></div></div></div>
+    <div class="col"><div class="card"><div class="card-body"><h4>Desconhecido</h4><p class="display-6">{{ data.unknown or 0 }}</p></div></div></div>
+  </div>
+</div>
+

@@ -386,6 +386,7 @@ def get_available_modules(client_id):
         available_modules.append({'type': 'incidents_chart', 'name': 'Incidentes (Gráficos)'})
         available_modules.append({'type': 'unavailability_heatmap', 'name': 'Mapa de Calor de Indisponibilidade'})
         available_modules.append({'type': 'root_cause_top_triggers', 'name': 'Causa-Raiz (Top Gatilhos)'})
+        available_modules.append({'type': 'mttr', 'name': 'Eficiência da Resposta (MTTR)'})
     
     if check_key('icmppingsec'):
         available_modules.append({'type': 'latency', 'name': 'Latência de Rede (Ping)'})
@@ -454,6 +455,8 @@ def get_available_modules(client_id):
 
     available_modules.append({'type': 'inventory', 'name': 'Inventário de Hosts'})
     available_modules.append({'type': 'html', 'name': 'Texto/HTML Customizado'})
+    # Sempre disponivel: status do agente e MTTR
+    available_modules.append({'type': 'agent_status', 'name': 'Status do Agente Zabbix'})
     
     # Limpa módulos legados do backend (mostrar apenas versões novas)
     legacy_types = {'cpu', 'mem', 'latency', 'loss', 'sla', 'sla_table', 'sla_chart', 'sla_plus', 'kpi', 'top_hosts', 'top_problems', 'stress', 'sla_incidents_table'}

@@ -43,6 +43,13 @@ from .collectors.incidents_chart_collector import IncidentsChartCollector
 from .collectors.resilience_panel_collector import ResiliencePanelCollector
 from .collectors.unavailability_heatmap_collector import UnavailabilityHeatmapCollector
 from .collectors.root_cause_top_triggers_collector import RootCauseTopTriggersCollector
+from .collectors.mttr_collector import MTTRCollector
+from .collectors.recurring_problems_collector import RecurringProblemsCollector
+from .collectors.agent_status_collector import AgentStatusCollector
+from .collectors.capacity_forecast_collector import CapacityForecastCollector
+from .collectors.itil_availability_collector import ITILAvailabilityCollector
+from .collectors.critical_performance_collector import CriticalPerformanceCollector
+from .collectors.executive_summary_collector import ExecutiveSummaryCollector
 
 
 # Registry of collectors
@@ -72,6 +79,13 @@ COLLECTOR_MAP = {
     'resilience_panel': ResiliencePanelCollector,
     'unavailability_heatmap': UnavailabilityHeatmapCollector,
     'root_cause_top_triggers': RootCauseTopTriggersCollector,
+    'mttr': MTTRCollector,
+    'recurring_problems': RecurringProblemsCollector,
+    'agent_status': AgentStatusCollector,
+    'capacity_forecast': CapacityForecastCollector,
+    'itil_availability': ITILAvailabilityCollector,
+    'critical_performance': CriticalPerformanceCollector,
+    'executive_summary': ExecutiveSummaryCollector,
 }
 
 
@@ -439,7 +453,8 @@ class ReportGenerator:
 
     # -------------------- Helpers --------------------
     def _normalize_string(self, s):
-        return re.sub(r"\s+", " ", str(s).replace("\n", " ").replace("\r", " ")).strip()
+        return re.sub(r"\s+", " ", str(s).replace("
+", " ").replace("\r", " ")).strip()
 
     def get_hosts(self, groupids):
         self._update_status("Coletando dados de hosts.")
@@ -788,6 +803,8 @@ class ReportGenerator:
         import pandas as pd
         rows = [{'Host': host_map.get(h, f'Host {h}'), 'Problemas': c} for h, c in cnt.items()]
         return pd.DataFrame(rows)
+
+
 
 
 
