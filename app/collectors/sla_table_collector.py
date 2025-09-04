@@ -55,6 +55,14 @@ class SlaTableCollector(BaseCollector):
             except Exception:
                 pass
 
+        # Filtro por substring no nome do host (opcional)
+        host_contains = str(opts.get('host_contains') or '').strip()
+        if host_contains and 'Host' in df_sla.columns:
+            try:
+                df_sla = df_sla[df_sla['Host'].str.contains(host_contains, case=False, na=False)]
+            except Exception:
+                pass
+
         # Sorting/top
         sort_by = opts.get('sort_by') or current_sla_col
         sort_dir = bool(opts.get('sort_asc', False))

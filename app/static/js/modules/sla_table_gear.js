@@ -63,6 +63,10 @@
                 <input class="form-check-input" type="checkbox" id="slaTableHideSummary">
                 <label class="form-check-label" for="slaTableHideSummary">Ocultar resumo</label>
               </div>
+              <div class="col-12">
+                <label class="form-label">Filtrar hosts (contém)</label>
+                <input type="text" class="form-control" id="slaTableHostFilter" placeholder="ex.: SDWAN" />
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -89,6 +93,7 @@
         showDown: document.getElementById('slaTableShowDowntime'),
         decimals: document.getElementById('slaTableDecimals'),
         highlight: document.getElementById('slaTableHighlight'),
+        hostFilter: document.getElementById('slaTableHostFilter'),
         sortBy: document.getElementById('slaTableSortBy'),
         sortAsc: document.getElementById('slaTableSortAsc'),
         topN: document.getElementById('slaTableTopN'),
@@ -105,6 +110,7 @@
       this.elements.showDown.checked = !!o.show_downtime;
       this.elements.decimals.value = o.decimals ?? 2;
       this.elements.highlight.checked = !!o.highlight_below_goal;
+      this.elements.hostFilter.value = o.host_contains || '';
       this.elements.sortBy.value = o.sort_by || 'SLA (%)';
       this.elements.sortAsc.checked = (o.sort_asc ?? true);
       this.elements.topN.value = o.top_n ?? 0;
@@ -133,6 +139,7 @@
         show_downtime: !!this.elements.showDown.checked,
         decimals: parseInt(this.elements.decimals.value||2),
         highlight_below_goal: !!this.elements.highlight.checked,
+        host_contains: this.elements.hostFilter.value || '',
         sort_by: this.elements.sortBy.value || 'SLA (%)',
         sort_asc: !!this.elements.sortAsc.checked,
         top_n: parseInt(this.elements.topN.value||0),
