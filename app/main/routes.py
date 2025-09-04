@@ -595,4 +595,3 @@ def test_events(client_id, mes_ref):
         "detalhes_diarios": dias_com_eventos
     })
 
-
