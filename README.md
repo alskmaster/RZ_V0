@@ -1,6 +1,6 @@
 # RZ_V0 — Evoluções e Guia Rápido
 
-Este documento resume as principais evoluções realizadas e como utilizá‑las no dia a dia. O foco foi tornar a coleta e montagem de relatórios muito mais resiliente, com cadastro dinâmico de métricas e diagnóstico simples no Admin.
+Este documento resume as principais evoluções realizadas e como utilizá-las no dia a dia. O foco foi tornar a coleta e a montagem de relatórios muito mais resiliente, com cadastro dinâmico de métricas e diagnóstico simples no Admin.
 
 ## Visão Geral das Evoluções
 - Coleta resiliente (CPU, Memória, Disco):
@@ -11,7 +11,7 @@ Este documento resume as principais evoluções realizadas e como utilizá‑las
   - Mesmo padrão de robustez, mantendo gráficos e tabelas existentes do módulo.
   - Fallback para `history.get` (value_type=3) quando trends não estão disponíveis.
 - Descoberta de métricas no Admin:
-  - Card “Descobrir no Zabbix” com seleção de cliente + tipo (agora inclui “Wi‑Fi (Clientes)”).
+  - Card “Descobrir no Zabbix” com seleção de cliente + tipo (inclui “Wi‑Fi (Clientes)”).
   - Cadastro em lote (“Salvar Selecionados”) com prioridade/ativo/descrição.
 - Perfis de Métricas:
   - CRUD em Admin > Perfis de Coleta de Métricas (CPU, Memória, Disco e Wi‑Fi).
@@ -45,7 +45,7 @@ Este documento resume as principais evoluções realizadas e como utilizá‑las
    - Tipos: cpu, memory, disk, wifi_clients.
    - Use “Descobrir no Zabbix” para sugerir chaves existentes.
 2) Gere o relatório (tela “Gerar”).
-   - Selecione cliente, mês (YYYY‑MM) e módulos (CPU/MEM/DISK/Wi‑Fi, etc.).
+   - Selecione cliente, mês (YYYY-MM) e módulos (CPU/MEM/DISK/Wi‑Fi, etc.).
 3) Se algum módulo vier vazio, rode o diagnóstico:
    - `/admin/debug_collect?client_id=<id>&module=cpu|mem|disk|wifi&mes_ref=YYYY-MM`
    - Ajuste perfis se necessário (prioridade e DIRECT/INVERSE).
@@ -56,23 +56,16 @@ Este documento resume as principais evoluções realizadas e como utilizá‑las
 - Disco: `vfs.fs.size[/fs,pused]` (DIRECT) ou `...,[pfree|pavailable]` (INVERSE). A engine escolhe por host a melhor opção.
 - Wi‑Fi: chaves comuns como `clientcountnumber`, `wlan.bss.numsta`, `StationsConnected`, `wlan.client.count`.
 
-### Opções (Engrenagem) – SLA
+### Opções (Engrenagem) — SLA
 - sla_chart (gráfico):
-  - `top_n`: limita número de hosts (0 = todos)
-  - `order`: `asc` ou `desc`
-  - `color`: cor padrão das barras (hex)
-  - `target_sla`: meta de SLA (ex.: 98). Desenha linha e destaca abaixo da meta
-  - `below_color`: cor para barras abaixo da meta (default `#e55353`)
-  - `x_axis_0_100`: força eixo X de 0 a 100 (default true)
+  - `top_n`, `order`, `color`, `target_sla`, `below_color`, `x_axis_0_100`.
 - sla_table (tabela):
-  - `target_sla`: sobrescreve a meta (se não informado, usa a do cliente)
-  - `show_goal`: adiciona coluna “Meta” (Atingido/Não Atingido)
-  - Demais já existentes: `show_ip`, `compare_to_previous_month`, `show_previous_sla`, `show_improvement`, `sort_by`, `sort_asc`, `top_n`, `hide_summary`, `show_downtime`.
+  - `target_sla`, `show_goal`, `show_ip`, `compare_to_previous_month`, `show_previous_sla`, `show_improvement`, `sort_by`, `sort_asc`, `top_n`, `hide_summary`, `show_downtime`.
 
 ## Boas Práticas
-- Defina prioridade baixa (ex.: 1) para a key preferencial e mantenha alternativas com prioridades maiores.
-- Evite perfis DIRECT e INVERSE ativos ao mesmo tempo para o mesmo contexto se não quiser inversões automáticas — a engine já seleciona por host, mas o cadastro claro ajuda a leitura.
-- Para Disco, considere criar filtros (próxima evolução) para ignorar tmpfs/overlay/loop/snap.
+- Dê prioridade baixa (ex.: 1) para a key preferencial e mantenha alternativas com prioridades maiores.
+- Evite perfis DIRECT e INVERSE ativos ao mesmo tempo para o mesmo contexto — a engine já seleciona por host, mas clareza ajuda.
+- Para Disco, utilize filtros (tmpfs/overlay/loop/snap) conforme evolução da engine.
 
 ## Próximos Passos Sugeridos
 - “Perfil vencedor por host”: cachear a key escolhida por host/tipo para acelerar coletas futuras.
@@ -80,27 +73,9 @@ Este documento resume as principais evoluções realizadas e como utilizá‑las
 - UI de pré‑checagem: mostrar hosts/itens/dados antes de gerar o relatório.
 - Paralelização com limites (throttling) para grandes volumes de itens.
 
-## Novidades (SLA - Engrenagem por módulo)
-- Engrenagem para `SLA - Gráfico` e `SLA - Tabela` adicionada via JS modular:
-  - Arquivos: `app/static/js/modules/sla_chart_gear.js` e `app/static/js/modules/sla_table_gear.js`.
-  - O registro é pluginável: `app/static/js/gerar_form.js` consome `window.ModuleCustomizers` sem alterar o core.
-  - Inclusão no template: `app/templates/gerar_form.html` registra os dois scripts.
-
-### Opções – SLA Gráfico
-- `top_n`, `order`, `color`, `target_sla`, `below_color`, `x_axis_0_100`.
-- Extras: `label_wrap`, `dynamic_height`, `height_per_bar`, `show_values`, `grid`, `host_contains`.
-- Novas: `only_below_goal` para mostrar apenas hosts abaixo da meta.
-- UI: campos de cor com color‑picker e atalho “Usar do cliente” para preencher `target_sla` a partir do cliente selecionado (lê `data-sla` do `<option>` do cliente).
-
-### Opções – SLA Tabela
-- `target_sla`, `show_goal`, `show_downtime`, `highlight_below_goal`, `decimals`, `sort_by`, `sort_asc`, `top_n`.
-- Novas: `only_below_goal` e `hide_summary`.
-- UI: “Ordenar por” com opções pré‑definidas e botão “Usar do cliente” no gráfico para meta.
-
 ## Melhorias de UX (acentuação e mensagens)
-- Corrigidas mensagens com acentuação na tela de geração e no polling:
-  - `gerar_form.js` agora mostra “Gerar Relatório”, “Concluído”, etc.
-  - Mensagem de progresso do backend sanitizada (ASCII): “Processando eventos para N objetos em uma unica chamada...”.
+- Mensagens na tela de geração/polling normalizadas e com acentuação correta.
+- Backend sanitiza mensagens de progresso para ASCII quando necessário.
 
 ## Utilidades
 - Resetar/criar superadmin:
@@ -108,5 +83,6 @@ Este documento resume as principais evoluções realizadas e como utilizá‑las
 - Diagnóstico por módulo/mês:
   - `GET /admin/debug_collect?client_id=<id>&module=cpu|mem|disk|wifi&mes_ref=YYYY-MM`
 
----
-Qualquer dúvida ou sugestão de evolução, abra uma issue interna ou me acione.
+—
+Em caso de dúvidas ou sugestões de evolução, abra uma issue interna.
+

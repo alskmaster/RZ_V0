@@ -117,6 +117,8 @@ class ReportTemplate(db.Model):
     name = db.Column(db.String(100), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref='report_templates')
+    # Layout salvo como JSON bruto para o builder (compatível com UI)
+    layout_json = db.Column(db.Text, nullable=True)
     modules = db.relationship('ReportTemplateModule', backref='template', lazy='dynamic', cascade="all, delete-orphan")
 
 class ReportTemplateModule(db.Model):

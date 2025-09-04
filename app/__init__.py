@@ -157,6 +157,18 @@ def create_app(config_class=Config):
         from . import models
         db.create_all()
 
+        # Migração leve: garantir coluna layout_json em report_template (p/ templates de layout)
+        try:
+            from sqlalchemy import text
+            insp = db.inspect(db.engine)
+            cols = [c['name'] for c in insp.get_columns('report_template')]
+            if 'layout_json' not in cols:
+                app.logger.info('[boot] Adicionando coluna layout_json à tabela report_template')
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE report_template ADD COLUMN layout_json TEXT'))
+        except Exception:
+            app.logger.warning('[boot] Não foi possível garantir a coluna layout_json (verifique migrações).', exc_info=True)
+
         if not models.Role.query.first():
             db.session.add_all([
                 models.Role(name='super_admin'),
