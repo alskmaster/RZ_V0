@@ -291,9 +291,17 @@ class ReportGenerator:
                 final_html_parts.append(f"<p>Erro critico ao processar modulo '{module_type}'.</p>")
 
         # Render HTML and build PDF
+        # Build friendly period label from final period timestamps (supports custom ranges)
+        try:
+            _s = dt.datetime.fromtimestamp(int(period['start']))
+            _e = dt.datetime.fromtimestamp(int(period['end']))
+            periodo_label = f"{_s.strftime('%d/%m/%Y')} – {_e.strftime('%d/%m/%Y')}"
+        except Exception:
+            periodo_label = str(ref_month_str)
+
         dados_gerais = {
             'group_name': client.name,
-            'periodo_referencia': start_date.strftime('%B de %Y').capitalize(),
+            'periodo_referencia': periodo_label,
             'data_emissao': dt.datetime.now().strftime('%d/%m/%Y'),
             'report_content': ''.join(final_html_parts)
         }
