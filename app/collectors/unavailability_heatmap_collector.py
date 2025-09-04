@@ -93,6 +93,24 @@ class UnavailabilityHeatmapCollector(BaseCollector):
         all_host_ids = [h['hostid'] for h in all_hosts]
         problems = self.generator.obter_eventos_wrapper(all_host_ids, period, 'hostids')
         if problems is None:
+            # Fallback robusto: quebra em dias para reduzir carga no Zabbix
+            try:
+                self._update_status('Consulta pesada detectada. Coletando eventos por dia...')
+                start_ts, end_ts = int(period['start']), int(period['end'])
+                day_seconds = 24 * 3600
+                parts = []
+                cur = start_ts
+                while cur <= end_ts:
+                    end_part = min(end_ts, cur + day_seconds - 1)
+                    p = {'start': cur, 'end': end_part}
+                    evs = self.generator.obter_eventos(all_host_ids, p, 'hostids', max_depth=1)
+                    if isinstance(evs, list) and evs:
+                        parts.extend(evs)
+                    cur = end_part + 1
+                problems = parts
+            except Exception:
+                problems = None
+        if problems is None:
             self._update_status('Erro ao coletar eventos para heatmap.')
             return self.render('unavailability_heatmap', {'error': 'Falha ao coletar eventos.'})
 
@@ -132,4 +150,3 @@ class UnavailabilityHeatmapCollector(BaseCollector):
             'chart_b64': chart_b64,
             'summary_text': summary,
         })
-
