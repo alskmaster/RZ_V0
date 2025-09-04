@@ -131,9 +131,40 @@ class IncidentsTableCollector(BaseCollector):
         # Campos de exibição
         df['severity_name'] = df['severity'].astype(str).map(self._SEVERITY_MAP).fillna('Desconhecido')
         df['formatted_clock'] = df['clock'].apply(self._format_timestamp)
-        df['duration_seconds'] = df.apply(lambda row: (int(row['r_event'].get('clock')) - int(row['clock'])) if isinstance(row.get('r_event'), dict) and row['r_event'].get('clock') else 0, axis=1)
+        # Correlação PROBLEM -> OK usando todos os eventos do período (para determinar fim real)
+        end_map = {}
+        try:
+            problems_only = [p for p in (problems or []) if str(p.get('source')) == '0' and str(p.get('object')) == '0' and str(p.get('value')) == '1']
+            correlated = self.generator._correlate_problems(problems_only, problems, period)
+            end_map = {(str(c.get('triggerid')), int(c.get('start'))): int(c.get('end')) for c in (correlated or []) if c.get('start') is not None}
+        except Exception:
+            end_map = {}
+        # Duração: se houver r_event (OK), usa-o como fim; caso contrário, usa o fim do período do relatório
+        try:
+            period_end_ts = int(period.get('end'))
+        except Exception:
+            import time as _t
+            period_end_ts = int(_t.time())
+        def _end_ts(row):
+            # 1) tenta fim correlacionado: chave (triggerid, start_clock)
+            try:
+                tid = str(row.get('objectid') or row.get('triggerid'))
+                st = int(row.get('clock'))
+                if (tid, st) in end_map:
+                    return int(end_map[(tid, st)])
+            except Exception:
+                pass
+            if isinstance(row.get('r_event'), dict) and row['r_event'].get('clock'):
+                try:
+                    return int(row['r_event'].get('clock'))
+                except Exception:
+                    return period_end_ts
+            return period_end_ts
+        # Garantir numéricos seguros para cálculo
+        df['start_ts'] = pd.to_numeric(df['clock'], errors='coerce').fillna(period_end_ts).astype(int)
+        df['end_ts'] = df.apply(_end_ts, axis=1)
+        df['duration_seconds'] = (df['end_ts'] - df['start_ts']).clip(lower=0)
         df['formatted_duration'] = df['duration_seconds'].apply(self._format_duration)
-        df['formatted_duration'] = df.apply(lambda row: row['formatted_duration'] if row['duration_seconds'] > 0 else 'Em aberto', axis=1)
         df['processed_acknowledgements'] = df['acknowledges'].apply(lambda acks: [
             {
                 'alias': ack.get('alias', 'N/A'),
@@ -203,3 +234,5 @@ class IncidentsTableCollector(BaseCollector):
             'show_acknowledgements': show_ack,
             'primary_grouping': primary_grouping,
         })
+
+
