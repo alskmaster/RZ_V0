@@ -13,7 +13,7 @@
 
   {% if data.show_table and data.rows %}
     <div class="table-responsive">
-      <table class="table table-sm table-striped align-middle">
+      <table class="table table-sm table-striped align-middle" style="table-layout: fixed;">\n        <colgroup>\n          <col style="width: 68%"/>\n          <col style="width: 16%"/>\n          <col style="width: 16%"/>\n        </colgroup>
         <thead>
           <tr>
             <th>Trigger</th>
@@ -24,7 +24,7 @@
         <tbody>
           {% for row in data.rows %}
             <tr>
-              <td title="{{ row.TriggerFull }}" style="max-width: 520px; word-break: break-word;">{{ row.Trigger }}</td>
+              <td title="{{ row.TriggerFull }}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ row.Trigger }}</td>
               <td class="text-end">{{ row.Ocorrencias_fmt or row.Ocorrencias }}</td>
               <td class="text-end">{{ row.Downtime_str }}</td>
             </tr>
@@ -34,5 +34,6 @@
     </div>
   {% endif %}
 </div>
+
 
 
