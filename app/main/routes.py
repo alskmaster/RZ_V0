@@ -429,9 +429,7 @@ def get_available_modules(client_id):
     if check_key('vfs.fs.size'):
         available_modules.append({'type': 'disk', 'name': 'Uso de Disco'})
 
-    if check_key('system.uptime'):
-        available_modules.append({'type': 'uptime_table', 'name': 'Uptime (Tabela)'})
-        available_modules.append({'type': 'uptime_chart', 'name': 'Uptime (Gráficos)'})
+    
     if check_key('net.if.in'):
         available_modules.append({'type': 'traffic_in', 'name': 'TrÃ¡fego de Entrada'})
         available_modules.append({'type': 'traffic_out', 'name': 'TrÃ¡fego de SaÃ­da'})

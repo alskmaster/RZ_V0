@@ -36,8 +36,6 @@ from .collectors.loss_table_collector import LossTableCollector
 from .collectors.loss_chart_collector import LossChartCollector
 from .collectors.inventory_collector import InventoryCollector
 from .collectors.html_collector import HtmlCollector
-from .collectors.uptime_table_collector import UptimeTableCollector
-from .collectors.uptime_chart_collector import UptimeChartCollector
 from .collectors.sla_collector import SlaCollector
 from .collectors.sla_table_collector import SlaTableCollector
 from .collectors.sla_chart_collector import SlaChartCollector
@@ -71,8 +69,6 @@ COLLECTOR_MAP = {
     'loss_chart': LossChartCollector,
     'inventory': InventoryCollector,
     'html': HtmlCollector,
-    'uptime_table': UptimeTableCollector,
-    'uptime_chart': UptimeChartCollector,
     'kpi': KpiCollector,
     'sla': SlaCollector,
     'sla_table': SlaTableCollector,
