@@ -272,6 +272,15 @@ class ReportGenerator:
                 continue
             try:
                 collector_instance = collector_class(self, module_config)
+                # Log do período base entregue ao coletor (BR dd-mm-YYYY)
+                try:
+                    _s = dt.datetime.fromtimestamp(int(period['start'])).strftime('%d-%m-%Y')
+                    _e = dt.datetime.fromtimestamp(int(period['end'])).strftime('%d-%m-%Y')
+                    self._update_status(
+                        f"Módulo '{module_type}': período base {_s} – {_e} | hosts={len(all_hosts)}"
+                    )
+                except Exception:
+                    pass
                 if module_type in availability_module_types:
                     if availability_data_cache:
                         if module_type in {'sla', 'sla_table', 'sla_chart', 'sla_plus'}:

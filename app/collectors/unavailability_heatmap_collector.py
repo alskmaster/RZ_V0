@@ -78,6 +78,12 @@ class UnavailabilityHeatmapCollector(BaseCollector):
         palette = o.get('palette', 'OrRd')
         annotate = o.get('annotate', True)
         period = self._apply_period_subfilter(period, o.get('period_sub_filter', 'full_month'))
+        try:
+            _s = dt.datetime.fromtimestamp(int(period['start'])).strftime('%d-%m-%Y')
+            _e = dt.datetime.fromtimestamp(int(period['end'])).strftime('%d-%m-%Y')
+            self._update_status(f'unavailability_heatmap | período efetivo {_s} – {_e}')
+        except Exception:
+            pass
 
         if host_contains:
             try:
@@ -150,3 +156,4 @@ class UnavailabilityHeatmapCollector(BaseCollector):
             'chart_b64': chart_b64,
             'summary_text': summary,
         })
+

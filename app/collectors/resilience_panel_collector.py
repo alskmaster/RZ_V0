@@ -49,6 +49,12 @@ class ResiliencePanelCollector(BaseCollector):
         decimals = int(opts.get('decimals') or 2)
         highlight = (opts.get('highlight_below_goal') is not False)
         period = self._apply_period_subfilter(period, opts.get('period_sub_filter', 'full_month'))
+        try:
+            _s = dt.datetime.fromtimestamp(int(period['start'])).strftime('%d-%m-%Y')
+            _e = dt.datetime.fromtimestamp(int(period['end'])).strftime('%d-%m-%Y')
+            self._update_status(f"resilience_panel | período efetivo {_s} – {_e}")
+        except Exception:
+            pass
 
         # SLA alvo do cliente (sem entrada manual)
         try:
