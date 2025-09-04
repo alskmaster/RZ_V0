@@ -55,26 +55,35 @@ class RootCauseTopTriggersCollector(BaseCollector):
         except Exception:
             return "00:00:00"
 
-    def _img_bars(self, df):
+    def _img_bars(self, df, max_label_len=48, show_values=True):
         if df is None or df.empty:
             return None
-        names = df['Trigger'].tolist()
+        names = [ (str(x)[:max_label_len-1] + '...') if isinstance(x,str) and len(str(x))>max_label_len else str(x) for x in df['Trigger'].tolist() ]
         counts = df['Ocorrencias'].astype(int).tolist()
-        dts = df['Downtime_s'].astype(int).tolist()
+        hours = (df['Downtime_s'].astype(int) / 3600.0).tolist()
 
-        x = np.arange(len(names))
-        width = 0.42
-        fig, ax1 = plt.subplots(figsize=(12, 5))
-        ax2 = ax1.twinx()
-        b1 = ax1.bar(x - width/2, counts, width, color='#1e88e5', label='Ocorrencias')
-        b2 = ax2.bar(x + width/2, np.array(dts)/3600.0, width, color='#e53935', label='Downtime (h)')
-        ax1.set_xlabel('Trigger')
-        ax1.set_ylabel('Ocorrencias')
-        ax2.set_ylabel('Downtime (horas)')
-        ax1.set_xticks(x)
-        ax1.set_xticklabels(names, rotation=45, ha='right')
-        ax1.grid(True, axis='y', linestyle='--', alpha=0.3)
-        ax1.legend([b1, b2], ['Ocorrencias', 'Downtime (h)'], loc='upper right')
+                n = len(names)
+        height = max(4.0, 0.7 * n + 1.2)
+        fig, ax1 = plt.subplots(figsize=(12, height))
+        ax2 = ax1.twiny()
+        y = np.arange(n)
+        h = 0.35
+        b1 = ax1.barh(y - h/2, counts, height=h, color='#1e88e5', label='Ocorrencias')
+        b2 = ax2.barh(y + h/2, hours, height=h, color='#e53935', label='Downtime (h)')
+        ax1.set_yticks(y)
+        ax1.set_yticklabels(names)
+        ax1.invert_yaxis()
+        ax1.set_xlabel('Ocorrencias')
+        ax2.set_xlabel('Downtime (horas)')
+        ax1.grid(True, axis='x', linestyle='--', alpha=0.3)
+        if show_values:
+            for rect in b1:
+                w = rect.get_width()
+                ax1.text(w + max(0.02*max(counts+[1]), 0.5), rect.get_y()+rect.get_height()/2, f"{int(w)}", va='center', fontsize=8, color='#1e88e5')
+            for rect in b2:
+                w = rect.get_width()
+                ax2.text(w + max(0.02*max(hours+[0.1]), 0.1), rect.get_y()+rect.get_height()/2, f"{w:.1f}h", va='center', fontsize=8, color='#e53935')
+        ax1.legend([b1, b2], ['Ocorrencias', 'Downtime (h)'], loc='lower right', fontsize=9)
         fig.tight_layout()
         buf = io.BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight')
@@ -171,10 +180,12 @@ class RootCauseTopTriggersCollector(BaseCollector):
         out = out.head(max(1, top_n))
         out['Downtime_str'] = out['Downtime_s'].apply(self._fmt_seconds)
 
-        chart_b64 = self._img_bars(out)
+        chart_b64 = self._img_bars(out, max_label_len=int(o.get('max_label_len') or 48), show_values=bool(o.get('show_values', True)))
         return self.render('root_cause_top_triggers', {
             'chart_b64': chart_b64,
             'rows': out.to_dict('records') if show_table else [],
             'show_table': bool(show_table),
         })
+
+
 
