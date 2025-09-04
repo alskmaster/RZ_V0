@@ -40,6 +40,7 @@ from .collectors.wifi_collector import WiFiCollector
 from .collectors.incidents_collector import IncidentsCollector  # legado (agora tabela)
 from .collectors.incidents_table_collector import IncidentsTableCollector
 from .collectors.incidents_chart_collector import IncidentsChartCollector
+from .collectors.resilience_panel_collector import ResiliencePanelCollector
 
 
 # Registry of collectors
@@ -66,6 +67,7 @@ COLLECTOR_MAP = {
     'incidents': IncidentsCollector,           # compatibilidade (tabelas)
     'incidents_table': IncidentsTableCollector,
     'incidents_chart': IncidentsChartCollector,
+    'resilience_panel': ResiliencePanelCollector,
 }
 
 

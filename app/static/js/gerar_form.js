@@ -204,6 +204,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Disponibilidade / SLA
                 'kpi': 'Disponibilidade / SLA', 'sla_table': 'Disponibilidade / SLA',
                 'sla_chart': 'Disponibilidade / SLA', 'sla_plus': 'Disponibilidade / SLA',
+                'resilience_panel': 'Disponibilidade / SLA',
                 'sla_incidents_table': 'Disponibilidade / SLA',
                 'top_hosts': 'Disponibilidade / SLA', 'top_problems': 'Disponibilidade / SLA',
                 'stress': 'Disponibilidade / SLA',
@@ -314,7 +315,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     // expõe callback para salvar no layout
                     if (customizer.elements && customizer.elements.saveBtn && !customizer._onSave) {
                         customizer._onSave = (opts) => {
-                            module.custom_options = opts || {};
+                            const saved = opts || {};
+                            if ('__title' in saved) {
+                                try { module.title = String(saved.__title || '').trim(); } catch(e) {}
+                                delete saved.__title;
+                            }
+                            module.custom_options = saved;
                             renderLayoutList();
                         };
                     }
@@ -330,7 +336,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (customizer.elements && customizer.elements.saveBtn) {
             customizer.elements.saveBtn.addEventListener('click', () => {
                 if (!currentModuleToCustomize) return;
-                currentModuleToCustomize.custom_options = customizer.save();
+                const saved = customizer.save() || {};
+                if ('__title' in saved) {
+                    try { currentModuleToCustomize.title = String(saved.__title || '').trim(); } catch(e) {}
+                    delete saved.__title;
+                }
+                currentModuleToCustomize.custom_options = saved;
                 renderLayoutList();
                 customizer.modal.hide();
             });

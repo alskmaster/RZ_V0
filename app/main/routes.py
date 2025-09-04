@@ -443,6 +443,12 @@ def get_available_modules(client_id):
         available_modules.append({'type': 'wifi', 'name': 'Wi-Fi (Utilização por AP/SSID)'})
     # --------- FIM DO BLOCO NOVO ----------------------------------------------------------
 
+    # Disponibilidade / SLA (novos)
+    try:
+        available_modules.append({'type': 'resilience_panel', 'name': 'Painel de Resiliência (SLA Preciso)'})
+    except Exception:
+        pass
+
     available_modules.append({'type': 'inventory', 'name': 'Inventário de Hosts'})
     available_modules.append({'type': 'html', 'name': 'Texto/HTML Customizado'})
     

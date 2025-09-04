@@ -1,0 +1,45 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Painel de Resiliência (SLA Preciso)' }}</h2>
+
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+  {% endif %}
+
+  {% if data.chart_b64 %}
+    <div class="mb-3 text-center">
+      <img src="data:image/png;base64,{{ data.chart_b64 }}" alt="Tendência de SLA" style="max-width:100%; height:auto;" />
+    </div>
+  {% endif %}
+
+  {% set target = data.target_sla %}
+  {% if not data.rows or data.rows|length == 0 %}
+    <div class="alert alert-info" role="alert">Nenhum serviço para exibir.</div>
+  {% else %}
+    {% if data.summary_text %}
+      <p class="mb-2">{{ data.summary_text }}</p>
+    {% endif %}
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Host</th>
+            <th class="text-end">SLA (%)</th>
+            <th class="text-end">Downtime</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data.rows %}
+            {% set hit = (target is not none and row.sla is not none and row.sla >= target) %}
+            {% set should_highlight = (data.highlight_below_goal and target is not none and not hit) %}
+            <tr class="{% if should_highlight %}table-danger{% endif %}" {% if should_highlight %}style="background-color:#f8d7da;"{% endif %}>
+              <td>{{ row.host }}</td>
+              <td class="text-end">{% if row.sla is not none %}{{ row.sla_str }}{% else %}N/A{% endif %}</td>
+              <td class="text-end">{{ row.downtime_hms }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+</div>
