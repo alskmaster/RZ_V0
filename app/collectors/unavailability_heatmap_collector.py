@@ -12,24 +12,24 @@ import base64
 
 class UnavailabilityHeatmapCollector(BaseCollector):
     """
-    Mapa de Calor de Indisponibilidade
+    Mapa de Calor de Indisponibilidade (ASCII only)
 
-    - Objetivo: visualizar frequência de incidentes (PROBLEM) por dia da semana (linhas) e hora (colunas).
-    - Respeita Cliente e Mês do gerar_form (via all_hosts e period). Opcionalmente aplica sub-filtro de período.
+    - Visualiza frequencia de incidentes (PROBLEM) por dia da semana (linhas) e hora (colunas).
+    - Respeita cliente e periodo selecionados (all_hosts e period), com sub-filtro opcional.
 
-    custom_options suportadas:
-      - severities: [info, warning, average, high, disaster] (default: todas)
-      - host_name_contains: filtro textual por host visível
-      - period_sub_filter: full_month | last_24h | last_7d (default: full_month)
-      - palette: nome de colormap do matplotlib (default: 'OrRd')
-      - annotate: bool, insere números no heatmap (default: True)
+    custom_options:
+      - severities: [info, warning, average, high, disaster]
+      - host_name_contains: filtro textual por host visivel
+      - period_sub_filter: full_month | last_24h | last_7d
+      - palette: colormap do matplotlib (default: 'OrRd')
+      - annotate: bool, insere numeros nas celulas (default: True)
     """
 
     _SEVERITY_FILTER_MAP = {
         'info': '1', 'warning': '2', 'average': '3', 'high': '4', 'disaster': '5', 'not_classified': '0'
     }
 
-    _DAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+    _DAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom']
 
     def _apply_period_subfilter(self, period, sub):
         start, end = period['start'], period['end']
@@ -81,7 +81,7 @@ class UnavailabilityHeatmapCollector(BaseCollector):
         try:
             _s = dt.datetime.fromtimestamp(int(period['start'])).strftime('%d-%m-%Y')
             _e = dt.datetime.fromtimestamp(int(period['end'])).strftime('%d-%m-%Y')
-            self._update_status(f'unavailability_heatmap | per�odo efetivo {_s} � {_e}')
+            self._update_status(f"unavailability_heatmap | periodo efetivo {_s} - {_e}")
         except Exception:
             pass
 
@@ -92,14 +92,14 @@ class UnavailabilityHeatmapCollector(BaseCollector):
                 pass
         if not all_hosts:
             return self.render('unavailability_heatmap', {
-                'error': 'Nenhum host disponível para o período/filtro informado.',
+                'error': 'Nenhum host disponivel para o periodo/filtro informado.',
                 'chart_b64': None,
             })
 
         all_host_ids = [h['hostid'] for h in all_hosts]
         problems = self.generator.obter_eventos_wrapper(all_host_ids, period, 'hostids')
         if problems is None:
-            # Fallback robusto: quebra em dias para reduzir carga no Zabbix
+            # Fallback: dividir por dias para reduzir carga
             try:
                 self._update_status('Consulta pesada detectada. Coletando eventos por dia...')
                 start_ts, end_ts = int(period['start']), int(period['end'])
@@ -150,7 +150,7 @@ class UnavailabilityHeatmapCollector(BaseCollector):
 
         chart_b64 = self._img(mat, palette=palette, annotate=bool(annotate))
         total = int(np.sum(mat))
-        summary = f"Mapa de calor baseado em {total} incidente(s) no período selecionado."
+        summary = f"Mapa de calor baseado em {total} incidente(s) no periodo selecionado."
 
         return self.render('unavailability_heatmap', {
             'chart_b64': chart_b64,

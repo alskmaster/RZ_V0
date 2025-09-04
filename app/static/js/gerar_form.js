@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'top_hosts': 'Disponibilidade / SLA', 'top_problems': 'Disponibilidade / SLA',
                 'stress': 'Disponibilidade / SLA',
                 // Incidentes
-                'incidents_table': 'Incidentes', 'incidents_chart': 'Incidentes', 'unavailability_heatmap': 'Incidentes',
+                'incidents_table': 'Incidentes', 'incidents_chart': 'Incidentes', 'unavailability_heatmap': 'Incidentes', 'root_cause_top_triggers': 'Incidentes',
                 // Wi‑Fi
                 'wifi': 'Wi‑Fi',
                 // Inventário & Conteúdo
@@ -463,4 +463,5 @@ document.addEventListener('DOMContentLoaded', function () {
     if (dateToInput) dateToInput.value = lastDay;
     renderLayoutList();
 });
+
 

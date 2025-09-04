@@ -1,0 +1,37 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Analise de Causa-Raiz (Top Gatilhos)' }}</h2>
+
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+  {% endif %}
+
+  {% if data.chart_b64 %}
+    <div class="mb-3 text-center">
+      <img src="data:image/png;base64,{{ data.chart_b64 }}" alt="Top Gatilhos" style="max-width:100%; height:auto;" />
+    </div>
+  {% endif %}
+
+  {% if data.show_table and data.rows %}
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Trigger</th>
+            <th class="text-end">Ocorrencias</th>
+            <th class="text-end">Downtime</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data.rows %}
+            <tr>
+              <td>{{ row.Trigger }}</td>
+              <td class="text-end">{{ row.Ocorrencias }}</td>
+              <td class="text-end">{{ row.Downtime_str }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>
+

@@ -42,6 +42,7 @@ from .collectors.incidents_table_collector import IncidentsTableCollector
 from .collectors.incidents_chart_collector import IncidentsChartCollector
 from .collectors.resilience_panel_collector import ResiliencePanelCollector
 from .collectors.unavailability_heatmap_collector import UnavailabilityHeatmapCollector
+from .collectors.root_cause_top_triggers_collector import RootCauseTopTriggersCollector
 
 
 # Registry of collectors
@@ -70,6 +71,7 @@ COLLECTOR_MAP = {
     'incidents_chart': IncidentsChartCollector,
     'resilience_panel': ResiliencePanelCollector,
     'unavailability_heatmap': UnavailabilityHeatmapCollector,
+    'root_cause_top_triggers': RootCauseTopTriggersCollector,
 }
 
 
@@ -786,6 +788,9 @@ class ReportGenerator:
         import pandas as pd
         rows = [{'Host': host_map.get(h, f'Host {h}'), 'Problemas': c} for h, c in cnt.items()]
         return pd.DataFrame(rows)
+
+
+
 
 
 
