@@ -204,6 +204,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Disponibilidade / SLA
                 'kpi': 'Disponibilidade / SLA', 'sla_table': 'Disponibilidade / SLA',
                 'sla_chart': 'Disponibilidade / SLA', 'sla_plus': 'Disponibilidade / SLA',
+                'sla_incidents_table': 'Disponibilidade / SLA',
                 'top_hosts': 'Disponibilidade / SLA', 'top_problems': 'Disponibilidade / SLA',
                 'stress': 'Disponibilidade / SLA',
                 // Incidentes

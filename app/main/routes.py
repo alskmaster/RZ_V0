@@ -380,17 +380,7 @@ def get_available_modules(client_id):
 
     available_modules = []
     
-    if check_key('icmpping'):
-        available_modules.append({'type': 'kpi', 'name': 'KPIs de Disponibilidade'})
-        available_modules.append({'type': 'sla_table', 'name': 'Disponibilidade (SLA) - Tabela'})
-        available_modules.append({'type': 'sla_chart', 'name': 'Disponibilidade (SLA) - Gráfico'})
-        available_modules.append({'type': 'sla_plus', 'name': 'SLA Plus VIP (Comparativo)'})
-        # Mantém módulo legado para compatibilidade
-        available_modules.append({'type': 'sla', 'name': 'Disponibilidade (SLA) - Legado'})
-        available_modules.append({'type': 'top_hosts', 'name': 'Diagnóstico dos Ofensores'})
-        available_modules.append({'type': 'top_problems', 'name': 'Painel de Vilões Sistêmicos'})
-        available_modules.append({'type': 'stress', 'name': 'Eletrocardiograma do Ambiente'})
-        # Incidentes divididos
+    if check_key('icmpping'):        # Incidentes divididos
         available_modules.append({'type': 'incidents_table', 'name': 'Incidentes (Tabela)'})
         available_modules.append({'type': 'incidents_chart', 'name': 'Incidentes (Gráficos)'})
     
@@ -457,7 +447,7 @@ def get_available_modules(client_id):
     available_modules.append({'type': 'html', 'name': 'Texto/HTML Customizado'})
     
     # Limpa módulos legados do backend (mostrar apenas versões novas)
-    legacy_types = {'cpu', 'mem', 'latency', 'loss', 'sla'}
+    legacy_types = {'cpu', 'mem', 'latency', 'loss', 'sla', 'sla_table', 'sla_chart', 'sla_plus', 'kpi', 'top_hosts', 'top_problems', 'stress', 'sla_incidents_table'}
     try:
         available_modules = [m for m in available_modules if m.get('type') not in legacy_types]
     except Exception:
@@ -593,3 +583,6 @@ def test_events(client_id, mes_ref):
         "diagnostico": "Coleta em lote está INCOMPLETA." if total_diario > total_lote else "Coleta em lote parece COMPLETA.",
         "detalhes_diarios": dias_com_eventos
     })
+
+
+

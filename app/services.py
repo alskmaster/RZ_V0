@@ -36,14 +36,6 @@ from .collectors.loss_table_collector import LossTableCollector
 from .collectors.loss_chart_collector import LossChartCollector
 from .collectors.inventory_collector import InventoryCollector
 from .collectors.html_collector import HtmlCollector
-from .collectors.sla_collector import SlaCollector
-from .collectors.sla_table_collector import SlaTableCollector
-from .collectors.sla_chart_collector import SlaChartCollector
-from .collectors.sla_plus_collector import SlaPlusCollector
-from .collectors.kpi_collector import KpiCollector
-from .collectors.top_hosts_collector import TopHostsCollector
-from .collectors.top_problems_collector import TopProblemsCollector
-from .collectors.stress_collector import StressCollector
 from .collectors.wifi_collector import WiFiCollector
 from .collectors.incidents_collector import IncidentsCollector  # legado (agora tabela)
 from .collectors.incidents_table_collector import IncidentsTableCollector
@@ -69,14 +61,6 @@ COLLECTOR_MAP = {
     'loss_chart': LossChartCollector,
     'inventory': InventoryCollector,
     'html': HtmlCollector,
-    'kpi': KpiCollector,
-    'sla': SlaCollector,
-    'sla_table': SlaTableCollector,
-    'sla_chart': SlaChartCollector,
-    'sla_plus': SlaPlusCollector,
-    'top_hosts': TopHostsCollector,
-    'top_problems': TopProblemsCollector,
-    'stress': StressCollector,
     'wifi': WiFiCollector,
     # Incidentes divididos em dois módulos
     'incidents': IncidentsCollector,           # compatibilidade (tabelas)
@@ -206,9 +190,7 @@ class ReportGenerator:
         availability_data_cache = None
         sla_prev_month_df = None
         wifi_prev_month_df = None
-        availability_module_types = {
-            'sla', 'sla_table', 'sla_chart', 'sla_plus', 'kpi', 'top_hosts', 'top_problems', 'stress'
-        }
+        availability_module_types = set()
         final_html_parts = []
 
         # Pre-collect SLA if needed
@@ -338,7 +320,7 @@ class ReportGenerator:
     def _collect_availability_data(self, all_hosts, period, sla_goal, trends_only=False):
         all_host_ids = [h['hostid'] for h in all_hosts]
         # icmpping items with triggers (to correlate problems)
-        ping_items = self.get_items(all_host_ids, 'icmpping', search_by_key=True, include_triggers=True)
+        ping_items = self.get_items(all_host_ids, 'icmpping', search_by_key=True, exact_key_search=True, include_triggers=True)
         if not ping_items:
             return None, "Nenhum item 'icmpping' encontrado."
         hosts_with_ping_ids = {it['hostid'] for it in ping_items}
@@ -662,12 +644,22 @@ class ReportGenerator:
         if not problems:
             return []
         events_by_trigger = defaultdict(list)
+        event_by_id = {}
         for ev in (all_events or []):
-            tid = ev.get('objectid') or ev.get('triggerid')
-            if tid is not None:
-                events_by_trigger[str(tid)].append(ev)
+            try:
+                tid = ev.get('objectid') or ev.get('triggerid')
+                if tid is not None:
+                    events_by_trigger[str(tid)].append(ev)
+                eid = ev.get('eventid')
+                if eid is not None:
+                    event_by_id[str(eid)] = ev
+            except Exception:
+                continue
         for evs in events_by_trigger.values():
-            evs.sort(key=lambda e: int(e.get('clock', 0)))
+            try:
+                evs.sort(key=lambda e: int(e.get('clock', 0)))
+            except Exception:
+                pass
         out = []
         for p in problems:
             try:
@@ -678,11 +670,25 @@ class ReportGenerator:
                 hosts = p.get('hosts') or []
                 if hosts:
                     hostid = (hosts[0] or {}).get('hostid')
+                # Preferir r_eventid quando presente
                 end_clock = None
-                for ev in evs:
-                    if int(ev.get('clock', 0)) > p_clock and str(ev.get('value', '0')) == '0':
-                        end_clock = int(ev['clock'])
-                        break
+                r_eid = p.get('r_eventid') or p.get('r_event')
+                if r_eid is not None:
+                    ev_end = event_by_id.get(str(r_eid))
+                    if ev_end and ev_end.get('clock') is not None:
+                        try:
+                            end_clock = int(ev_end.get('clock'))
+                        except Exception:
+                            end_clock = None
+                # Fallback: procurar primeiro OK após o PROBLEM
+                if end_clock is None:
+                    for ev in evs:
+                        try:
+                            if int(ev.get('clock', 0)) > p_clock and str(ev.get('value', '0')) == '0':
+                                end_clock = int(ev['clock'])
+                                break
+                        except Exception:
+                            continue
                 if end_clock is None:
                     if period and 'end' in period:
                         try:
@@ -743,3 +749,6 @@ class ReportGenerator:
         import pandas as pd
         rows = [{'Host': host_map.get(h, f'Host {h}'), 'Problemas': c} for h, c in cnt.items()]
         return pd.DataFrame(rows)
+
+
+

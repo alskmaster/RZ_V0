@@ -1,8 +1,0 @@
-<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
-  <h2>{{ title or 'Análise de Disponibilidade (SLA) - Tabela' }}</h2>
-  {{ data.summary_html | safe }}
-  <div class="table-responsive">
-    {{ data.table_html | safe }}
-  </div>
-</div>
-
