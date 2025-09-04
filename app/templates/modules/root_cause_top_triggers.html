@@ -24,7 +24,7 @@
         <tbody>
           {% for row in data.rows %}
             <tr>
-              <td title="{{ row.TriggerFull }}" style="max-width: 520px; word-break: break-word;">{{ row.Trigger }}</td>
+              <td title="{{ row.TriggerFull }}" style="max-width: 520px; overflow-wrap: anywhere; word-break: break-word; hyphens: auto;">{{ row.Trigger }}</td>
               <td class="text-end">{{ row.Ocorrencias_fmt or row.Ocorrencias }}</td>
               <td class="text-end">{{ row.Downtime_str }}</td>
             </tr>
@@ -34,5 +34,6 @@
     </div>
   {% endif %}
 </div>
+
 
 
