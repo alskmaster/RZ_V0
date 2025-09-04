@@ -62,7 +62,7 @@ class RootCauseTopTriggersCollector(BaseCollector):
         counts = df['Ocorrencias'].astype(int).tolist()
         hours = (df['Downtime_s'].astype(int) / 3600.0).tolist()
 
-                n = len(names)
+        n = len(names)
         height = max(4.0, 0.7 * n + 1.2)
         fig, ax1 = plt.subplots(figsize=(12, height))
         ax2 = ax1.twiny()
