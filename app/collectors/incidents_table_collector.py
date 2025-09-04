@@ -76,6 +76,7 @@ class IncidentsTableCollector(BaseCollector):
         primary_grouping = opts.get('primary_grouping', 'host')
         show_duration = opts.get('show_duration', True)
         show_ack = opts.get('show_acknowledgements', True)
+        only_with_ack = bool(opts.get('only_with_acknowledgements', False))
         host_name_contains = (opts.get('host_name_contains') or '').strip()
         top_n_hosts = opts.get('num_hosts')
 
@@ -142,6 +143,21 @@ class IncidentsTableCollector(BaseCollector):
             for ack in (acks or []) if isinstance(acks, list) and isinstance(ack, dict)
         ])
 
+        # Filtro opcional: exibir apenas incidentes que possuem pelo menos um reconhecimento
+        if only_with_ack:
+            try:
+                df = df[df['processed_acknowledgements'].apply(lambda lst: isinstance(lst, list) and len(lst) > 0)]
+            except Exception:
+                pass
+        if df.empty:
+            return self.render('incidents_table', {
+                "grouped_data": [],
+                "selected_severities": selected_names,
+                "show_duration": show_duration,
+                "show_acknowledgements": show_ack,
+                "primary_grouping": primary_grouping,
+            })
+
         grouped_data = []
         if primary_grouping == 'host':
             if top_n_hosts:
@@ -187,4 +203,3 @@ class IncidentsTableCollector(BaseCollector):
             'show_acknowledgements': show_ack,
             'primary_grouping': primary_grouping,
         })
-

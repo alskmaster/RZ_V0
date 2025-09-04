@@ -17,6 +17,7 @@
         primaryGrouping: el.querySelector('#incTblPrimaryGrouping'),
         showDuration: el.querySelector('#incTblShowDuration'),
         showAcknowledgements: el.querySelector('#incTblShowAcknowledgements'),
+        onlyWithAck: el.querySelector('#incTblOnlyWithAck'),
         saveBtn: el.querySelector('#saveIncTblCustomizationBtn')
       };
     },
@@ -36,6 +37,7 @@
       el.primaryGrouping.value = o.primary_grouping || 'host';
       el.showDuration.checked = o.show_duration !== false;
       el.showAcknowledgements.checked = o.show_acknowledgements !== false;
+      el.onlyWithAck.checked = !!o.only_with_acknowledgements;
       el.saveBtn.addEventListener('click', ()=>{ if (this._onSave) this._onSave(this.save()); this.modal.hide(); }, { once:true });
     },
     save(){
@@ -53,6 +55,7 @@
         primary_grouping: el.primaryGrouping.value,
         show_duration: !!el.showDuration.checked,
         show_acknowledgements: !!el.showAcknowledgements.checked,
+        only_with_acknowledgements: !!el.onlyWithAck.checked,
       };
     }
   };
@@ -96,6 +99,7 @@
             </div>
             <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblShowDuration"><label class="form-check-label" for="incTblShowDuration">Mostrar Duração</label></div>
             <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblShowAcknowledgements"><label class="form-check-label" for="incTblShowAcknowledgements">Mostrar Reconhecimentos</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblOnlyWithAck"><label class="form-check-label" for="incTblOnlyWithAck">Exibir apenas itens com reconhecimento</label></div>
           </div>
         </div></div>
         <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
