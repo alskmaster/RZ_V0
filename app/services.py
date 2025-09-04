@@ -170,7 +170,7 @@ class ReportGenerator:
                 if e < s:
                     s, e = e, s
                 period = {"start": int(s.timestamp()), "end": int(e.timestamp())}
-                ref_label = f"{s.strftime('%Y-%m-%d')}__{e.strftime('%Y-%m-%d')}"
+                ref_label = f"{s.strftime('%d-%m-%Y')}__{e.strftime('%d-%m-%Y')}"
             except Exception:
                 period = None
         if period is None:
@@ -181,7 +181,7 @@ class ReportGenerator:
             start_date = ref_date.replace(day=1, hour=0, minute=0, second=0)
             end_date = (start_date.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(seconds=1)
             period = {"start": int(start_date.timestamp()), "end": int(end_date.timestamp())}
-            ref_label = ref_month_str
+            ref_label = f"{start_date.strftime('%d-%m-%Y')}__{end_date.strftime('%d-%m-%Y')}"
 
         # Grupos do cliente
         try:
@@ -295,7 +295,7 @@ class ReportGenerator:
         try:
             _s = dt.datetime.fromtimestamp(int(period['start']))
             _e = dt.datetime.fromtimestamp(int(period['end']))
-            periodo_label = f"{_s.strftime('%d/%m/%Y')} – {_e.strftime('%d/%m/%Y')}"
+            periodo_label = f"{_s.strftime('%d-%m-%Y')} – {_e.strftime('%d-%m-%Y')}"
         except Exception:
             periodo_label = str(ref_month_str)
 
