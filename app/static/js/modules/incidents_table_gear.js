@@ -14,6 +14,7 @@
         periodSubFilter: el.querySelector('#incTblPeriodSubFilter'),
         numHosts: el.querySelector('#incTblNumHosts'),
         hostNameContains: el.querySelector('#incTblHostNameContains'),
+        problemContains: el.querySelector('#incTblProblemContains'),
         primaryGrouping: el.querySelector('#incTblPrimaryGrouping'),
         showDuration: el.querySelector('#incTblShowDuration'),
         showAcknowledgements: el.querySelector('#incTblShowAcknowledgements'),
@@ -38,6 +39,7 @@
       el.showDuration.checked = o.show_duration !== false;
       el.showAcknowledgements.checked = o.show_acknowledgements !== false;
       el.onlyWithAck.checked = !!o.only_with_acknowledgements;
+      if (el.problemContains) el.problemContains.value = o.problem_contains || '';
       el.saveBtn.addEventListener('click', ()=>{ if (this._onSave) this._onSave(this.save()); this.modal.hide(); }, { once:true });
     },
     save(){
@@ -56,6 +58,7 @@
         show_duration: !!el.showDuration.checked,
         show_acknowledgements: !!el.showAcknowledgements.checked,
         only_with_acknowledgements: !!el.onlyWithAck.checked,
+        problem_contains: el.problemContains ? (el.problemContains.value || null) : null,
       };
     }
   };
@@ -110,3 +113,5 @@
     return document.getElementById('customizeIncTblModal');
   }
 })();
+
+

@@ -78,6 +78,7 @@ class IncidentsTableCollector(BaseCollector):
         show_ack = opts.get('show_acknowledgements', True)
         only_with_ack = bool(opts.get('only_with_acknowledgements', False))
         host_name_contains = (opts.get('host_name_contains') or '').strip()
+        problem_contains = (opts.get('problem_contains') or '').strip()
         top_n_hosts = opts.get('num_hosts')
 
         period = self._apply_period_subfilter(period, opts.get('period_sub_filter', 'full_month'))
@@ -119,6 +120,8 @@ class IncidentsTableCollector(BaseCollector):
         df['host_name'] = df['hosts'].apply(lambda x: host_name_map.get(x[0].get('hostid')) if isinstance(x, list) and x and isinstance(x[0], dict) and x[0].get('hostid') else 'Desconhecido')
         if host_name_contains:
             df = df[df['host_name'].str.contains(host_name_contains, case=False, na=False)]
+        if problem_contains:
+            df = df[df['name'].astype(str).str.contains(problem_contains, case=False, na=False)]
         if df.empty:
             return self.render('incidents_table', {
                 "grouped_data": [],
