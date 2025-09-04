@@ -33,7 +33,7 @@ def before_request_func():
             db.session.rollback()
     g.sys_config = cfg
 
-def run_generation_in_thread(app_context, task_id, client_id, ref_month, user_id, report_layout_json):
+def run_generation_in_thread(app_context, task_id, client_id, ref_month, user_id, report_layout_json, date_from=None, date_to=None):
     with app_context:
         try:
             client = db.session.get(Client, int(client_id))
@@ -49,7 +49,7 @@ def run_generation_in_thread(app_context, task_id, client_id, ref_month, user_id
                 return
 
             generator = ReportGenerator(config_zabbix, task_id)
-            pdf_path, error = generator.generate(client, ref_month, system_config, author, report_layout_json)
+            pdf_path, error = generator.generate(client, ref_month, system_config, author, report_layout_json, custom_start=date_from, custom_end=date_to)
             if error:
                 update_status(task_id, f"Erro: {error}")
             else:
@@ -83,7 +83,9 @@ def gerar_relatorio():
         REPORT_GENERATION_TASKS[task_id] = {'status': 'Iniciando...'}
     
     client_id = request.form.get('client_id')
-    ref_month = request.form.get('mes_ref')
+    ref_month = request.form.get('mes_ref')  # compatibilidade
+    date_from = request.form.get('date_from')
+    date_to = request.form.get('date_to')
     report_layout_json = request.form.get('report_layout')
 
     # Migração automática de módulos legados para novos (Tabela/Gráficos)
@@ -144,7 +146,7 @@ def gerar_relatorio():
         report_layout_json = _json.dumps(migrated)
     except Exception:
         pass
-    thread = threading.Thread(target=run_generation_in_thread, args=(current_app.app_context(), task_id, client_id, ref_month, current_user.id, report_layout_json))
+    thread = threading.Thread(target=run_generation_in_thread, args=(current_app.app_context(), task_id, client_id, ref_month, current_user.id, report_layout_json, date_from, date_to))
     thread.daemon = True
     thread.start()
     return jsonify({'task_id': task_id})

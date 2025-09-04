@@ -1,7 +1,8 @@
 document.addEventListener('DOMContentLoaded', function () {
     // --- ELEMENTOS DO DOM ---
     const clientSelect = document.getElementById('client_id');
-    const monthInput = document.getElementById('mes_ref');
+    const dateFromInput = document.getElementById('date_from');
+    const dateToInput = document.getElementById('date_to');
     const moduleTypeSelect = document.getElementById('module-type-select');
     const moduleTitleInput = document.getElementById('module-title-input');
     const newPageCheck = document.getElementById('module-newpage-check');
@@ -452,7 +453,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- INICIALIZAÇÃO ---
     const today = new Date();
-    monthInput.value = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+    // Define período padrão: mês corrente
+    const y = today.getFullYear();
+    const m = today.getMonth() + 1;
+    const firstDay = `${y}-${String(m).padStart(2,'0')}-01`;
+    const lastDayDate = new Date(y, m, 0);
+    const lastDay = `${y}-${String(m).padStart(2,'0')}-${String(lastDayDate.getDate()).padStart(2,'0')}`;
+    if (dateFromInput) dateFromInput.value = firstDay;
+    if (dateToInput) dateToInput.value = lastDay;
     renderLayoutList();
 });
 

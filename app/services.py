@@ -151,21 +151,37 @@ class ReportGenerator:
         return None
 
     # -------------------- Pipeline --------------------
-    def generate(self, client, ref_month_str, system_config, author, report_layout_json):
+    def generate(self, client, ref_month_str, system_config, author, report_layout_json, custom_start=None, custom_end=None):
         self.client = client
         self.system_config = system_config
         self.cached_data = {}
 
         self._update_status("Iniciando geracao do relatorio.")
 
-        # Periodo
-        try:
-            ref_date = dt.datetime.strptime(f"{ref_month_str}-01", "%Y-%m-%d")
-        except ValueError:
-            return None, "Formato de mes de referencia invalido. Use YYYY-MM."
-        start_date = ref_date.replace(day=1, hour=0, minute=0, second=0)
-        end_date = (start_date.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(seconds=1)
-        period = {"start": int(start_date.timestamp()), "end": int(end_date.timestamp())}
+        # Periodo: aceita faixa customizada (date_from/date_to) ou mês de referência
+        period = None
+        ref_label = None
+        if custom_start and custom_end:
+            try:
+                s = dt.datetime.strptime(custom_start, '%Y-%m-%d')
+                e = dt.datetime.strptime(custom_end, '%Y-%m-%d')
+                s = s.replace(hour=0, minute=0, second=0)
+                e = e.replace(hour=23, minute=59, second=59)
+                if e < s:
+                    s, e = e, s
+                period = {"start": int(s.timestamp()), "end": int(e.timestamp())}
+                ref_label = f"{s.strftime('%Y-%m-%d')}__{e.strftime('%Y-%m-%d')}"
+            except Exception:
+                period = None
+        if period is None:
+            try:
+                ref_date = dt.datetime.strptime(f"{ref_month_str}-01", "%Y-%m-%d")
+            except ValueError:
+                return None, "Formato de referencia invalido. Use YYYY-MM ou defina data inicial/final."
+            start_date = ref_date.replace(day=1, hour=0, minute=0, second=0)
+            end_date = (start_date.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(seconds=1)
+            period = {"start": int(start_date.timestamp()), "end": int(end_date.timestamp())}
+            ref_label = ref_month_str
 
         # Grupos do cliente
         try:
@@ -303,21 +319,21 @@ class ReportGenerator:
             current_app.logger.error("[ReportGenerator.generate] Falha ao montar PDF", exc_info=True)
             return None, "Falha ao montar o PDF do relatorio."
 
-        pdf_filename = f"Relatorio_Custom_{client.name.replace(' ', '_')}_{ref_month_str}_{os.urandom(4).hex()}.pdf"
+        pdf_filename = f"Relatorio_Custom_{client.name.replace(' ', '_')}_{ref_label}_{os.urandom(4).hex()}.pdf"
         pdf_path = os.path.join(current_app.config['GENERATED_REPORTS_FOLDER'], pdf_filename)
         final_file_path = pdf_builder.save_and_cleanup(pdf_path)
 
         report_record = Report(
             filename=pdf_filename,
             file_path=pdf_path,
-            reference_month=ref_month_str,
+            reference_month=ref_label,
             user_id=author.id,
             client_id=client.id,
             report_type='custom'
         )
         db.session.add(report_record)
         db.session.commit()
-        AuditService.log(f"Gerou relatorio customizado para '{client.name}' referente a {ref_month_str}", user=author)
+        AuditService.log(f"Gerou relatorio customizado para '{client.name}' referente a {ref_label}", user=author)
         return pdf_path, None
 
     # -------------------- Availability data --------------------
