@@ -41,6 +41,7 @@ from .collectors.incidents_collector import IncidentsCollector  # legado (agora 
 from .collectors.incidents_table_collector import IncidentsTableCollector
 from .collectors.incidents_chart_collector import IncidentsChartCollector
 from .collectors.resilience_panel_collector import ResiliencePanelCollector
+from .collectors.unavailability_heatmap_collector import UnavailabilityHeatmapCollector
 
 
 # Registry of collectors
@@ -68,6 +69,7 @@ COLLECTOR_MAP = {
     'incidents_table': IncidentsTableCollector,
     'incidents_chart': IncidentsChartCollector,
     'resilience_panel': ResiliencePanelCollector,
+    'unavailability_heatmap': UnavailabilityHeatmapCollector,
 }
 
 

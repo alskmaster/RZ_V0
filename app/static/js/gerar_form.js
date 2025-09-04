@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'top_hosts': 'Disponibilidade / SLA', 'top_problems': 'Disponibilidade / SLA',
                 'stress': 'Disponibilidade / SLA',
                 // Incidentes
-                'incidents_table': 'Incidentes', 'incidents_chart': 'Incidentes',
+                'incidents_table': 'Incidentes', 'incidents_chart': 'Incidentes', 'unavailability_heatmap': 'Incidentes',
                 // Wi‑Fi
                 'wifi': 'Wi‑Fi',
                 // Inventário & Conteúdo
@@ -455,3 +455,4 @@ document.addEventListener('DOMContentLoaded', function () {
     monthInput.value = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
     renderLayoutList();
 });
+

@@ -383,6 +383,7 @@ def get_available_modules(client_id):
     if check_key('icmpping'):        # Incidentes divididos
         available_modules.append({'type': 'incidents_table', 'name': 'Incidentes (Tabela)'})
         available_modules.append({'type': 'incidents_chart', 'name': 'Incidentes (Gráficos)'})
+        available_modules.append({'type': 'unavailability_heatmap', 'name': 'Mapa de Calor de Indisponibilidade'})
     
     if check_key('icmppingsec'):
         available_modules.append({'type': 'latency', 'name': 'Latência de Rede (Ping)'})
@@ -589,6 +590,7 @@ def test_events(client_id, mes_ref):
         "diagnostico": "Coleta em lote está INCOMPLETA." if total_diario > total_lote else "Coleta em lote parece COMPLETA.",
         "detalhes_diarios": dias_com_eventos
     })
+
 
 
 

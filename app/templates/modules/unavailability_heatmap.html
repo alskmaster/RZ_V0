@@ -1,0 +1,20 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Mapa de Calor de Indisponibilidade' }}</h2>
+
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+  {% endif %}
+
+  {% if data.summary_text %}
+    <p class="mb-2">{{ data.summary_text }}</p>
+  {% endif %}
+
+  {% if data.chart_b64 %}
+    <div class="text-center">
+      <img src="data:image/png;base64,{{ data.chart_b64 }}" alt="Mapa de Calor de Indisponibilidade" style="max-width:100%; height:auto;"/>
+    </div>
+  {% else %}
+    <div class="alert alert-info" role="alert">Nenhum incidente encontrado para construir o mapa.</div>
+  {% endif %}
+</div>
+
