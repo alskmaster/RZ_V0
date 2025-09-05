@@ -1,0 +1,13 @@
+[Ação] [Serviço] [Sessão] - Descrição concisa da atualização
+
+# Padrão de mensagem de commit (use as três tags iniciais):
+# [Ação]: tipo da mudança (Ex.: Ajuste, Fix, Refatoração, Doc, Feat, Chore)
+# [Serviço]: área ou componente (Ex.: WebApp, Backend, Builder, Admin, Zabbix)
+# [Sessão]: contexto específico (Ex.: Geração, UI, Resiliência, PDF, Auth)
+# Separe cabeçalho do corpo com uma linha em branco. O corpo é opcional.
+
+# Exemplos:
+# [Ajuste] [WebApp] [UI] - Corrige labels com acentuação no builder
+# [Feat] [Backend] [SLA] - Adiciona cálculo de SLA por serviço
+# [Doc] [Repo] [Contrib] - Documenta padrão de commits e hooks
+
