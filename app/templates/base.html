@@ -80,11 +80,11 @@
                 {% endif %}
             </a>
             <ul class="nav flex-column">
-                <li><a href="{{ url_for('main.gerar_form') }}" class="nav-link {% if request.endpoint == 'main.gerar_form' %}active{% endif %}"><i class="bi bi-file-earmark-plus me-2"></i>Gerar Relatorio</a></li>
-                <li><a href="{{ url_for('main.history') }}" class="nav-link {% if request.endpoint == 'main.history' %}active{% endif %}"><i class="bi bi-clock-history me-2"></i>Historico</a></li>
+                <li><a href="{{ url_for('main.gerar_form') }}" class="nav-link {% if request.endpoint == 'main.gerar_form' %}active{% endif %}"><i class="bi bi-file-earmark-plus me-2"></i>Gerar Relatório</a></li>
+                <li><a href="{{ url_for('main.history') }}" class="nav-link {% if request.endpoint == 'main.history' %}active{% endif %}"><i class="bi bi-clock-history me-2"></i>Histórico</a></li>
                 {% if current_user.has_role('admin') or current_user.has_role('super_admin') %}
                 <hr style="border-color: rgba(255,255,255,0.2);">
-                                <li><a href="{{ url_for('admin.dashboard') }}" class="nav-link {% if 'admin.' in request.endpoint %}active{% endif %}"><i class="bi bi-gear me-2"></i>Administracao</a></li>
+                                <li><a href="{{ url_for('admin.dashboard') }}" class="nav-link {% if 'admin.' in request.endpoint %}active{% endif %}"><i class="bi bi-gear me-2"></i>Administração</a></li>
                 {% endif %}
             </ul>
             <div class="user-info">
