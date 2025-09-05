@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData(reportForm);
 
         try {
-            const response = await fetch(URLS.gerar_Relatório, { method: 'POST', body: formData });
+            const response = await fetch(URLS.gerar_relatorio, { method: 'POST', body: formData });
             if (!response.ok) throw new Error(`Erro no servidor: ${response.status} ${response.statusText}`);
             const data = await response.json();
             const taskId = data.task_id;

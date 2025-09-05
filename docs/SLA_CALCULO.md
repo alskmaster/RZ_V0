@@ -24,14 +24,14 @@ Passo a Passo
    - Converte cada intervalo PROBLEM→OK em segundos e soma por host.
 
 5) Fórmula do SLA
-   - `total = fim_período − início_período` (em segundos)
-   - `SLA_host = 100 * (1 − downtime_host / total)`
+   - `total = fim_período - início_período` (em segundos)
+   - `SLA_host = 100 * (1 - downtime_host / total)`
    - O valor é limitado a [0, 100]. Também é exposto o “Tempo Indisponível” em HH:MM:SS.
 
 Saída e Consumo
 - DataFrame `df_sla_problems` com as colunas: `Host`, `SLA (%)`, `Tempo Indisponível`, `Downtime (s)`.
 - Módulos que usam esta saída:
-  - SLA — Tabela: ordenação, Top N, Meta/Highlight, filtro “Filtrar hosts (contém)”, comparação com mês anterior.
+  - SLA — Tabela: ordenação, Top N, meta/highlight, filtro “Filtrar hosts (contém)”, comparação com mês anterior.
   - SLA — Gráfico: aplicação de “Ordem” (Asc/Desc) diretamente sobre a coluna de SLA, Top N, destaque abaixo da meta.
 
 Limites e Observações
@@ -42,3 +42,4 @@ Limites e Observações
 Referências no Código
 - Correlação e cálculo: `app/services.py` — métodos `_correlate_problems` e `_calculate_sla`.
 - Pré-coleta e cache de disponibilidade: `ReportGenerator._collect_availability_data`.
+

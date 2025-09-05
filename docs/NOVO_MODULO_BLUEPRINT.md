@@ -134,3 +134,60 @@ Padrao de Nomes e Codificacao (obrigatorio)
   - [ ] Rodar o app e abrir "Gerar Relatorio": checar se todos os nomes de modulos aparecem legiveis (sem caracteres quebrados).
   - [ ] Conferir logs que nao ha SyntaxError por bytes nao-UTF8.
   - [ ] Se necessario, substituir nomes por ASCII no backend e usar acentos apenas na renderizacao final (templates/PDF).
+Requisitos minimos (baseados no Painel de Resiliencia — SLA Preciso)
+- Objetivo: padronizar o que cada novo modulo deve aceitar/entregar para manter consistencia na UI, no builder e no PDF.
+- Escopo: aplique estes requisitos quando fizer sentido ao seu modulo. Nao altere modulos existentes ao adotar este padrao.
+
+- custom_options obrigatorias (quando aplicavel):
+  - host_name_contains: substring para filtrar o nome visivel do host.
+  - exclude_hosts_contains: lista separada por virgulas para excluir hosts por substring.
+  - period_sub_filter: 'full_month' | 'last_24h' | 'last_7d' (default: 'full_month').
+  - decimals: inteiro para formatacao numerica (ex.: casas decimais de SLA ou metricas similares).
+  - sort_by: chave de ordenacao primaria; sugerido: 'sla' | 'downtime' | 'host' (ou chaves coerentes ao seu modulo).
+  - sort_asc: boolean; true para ordem ascendente.
+  - top_n: inteiro opcional limitando a N linhas/series apos a ordenacao.
+  - show_chart: boolean; se true, o coletor deve produzir imagem base64 do grafico quando aplicavel.
+  - chart_color: cor base do grafico (hex RGB, ex.: '#4e79a7').
+  - below_color: cor para destacar valores abaixo de meta/objetivo (quando aplicavel).
+  - x_axis_0_100: boolean; fixa eixo X de 0 a 100 (quando a escala for percentual).
+
+- Titulo do modulo:
+  - Respeite o campo 'title' no modulo. A engrenagem pode salvar internamente como '__title' e o builder propagar para 'title'.
+  - Em graficos, utilize 'title' como titulo do chart quando fizer sentido.
+
+- Comportamento do coletor (BaseCollector.collect):
+  - Assinatura: collect(all_hosts, period) e leitura de self.module_config.get('custom_options', {}).
+  - Aplique filtros host_name_contains e exclude_hosts_contains antes de qualquer chamada pesada.
+  - Implemente period_sub_filter ajustando o periodo efetivo (full_month/last_24h/last_7d).
+  - Utilize self._update_status(...) para logs perceptiveis na UI (inicio, filtros aplicados, etapas relevantes).
+  - Seja resiliente: retorne render(template, { 'error': 'Mensagem amigavel' }) quando nao houver dados.
+  - Aplique ordenacao/sort_by e sort_asc; depois, se definido, aplique top_n.
+  - So gere grafico (show_chart) quando houver dados suficientes; retorne 'chart_b64' com PNG em base64.
+  - Nunca assuma que metas/contratos existem; quando aplicavel, obtenha meta via self.generator._get_client_sla_contract() e trate None.
+
+- Template (Jinja):
+  - Estrutura sugerida: titulo H2/H3, alerta para erros/sem dados, tabela responsiva (Bootstrap) e grafico opcional.
+  - Campos comuns (quando aplicavel):
+    - rows: lista de objetos coerentes ao modulo (ex.: { host, sla, sla_str, downtime_hms }).
+    - target_sla: meta/objetivo (quando existir); use para destaque condicional.
+    - summary_text: frase curta resumindo achados (ex.: "N hosts, X ok, Y abaixo da meta").
+    - chart_b64: imagem em base64 do grafico (quando show_chart=true).
+    - highlight_below_goal: boolean para aplicar classe/style de destaque em linhas abaixo da meta.
+    - period: periodo efetivo considerado (start/end epoch ints) para referencia/debug.
+
+- Registro e disponibilizacao:
+  - Registre no COLLECTOR_MAP (app/services.py) com chave 'type' em ASCII: ex.: 'resilience_panel'.
+  - Exponha no endpoint de modulos (app/main/routes.py:get_available_modules): { type, name }.
+  - Crie engrenagem em app/static/js/modules/<type>_gear.js com load/save, modal Bootstrap e defaults coerentes.
+  - Inclua a engrenagem no template app/templates/gerar_form.html junto aos demais *_gear.js.
+
+- Codificacao e nomes (reforce):
+  - Em Python/JSON: use apenas ASCII em identificadores e strings de controle para evitar problemas de encoding.
+  - Em HTML/Jinja: se precisar de acentos, confirme que o arquivo esta em UTF-8 e inclua <meta charset="UTF-8"> quando aplicavel.
+
+- Validacao rapida antes de abrir PR:
+  - [ ] UI lista o novo modulo em "Adicionar Modulo" com name legivel.
+  - [ ] Engrenagem abre, salva e repassa custom_options ao coletor.
+  - [ ] Coletor aplica filtros/periodo/ordenacao/top_n corretamente.
+  - [ ] Sem dados: template exibe mensagem amigavel; com dados: tabela/grafico coerentes.
+  - [ ] PDF final gera sem erros; logs (_update_status) aparecem com textos claros.

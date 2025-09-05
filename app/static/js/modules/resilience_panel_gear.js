@@ -104,8 +104,8 @@
               <label class="form-check-label" for="resPanelHighlight">Destacar abaixo da meta</label>
             </div>
             <div class="col-md-6">
-              <label class="form-label" for="resPanelHostExclude">Excluir hosts (contem)</label>
-              <input type="text" class="form-control" id="resPanelHostExclude" placeholder="Lista separada por virgula"/>
+              <label class="form-label" for="resPanelHostExclude">Excluir hosts (contém)</label>
+              <input type="text" class="form-control" id="resPanelHostExclude" placeholder="Lista separada por vírgula"/>
             </div>
             <div class="col-md-4">
               <label class="form-label" for="resPanelOrderBy">Ordenar por</label>
@@ -125,7 +125,7 @@
             </div>
             <div class="col-md-4 form-check pt-4">
               <input class="form-check-input" type="checkbox" id="resPanelShowChart">
-              <label class="form-check-label" for="resPanelShowChart">Exibir grafico por host</label>
+              <label class="form-check-label" for="resPanelShowChart">Exibir gráfico por host</label>
             </div>
             <div class="col-md-4">
               <label class="form-label" for="resPanelChartColor">Cor das barras</label>
@@ -151,3 +151,4 @@
     return document.getElementById('customizeResiliencePanelModal');
   }
 })();
+
