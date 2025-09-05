@@ -1,26 +1,32 @@
 Módulo: Painel de Resiliência (SLA Preciso)
 
 Objetivo
-- Exibir a disponibilidade (SLA) de serviços de TI do Zabbix desconsiderando períodos de manutenção.
+- Exibir a disponibilidade (SLA) desconsiderando períodos de manutenção.
 
-API utilizada
-- service.get: descoberta/seleção de serviços (por ids, nome, tags)
-- service.getsla: cálculo de SLA por intervalo(s), com `maintenance: false`
+Versão atual (host-based)
+- Cálculo host-based usando eventos de PING (correlação de problemas) para apurar SLA por host.
+- Usa a meta de SLA do cliente (se definida) para realce abaixo da meta.
 
 Opções de Customização (custom_options)
-- serviceids: lista de IDs de serviços (opcional)
-- service_name_contains: filtro por substring no nome (opcional)
-- tags: lista de objetos {tag, value} para filtrar serviços (opcional)
-- target_sla: meta em %, usada para destacar serviços abaixo da meta. Fallback: SLA do cliente.
-- show_trend: bool (default True) para exibir o gráfico de tendência
-- trend_granularity: 'D' (dia) | 'W' (semana), default 'D'
+- host_name_contains: filtra hosts por substring do nome visível.
+- exclude_hosts_contains: lista separada por vírgulas para excluir hosts por substring.
+- period_sub_filter: 'full_month' | 'last_24h' | 'last_7d' (default: 'full_month').
+- decimals: casas decimais para exibir em SLA (%).
+- highlight_below_goal: bool, destaca linhas abaixo da meta do cliente.
+- sort_by: 'sla' | 'downtime' | 'host'.
+- sort_asc: bool, ordenação ascendente (default true).
+- top_n: inteiro opcional para limitar a N linhas após ordenação.
+- show_chart: bool, renderiza gráfico horizontal por host com linha de meta.
+- chart_color: cor das barras.
+- below_color: cor quando abaixo da meta.
+- x_axis_0_100: bool, fixa eixo X de 0 a 100.
 
 Saída
-- Gráfico de tendência (quando ativado): evolução diária/semanal do SLA por serviço.
-- Tabela: Serviço, SLA (%) do período, Downtime (HH:MM:SS) e destaque de meta.
+- Tabela: Host, SLA (%), Downtime (HH:MM:SS) com destaque abaixo da meta.
+- Gráfico opcional de barras horizontais por host (base64) com linha de meta.
 
-Notas de Integração
-- O período é controlado pelo mês de referência do relatório.
-- A seleção de grupos de hosts ocorre ao selecionar o cliente no formulário; serviços são globais no Zabbix e devem ser refinados via `serviceids`, nome ou `tags`.
-- Este módulo não depende dos itens de Ping, pois delega o cálculo ao Zabbix.
+Roadmap (service-based)
+- Migrar/alternar para APIs por serviço do Zabbix: `service.get` + `service.getsla` (com `maintenance: false`).
+- Suportar filtros por serviços: `serviceids`, `service_name_contains`, `tags`.
+- Adicionar opção de tendência temporal diária/semanal por serviço (`trend_granularity`: 'D'|'W') e `show_trend`.
 

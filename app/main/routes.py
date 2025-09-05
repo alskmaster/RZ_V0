@@ -1,4 +1,4 @@
-# app/main/routes.py
+﻿# app/main/routes.py
 import os
 import json
 import uuid
@@ -8,13 +8,14 @@ import re
 import datetime as dt
 from flask import (render_template, redirect, url_for, send_file, 
                    send_from_directory, g, jsonify, request, flash, current_app)
+import unicodedata
 from flask_login import login_required, current_user
 
 from . import main
 from app import db
 from app.models import Client, Report, SystemConfig, User, ReportTemplate, MetricKeyProfile  # <-- adicionado MetricKeyProfile
 
-# A importação foi dividida em duas para buscar cada função de seu arquivo de origem correto.
+# A importaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o foi dividida em duas para buscar cada funÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o de seu arquivo de origem correto.
 from app.services import (ReportGenerator, update_status, 
                           REPORT_GENERATION_TASKS, TASK_LOCK, AuditService)
 from app.zabbix_api import obter_config_e_token_zabbix, fazer_request_zabbix
@@ -24,7 +25,7 @@ from app.zabbix_api import obter_config_e_token_zabbix, fazer_request_zabbix
 def before_request_func():
     cfg = SystemConfig.query.first()
     if not cfg:
-        # Cria um registro padrão para evitar falhas em templates que esperam g.sys_config
+        # Cria um registro padrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o para evitar falhas em templates que esperam g.sys_config
         try:
             cfg = SystemConfig()
             db.session.add(cfg)
@@ -40,7 +41,7 @@ def run_generation_in_thread(app_context, task_id, client_id, user_id, report_la
             author = db.session.get(User, user_id)
             system_config = SystemConfig.query.first()
             if not all([system_config, client, author]):
-                update_status(task_id, "Erro: Dados inválidos.")
+                update_status(task_id, "Erro: Dados invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lidos.")
                 return
 
             config_zabbix, erro_zabbix_config = obter_config_e_token_zabbix(current_app.config, task_id)
@@ -55,13 +56,13 @@ def run_generation_in_thread(app_context, task_id, client_id, user_id, report_la
             else:
                 with TASK_LOCK:
                     REPORT_GENERATION_TASKS[task_id]['file_path'] = pdf_path
-                    REPORT_GENERATION_TASKS[task_id]['status'] = "Concluído"
+                    REPORT_GENERATION_TASKS[task_id]['status'] = "ConcluÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­do"
         except Exception as e:
             error_trace = traceback.format_exc()
             current_app.logger.error(f"Erro fatal na thread (Task ID: {task_id}):\n{error_trace}")
-            update_status(task_id, "Erro: Falha crítica durante a geração.")
+            update_status(task_id, "Erro: Falha crÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­tica durante a geraÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o.")
 
-# --- Rotas Principais do Usuário ---
+# --- Rotas Principais do UsuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio ---
 
 @main.route('/')
 @login_required
@@ -73,7 +74,7 @@ def index():
 def gerar_form():
     clients = current_user.clients if current_user.has_role('client') else Client.query.order_by(Client.name).all()
     templates = ReportTemplate.query.order_by(ReportTemplate.name).all()
-    return render_template('gerar_form.html', title="Gerar Relatório", clients=clients, templates=templates)
+    return render_template('gerar_form.html', title="Gerar Relatorio", clients=clients, templates=templates)
 
 @main.route('/gerar_relatorio', methods=['POST'])
 @login_required
@@ -87,7 +88,7 @@ def gerar_relatorio():
     date_to = request.form.get('date_to')
     report_layout_json = request.form.get('report_layout')
 
-    # Migração automática de módulos legados para novos (Tabela/Gráficos)
+    # MigraÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o automÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡tica de mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³dulos legados para novos (Tabela/GrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ficos)
     def _migrate_layout(layout):
         import copy, json
         try:
@@ -154,7 +155,7 @@ def gerar_relatorio():
 @login_required
 def report_status(task_id):
     with TASK_LOCK:
-        task = REPORT_GENERATION_TASKS.get(task_id, {'status': 'Tarefa não encontrada.'})
+        task = REPORT_GENERATION_TASKS.get(task_id, {'status': 'Tarefa nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrada.'})
     return jsonify(task)
 
 @main.route('/download_final_report/<task_id>')
@@ -164,7 +165,7 @@ def download_final_report(task_id):
         task = REPORT_GENERATION_TASKS.get(task_id)
     
     if not task or 'file_path' not in task:
-        flash("Arquivo do relatório não encontrado ou a tarefa expirou.", "danger")
+        flash("Arquivo do relatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrado ou a tarefa expirou.", "danger")
         return redirect(url_for('main.gerar_form'))
     
     absolute_path = os.path.join(current_app.root_path, '..', task['file_path'])
@@ -172,8 +173,8 @@ def download_final_report(task_id):
     if os.path.exists(absolute_path):
         return send_file(absolute_path, as_attachment=True)
     else:
-        current_app.logger.error(f"Tentativa de download falhou. Caminho não encontrado: {absolute_path}")
-        flash("Arquivo do relatório não existe mais no servidor.", "danger")
+        current_app.logger.error(f"Tentativa de download falhou. Caminho nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrado: {absolute_path}")
+        flash("Arquivo do relatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o existe mais no servidor.", "danger")
         return redirect(url_for('main.gerar_form'))
 
 @main.route('/history')
@@ -184,29 +185,29 @@ def history():
         client_ids = [c.id for c in current_user.clients]
         query = query.filter(Report.client_id.in_(client_ids))
     reports = query.order_by(Report.created_at.desc()).all()
-    return render_template('history.html', title="Histórico", reports=reports)
+    return render_template('history.html', title="HistÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rico", reports=reports)
 
 @main.route('/download_report/<int:report_id>')
 @login_required
 def download_report(report_id):
     report = db.session.get(Report, report_id)
     if not report:
-        flash("Relatório não encontrado.", "danger")
+        flash("RelatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrado.", "danger")
         return redirect(url_for('main.history'))
     is_authorized = not current_user.has_role('client') or report.client in current_user.clients
     if not is_authorized:
         flash("Acesso negado.", "danger")
         return redirect(url_for('main.history'))
         
-    AuditService.log(f"Re-download do relatório '{report.filename}'")
+    AuditService.log(f"Re-download do relatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio '{report.filename}'")
 
     absolute_path = os.path.join(current_app.root_path, '..', report.file_path)
 
     if os.path.exists(absolute_path):
         return send_file(absolute_path, as_attachment=True)
     else:
-        current_app.logger.error(f"Tentativa de download do histórico falhou. Caminho não encontrado: {absolute_path}")
-        flash("Arquivo de relatório do histórico não encontrado no servidor.", "danger")
+        current_app.logger.error(f"Tentativa de download do histÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rico falhou. Caminho nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrado: {absolute_path}")
+        flash("Arquivo de relatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio do histÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rico nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrado no servidor.", "danger")
         return redirect(url_for('main.history'))
 
 @main.route('/delete_report/<int:report_id>')
@@ -214,12 +215,12 @@ def download_report(report_id):
 def delete_report(report_id):
     report = db.session.get(Report, report_id)
     if not report:
-        flash("Relatório não encontrado.", "danger")
+        flash("RelatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrado.", "danger")
         return redirect(url_for('main.history'))
 
     is_authorized = not current_user.has_role('client') or report.author_id == current_user.id
     if not is_authorized:
-        flash("Acesso negado. Você não tem permissão para excluir este relatório.", "danger")
+        flash("Acesso negado. VocÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âª nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o tem permissÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o para excluir este relatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio.", "danger")
         return redirect(url_for('main.history'))
 
     try:
@@ -227,20 +228,20 @@ def delete_report(report_id):
         
         if os.path.exists(absolute_path):
             os.remove(absolute_path)
-            current_app.logger.info(f"Arquivo '{report.file_path}' excluído com sucesso.")
+            current_app.logger.info(f"Arquivo '{report.file_path}' excluÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­do com sucesso.")
         else:
-            current_app.logger.warning(f"Tentativa de excluir arquivo que não existe: {absolute_path}")
+            current_app.logger.warning(f"Tentativa de excluir arquivo que nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o existe: {absolute_path}")
 
         db.session.delete(report)
         db.session.commit()
         
-        AuditService.log(f"Relatório '{report.filename}' excluído por {current_user.username}")
-        flash(f"Relatório '{report.filename}' excluído com sucesso.", "success")
+        AuditService.log(f"RelatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio '{report.filename}' excluÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­do por {current_user.username}")
+        flash(f"RelatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio '{report.filename}' excluÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­do com sucesso.", "success")
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Erro ao tentar excluir o relatório {report.id}: {str(e)}")
-        flash("Ocorreu um erro ao excluir o relatório.", "danger")
+        current_app.logger.error(f"Erro ao tentar excluir o relatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio {report.id}: {str(e)}")
+        flash("Ocorreu um erro ao excluir o relatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio.", "danger")
     
     return redirect(url_for('main.history'))
 
@@ -294,11 +295,11 @@ def save_template():
         pass
     
     if not template_name or not layout_json:
-        return jsonify({'success': False, 'error': 'Nome do template e layout são obrigatórios.'}), 400
+        return jsonify({'success': False, 'error': 'Nome do template e layout sÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o obrigatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rios.'}), 400
 
     existing_template = ReportTemplate.query.filter_by(name=template_name).first()
     if existing_template:
-        return jsonify({'success': False, 'error': 'Já existe um template com este nome. Por favor, escolha outro.'}), 409
+        return jsonify({'success': False, 'error': 'JÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ existe um template com este nome. Por favor, escolha outro.'}), 409
     
     try:
         new_template = ReportTemplate(name=template_name, layout_json=layout_json)
@@ -317,7 +318,7 @@ def get_templates():
     out = []
     for t in templates:
         lj = getattr(t, 'layout_json', None)
-        # aplica migração apenas na visualização
+        # aplica migraÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o apenas na visualizaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o
         try:
             import json
             mods = json.loads(lj) if lj else []
@@ -340,17 +341,17 @@ def get_templates():
 @login_required
 def get_available_modules(client_id):
     client = db.session.get(Client, client_id)
-    # relacionamento é lazy='dynamic' -> use count()/all()
+    # relacionamento ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© lazy='dynamic' -> use count()/all()
     if not client or client.zabbix_groups.count() == 0:
         current_app.logger.debug(f"[get_available_modules] Cliente sem grupos (client_id={client_id})")
         return jsonify({'available_modules': []})
 
-    # CORREÇÃO: atributo correto é 'group_id' e precisamos .all() para materializar
+    # CORREÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢O: atributo correto ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© 'group_id' e precisamos .all() para materializar
     group_ids = [g.group_id for g in client.zabbix_groups.all()]
     
     config_zabbix, erro = obter_config_e_token_zabbix(current_app.config)
     if erro:
-        current_app.logger.error(f"Falha ao obter módulos para client_id {client_id}: {erro}")
+        current_app.logger.error(f"Falha ao obter mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³dulos para client_id {client_id}: {erro}")
         return jsonify({'error': f"Falha ao conectar ao Zabbix: {erro}", 'available_modules': []})
 
     body = {
@@ -383,40 +384,40 @@ def get_available_modules(client_id):
     
     if check_key('icmpping'):        # Incidentes divididos
         available_modules.append({'type': 'incidents_table', 'name': 'Incidentes (Tabela)'})
-        available_modules.append({'type': 'incidents_chart', 'name': 'Incidentes (Gráficos)'})
+        available_modules.append({'type': 'incidents_chart', 'name': 'Incidentes (GrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ficos)'})
         available_modules.append({'type': 'unavailability_heatmap', 'name': 'Mapa de Calor de Indisponibilidade'})
         available_modules.append({'type': 'root_cause_top_triggers', 'name': 'Causa-Raiz (Top Gatilhos)'})
-        available_modules.append({'type': 'mttr', 'name': 'Eficiência da Resposta (MTTR)'})
+        available_modules.append({'type': 'mttr', 'name': 'EficiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªncia da Resposta (MTTR)'})
     
     if check_key('icmppingsec'):
-        available_modules.append({'type': 'latency', 'name': 'Latência de Rede (Ping)'})
+        available_modules.append({'type': 'latency', 'name': 'LatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªncia de Rede (Ping)'})
     if check_key('icmppingloss'):
         available_modules.append({'type': 'loss', 'name': 'Perda de Pacotes (Ping)'})
 
     if check_key('system.cpu.util'):
         available_modules.append({'type': 'cpu', 'name': 'Desempenho de CPU'})
-        # CPU (novos módulos)
+        # CPU (novos mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³dulos)
         available_modules.append({'type': 'cpu_table', 'name': 'CPU (Tabela)'})
-        available_modules.append({'type': 'cpu_chart', 'name': 'CPU (Gráficos)'})
+        available_modules.append({'type': 'cpu_chart', 'name': 'CPU (GrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ficos)'})
     if check_key('vm.memory.size[pused]') or check_key('vm.memory.size[pavailable]'):
-        available_modules.append({'type': 'mem', 'name': 'Desempenho de Memória'})
+        available_modules.append({'type': 'mem', 'name': 'Desempenho de MemÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ria'})
     
-    # Memória (novos módulos separados)
+    # MemÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ria (novos mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³dulos separados)
     try:
         if check_key('vm.memory.size[pused]') or check_key('vm.memory.size[pavailable]'):
-            available_modules.append({'type': 'mem_table', 'name': 'Memória (Tabela)'})
-            available_modules.append({'type': 'mem_chart', 'name': 'Memória (Gráficos)'})
+            available_modules.append({'type': 'mem_table', 'name': 'MemÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ria (Tabela)'})
+            available_modules.append({'type': 'mem_chart', 'name': 'MemÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ria (GrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ficos)'})
     except Exception:
         pass
 
-    # Ping (Latência e Perda) – novos módulos separados
+    # Ping (LatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªncia e Perda) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ novos mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³dulos separados
     try:
         if check_key('icmppingsec'):
-            available_modules.append({'type': 'latency_table', 'name': 'Latência (Tabela)'})
-            available_modules.append({'type': 'latency_chart', 'name': 'Latência (Gráficos)'})
+            available_modules.append({'type': 'latency_table', 'name': 'LatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªncia (Tabela)'})
+            available_modules.append({'type': 'latency_chart', 'name': 'LatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªncia (GrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ficos)'})
         if check_key('icmppingloss'):
             available_modules.append({'type': 'loss_table', 'name': 'Perda de Pacotes (Tabela)'})
-            available_modules.append({'type': 'loss_chart', 'name': 'Perda de Pacotes (Gráficos)'})
+            available_modules.append({'type': 'loss_chart', 'name': 'Perda de Pacotes (GrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ficos)'})
     except Exception:
         pass
 
@@ -424,10 +425,10 @@ def get_available_modules(client_id):
         available_modules.append({'type': 'disk', 'name': 'Uso de Disco'})
 
     if check_key('net.if.in'):
-        available_modules.append({'type': 'traffic_in', 'name': 'Tráfego de Entrada'})
-        available_modules.append({'type': 'traffic_out', 'name': 'Tráfego de Saída'})
+        available_modules.append({'type': 'traffic_in', 'name': 'TrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡fego de Entrada'})
+        available_modules.append({'type': 'traffic_out', 'name': 'TrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡fego de SaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­da'})
     
-    # --------- NOVO: detecção de Wi-Fi (clientcountnumber / perfis wifi_clients) ----------
+    # --------- NOVO: detecÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o de Wi-Fi (clientcountnumber / perfis wifi_clients) ----------
     try:
         wifi_keys = [p.key_string for p in MetricKeyProfile.query
                      .filter_by(metric_type='wifi_clients', is_active=True)
@@ -444,40 +445,57 @@ def get_available_modules(client_id):
             wifi_found = True
             break
     if wifi_found:
-        available_modules.append({'type': 'wifi', 'name': 'Wi-Fi (Utilização por AP/SSID)'})
+        available_modules.append({'type': 'wifi', 'name': 'Wi-Fi (UtilizaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o por AP/SSID)'})
     # --------- FIM DO BLOCO NOVO ----------------------------------------------------------
 
     # Disponibilidade / SLA (novos)
     try:
-        available_modules.append({'type': 'resilience_panel', 'name': 'Painel de Resiliência (SLA Preciso)'})
+        available_modules.append({'type': 'resilience_panel', 'name': 'Painel de Resiliencia (SLA Preciso)'})
+        available_modules.append({'type': 'resilience_services', 'name': 'SLA de Servicos (Preciso)'})
     except Exception:
         pass
-
-    available_modules.append({'type': 'inventory', 'name': 'Inventário de Hosts'})
+    available_modules.append({'type': 'inventory', 'name': 'InventÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio de Hosts'})
     available_modules.append({'type': 'html', 'name': 'Texto/HTML Customizado'})
     # Sempre disponivel: status do agente e MTTR
     available_modules.append({'type': 'agent_status', 'name': 'Status do Agente Zabbix'})
-    # Novos módulos
+    # Novos mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³dulos
     available_modules.append({'type': 'recurring_problems', 'name': 'Problemas Recorrentes'})
-    available_modules.append({'type': 'critical_performance', 'name': 'Desempenho Crítico (por ItemID)'})
+    available_modules.append({'type': 'critical_performance', 'name': 'Desempenho CrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­tico (por ItemID)'})
     
-    # Limpa módulos legados do backend (mostrar apenas versões novas)
+    # Limpa mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³dulos legados do backend (mostrar apenas versÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âµes novas)
     # Extensoes adicionais
-    available_modules.append({'type': 'capacity_forecast', 'name': 'Previsão de Capacidade'})
+    available_modules.append({'type': 'capacity_forecast', 'name': 'PrevisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o de Capacidade'})
     available_modules.append({'type': 'itil_availability', 'name': 'Disponibilidade por Incidente (ITIL)'})
-    available_modules.append({'type': 'executive_summary', 'name': 'Sumário Executivo'})
+    available_modules.append({'type': 'executive_summary', 'name': 'SumÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio Executivo'})
     legacy_types = {'cpu', 'mem', 'latency', 'loss', 'sla', 'sla_table', 'sla_chart', 'sla_plus', 'kpi', 'top_hosts', 'top_problems', 'stress', 'sla_incidents_table'}
     try:
         available_modules = [m for m in available_modules if m.get('type') not in legacy_types]
     except Exception:
         pass
+    def _ascii_safe(text):
+        try:
+            if text is None:
+                return ''
+            # Normaliza para ASCII para evitar problemas de encoding no frontend
+            return unicodedata.normalize('NFKD', str(text)).encode('ascii', 'ignore').decode('ascii')
+        except Exception:
+            return str(text)
+
+    try:
+        available_modules = [
+            {'type': m.get('type'), 'name': _ascii_safe(m.get('name'))}
+            for m in (available_modules or [])
+        ]
+    except Exception:
+        pass
+
     return jsonify({'available_modules': sorted(available_modules, key=lambda x: x['name'])})
 
 @main.route('/get_client_interfaces/<int:client_id>')
 @login_required
 def get_client_interfaces(client_id):
     client = db.session.get(Client, client_id)
-    # relacionamento é lazy='dynamic' -> use count()/all()
+    # relacionamento ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© lazy='dynamic' -> use count()/all()
     if not client or client.zabbix_groups.count() == 0:
         current_app.logger.debug(f"[get_client_interfaces] Cliente sem grupos (client_id={client_id})")
     return jsonify({'interfaces': []})
@@ -530,7 +548,7 @@ def search_items(client_id):
             })
     return jsonify({'items': out})
 
-    # CORREÇÃO: atributo correto é 'group_id' e precisamos .all()
+    # CORREÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢O: atributo correto ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© 'group_id' e precisamos .all()
     group_ids = [g.group_id for g in client.zabbix_groups.all()]
     
     config_zabbix, erro = obter_config_e_token_zabbix(current_app.config)
@@ -576,30 +594,30 @@ def search_items(client_id):
     return jsonify({'interfaces': sorted(list(interfaces))})
 
 
-# --- ROTA DE TESTE DE VALIDAÇÃO (TEMPORÁRIA) ---
+# --- ROTA DE TESTE DE VALIDAÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢O (TEMPORÃƒÆ’Ã†â€™Ãƒâ€šÃ‚ÂRIA) ---
 @main.route('/test_events/<int:client_id>/<string:mes_ref>')
 @login_required
 def test_events(client_id, mes_ref):
     """
-    Rota de diagnóstico para validar a coleta de eventos.
-    Compara a coleta em lote (mês inteiro) com a coleta iterativa (dia a dia).
+    Rota de diagnÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³stico para validar a coleta de eventos.
+    Compara a coleta em lote (mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªs inteiro) com a coleta iterativa (dia a dia).
     """
     client = db.session.get(Client, client_id)
     if not client:
-        return jsonify({"erro": "Cliente não encontrado"}), 404
+        return jsonify({"erro": "Cliente nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrado"}), 404
 
     try:
         ref_date = dt.datetime.strptime(f'{mes_ref}-01', '%Y-%m-%d')
         start_date = ref_date.replace(day=1)
         end_date = (start_date.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)
     except ValueError:
-        return jsonify({"erro": "Formato de data inválido. Use YYYY-MM"}), 400
+        return jsonify({"erro": "Formato de data invÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lido. Use YYYY-MM"}), 400
 
     config_zabbix, erro = obter_config_e_token_zabbix(current_app.config)
     if erro:
         return jsonify({"erro": f"Falha ao conectar ao Zabbix: {erro}"}), 500
 
-    # CORREÇÃO: 'group_id' + materialização com .all()
+    # CORREÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢O: 'group_id' + materializaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o com .all()
     group_ids = [g.group_id for g in client.zabbix_groups.all()]
     body_hosts = {'jsonrpc': '2.0', 'method': 'host.get', 'params': {'groupids': group_ids, 'output': ['hostid']}, 'auth': config_zabbix['ZABBIX_TOKEN'], 'id': 1}
     hosts = fazer_request_zabbix(body_hosts, config_zabbix['ZABBIX_URL'])
@@ -607,13 +625,13 @@ def test_events(client_id, mes_ref):
         return jsonify({"erro": "Nenhum host encontrado para este cliente"}), 404
     all_host_ids = [h['hostid'] for h in hosts]
 
-    # --- Coleta A: Método em Lote (Atual) ---
+    # --- Coleta A: MÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©todo em Lote (Atual) ---
     periodo_lote = {
         'start': int(start_date.timestamp()),
         'end': int(end_date.replace(hour=23, minute=59, second=59).timestamp())
     }
     
-    # Reutiliza a função de obter eventos do ReportGenerator
+    # Reutiliza a funÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o de obter eventos do ReportGenerator
     from app.services import ReportGenerator
     generator_instance = ReportGenerator(config_zabbix, "test_task")
     
@@ -621,7 +639,7 @@ def test_events(client_id, mes_ref):
     problemas_lote = [p for p in eventos_lote if p.get('source') == '0' and p.get('object') == '0' and p.get('value') == '1']
     total_lote = len(problemas_lote)
 
-    # --- Coleta B: Método Dia a Dia ---
+    # --- Coleta B: MÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©todo Dia a Dia ---
     total_diario = 0
     dias_com_eventos = {}
     current_day = start_date
@@ -647,9 +665,12 @@ def test_events(client_id, mes_ref):
         "contagem_metodo_em_lote": total_lote,
         "contagem_metodo_dia_a_dia": total_diario,
         "diferenca": total_diario - total_lote,
-        "diagnostico": "Coleta em lote está INCOMPLETA." if total_diario > total_lote else "Coleta em lote parece COMPLETA.",
+        "diagnostico": "Coleta em lote estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ INCOMPLETA." if total_diario > total_lote else "Coleta em lote parece COMPLETA.",
         "detalhes_diarios": dias_com_eventos
     })
+
+
+
 
 
 

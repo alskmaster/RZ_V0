@@ -10,7 +10,7 @@
         <div class="col-lg-6">
             <div class="card">
                 <div class="card-header">
-                    1. Configurações Gerais
+                    1. Configuracoes Gerais
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
@@ -24,11 +24,11 @@
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label for="date_from" class="form-label">Início do Período</label>
+                            <label for="date_from" class="form-label">InÃƒÆ’Ã‚Â­cio do PerÃƒÆ’Ã‚Â­odo</label>
                             <input type="date" name="date_from" id="date_from" class="form-control" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="date_to" class="form-label">Fim do Período</label>
+                            <label for="date_to" class="form-label">Fim do Periodo</label>
                             <input type="date" name="date_to" id="date_to" class="form-control" required>
                         </div>
                     </div>
@@ -37,34 +37,34 @@
 
             <div class="card mt-4">
                 <div class="card-header">
-                   2. Adicionar Módulos ao Relatório
+                   2. Adicionar Modulos ao Relatorio
                 </div>
                 <div class="card-body">
                      <div class="mb-3">
-                        <label for="module-type-select" class="form-label">Tipo de Módulo</label>
+                        <label for="module-type-select" class="form-label">Tipo de Modulo</label>
                         <select id="module-type-select" class="form-select" disabled>
-                            <option>Selecione um cliente para ver os módulos</option>
+                            <option>Selecione um cliente para ver os mÃƒÆ’Ã‚Â³dulos</option>
                         </select>
                     </div>
                     
                     <div id="interface-options" class="mb-3" style="display: none;">
                         <label for="interface-selector" class="form-label">Interfaces de Rede (Opcional)</label>
-                        <p class="text-muted small my-1">Segure <kbd>Ctrl</kbd> (Windows) ou <kbd>Cmd</kbd> (macOS) para selecionar várias. Deixe em branco para agregar todas.</p>
+                        <p class="text-muted small my-1">Segure <kbd>Ctrl</kbd> (Windows) ou <kbd>Cmd</kbd> (macOS) para selecionar vÃƒÆ’Ã‚Â¡rias. Deixe em branco para agregar todas.</p>
                         <select id="interface-selector" multiple class="form-select" style="height: 120px;"></select>
                     </div>
 
                     <div class="mb-3">
-                        <label for="module-title-input" class="form-label">Título Customizado (Opcional)</label>
+                        <label for="module-title-input" class="form-label">TÃƒÆ’Ã‚Â­tulo Customizado (Opcional)</label>
                         <input type="text" id="module-title-input" class="form-control" placeholder="Ex: Desempenho dos Servidores de Web">
                     </div>
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="module-newpage-check">
                         <label class="form-check-label" for="module-newpage-check">
-                            Iniciar em uma nova página
+                            Iniciar em uma nova pagina
                         </label>
                     </div>
                     <button type="button" id="add-module-btn" class="btn btn-secondary w-100" disabled>
-                        <i class="bi bi-plus-circle"></i> Adicionar Módulo ao Layout
+                        <i class="bi bi-plus-circle"></i> Adicionar Modulo ao Layout
                     </button>
                 </div>
             </div>
@@ -73,10 +73,10 @@
         <div class="col-lg-6">
             <div class="card">
                  <div class="card-header">
-                    3. Layout Final do Relatório
+                    3. Layout Final do Relatorio
                  </div>
                 <div class="card-body">
-                    <p class="text-muted">Arraste os módulos para reordenar.</p>
+                    <p class="text-muted">Arraste os modulos para reordenar.</p>
                     <div id="report-layout-container" style="min-height: 200px;">
                         <ul id="report-layout-list" class="list-group list-group-flush">
                             <!-- Itens gerados via JS -->
@@ -110,12 +110,12 @@
 
             <div class="d-grid gap-2 mt-4">
                 <button type="submit" id="generate-btn" class="btn btn-primary btn-lg">
-                    <i class="bi bi-file-earmark-pdf"></i> Gerar Relatório
+                    <i class="bi bi-file-earmark-pdf"></i> Gerar RelatÃƒÆ’Ã‚Â³rio
                 </button>
             </div>
 
             <div id="status-area" class="alert alert-info mt-4" role="alert" style="display: none;">
-                <h4 class="alert-heading">Gerando Relatório...</h4>
+                <h4 class="alert-heading">Gerando RelatÃƒÆ’Ã‚Â³rio...</h4>
                 <p id="status-message">Iniciando...</p>
                 <div class="progress">
                     <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
@@ -148,23 +148,23 @@
     </div>
 </div>
 
-<!-- Modal: Personalização SLA -->
+<!-- Modal: PersonalizaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o SLA -->
 <div class="modal fade" id="customizeSlaModal" tabindex="-1" aria-labelledby="customizeSlaModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="customizeSlaModalLabel">Personalizar Módulo: Tabela de Disponibilidade</h5>
+                <h5 class="modal-title" id="customizeSlaModalLabel">Personalizar MÃƒÆ’Ã‚Â³dulo: Tabela de Disponibilidade</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="slaHideSummaryCheck">
-                    <label class="form-check-label" for="slaHideSummaryCheck">Ocultar gráfico de barras resumo</label>
+                    <label class="form-check-label" for="slaHideSummaryCheck">Ocultar grÃƒÆ’Ã‚Â¡fico de barras resumo</label>
                 </div>
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="slaComparePrevMonthCheck">
                     <label class="form-check-label" for="slaComparePrevMonthCheck">
-                        Incluir comparação com o mês anterior
+                        Incluir comparaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o com o mÃƒÆ’Ã‚Âªs anterior
                     </label>
                 </div>
                 
@@ -173,7 +173,7 @@
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="slaShowIpCheck">
                         <label class="form-check-label" for="slaShowIpCheck">
-                            Endereço IP
+                            EndereÃƒÆ’Ã‚Â§o IP
                         </label>
                     </div>
                     <div class="form-check">
@@ -185,7 +185,7 @@
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="slaShowPreviousSlaCheck" disabled>
                         <label class="form-check-label" for="slaShowPreviousSlaCheck">
-                            SLA do Mês Anterior
+                            SLA do MÃƒÆ’Ã‚Âªs Anterior
                         </label>
                     </div>
                     <div class="form-check">
@@ -204,23 +204,23 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary" id="saveSlaCustomizationBtn">Salvar Personalização</button>
+                <button type="button" class="btn btn-primary" id="saveSlaCustomizationBtn">Salvar PersonalizaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal: Personalização TOP HOSTS -->
+<!-- Modal: PersonalizaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o TOP HOSTS -->
 <div class="modal fade" id="customizeTopHostsModal" tabindex="-1" aria-labelledby="customizeTopHostsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="customizeTopHostsModalLabel">Personalizar Módulo: Diagnóstico dos Ofensores</h5>
+                <h5 class="modal-title" id="customizeTopHostsModalLabel">Personalizar MÃƒÆ’Ã‚Â³dulo: DiagnÃƒÆ’Ã‚Â³stico dos Ofensores</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label for="topHostsCount" class="form-label">Número de Hosts a Analisar</label>
+                    <label for="topHostsCount" class="form-label">NÃƒÆ’Ã‚Âºmero de Hosts a Analisar</label>
                     <input type="number" class="form-control" id="topHostsCount" value="5" min="1" max="20">
                 </div>
                 <hr>
@@ -228,29 +228,29 @@
                 <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" id="topHostsShowSummaryChartCheck">
                     <label class="form-check-label" for="topHostsShowSummaryChartCheck">
-                        Exibir Gráfico Resumo (Tempo Indisponível)
+                        Exibir GrÃƒÆ’Ã‚Â¡fico Resumo (Tempo IndisponÃƒÆ’Ã‚Â­vel)
                     </label>
                 </div>
                 <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" id="topHostsShowDetailedDiagnosisCheck">
                     <label class="form-check-label" for="topHostsShowDetailedDiagnosisCheck">
-                        Exibir Diagnóstico Detalhado (Cards de Análise)
+                        Exibir DiagnÃƒÆ’Ã‚Â³stico Detalhado (Cards de AnÃƒÆ’Ã‚Â¡lise)
                     </label>
                 </div>
                 <hr>
-                <h6>Opções do Diagnóstico Detalhado</h6>
+                <h6>OpÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes do DiagnÃƒÆ’Ã‚Â³stico Detalhado</h6>
                 <div class="mb-3">
-                    <label for="topHostsBreakdownChartType" class="form-label">Visualização da Causa Raiz</label>
+                    <label for="topHostsBreakdownChartType" class="form-label">VisualizaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o da Causa Raiz</label>
                     <select class="form-select" id="topHostsBreakdownChartType">
                         <option value="table">Tabela de Dados</option>
-                        <option value="bar">Gráfico de Barras</option>
-                        <option value="pie">Gráfico de Pizza</option>
+                        <option value="bar">GrÃƒÆ’Ã‚Â¡fico de Barras</option>
+                        <option value="pie">GrÃƒÆ’Ã‚Â¡fico de Pizza</option>
                     </select>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary" id="saveTopHostsCustomizationBtn">Salvar Personalização</button>
+                <button type="button" class="btn btn-primary" id="saveTopHostsCustomizationBtn">Salvar PersonalizaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o</button>
             </div>
         </div>
     </div>
@@ -298,4 +298,5 @@
 <script src="{{ url_for('static', filename='js/modules/capacity_forecast_gear.js') }}"></script>
 <script src="{{ url_for('static', filename='js/modules/itil_availability_gear.js') }}"></script>
 <script src="{{ url_for('static', filename='js/modules/executive_summary_gear.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modules/resilience_services_gear.js') }}"></script>
 {% endblock %}

@@ -41,6 +41,7 @@ from .collectors.incidents_collector import IncidentsCollector  # legado (agora 
 from .collectors.incidents_table_collector import IncidentsTableCollector
 from .collectors.incidents_chart_collector import IncidentsChartCollector
 from .collectors.resilience_panel_collector import ResiliencePanelCollector
+from .collectors.resilience_services_collector import ResilienceServicesCollector
 from .collectors.unavailability_heatmap_collector import UnavailabilityHeatmapCollector
 from .collectors.root_cause_top_triggers_collector import RootCauseTopTriggersCollector
 from .collectors.mttr_collector import MTTRCollector
@@ -77,6 +78,7 @@ COLLECTOR_MAP = {
     'incidents_table': IncidentsTableCollector,
     'incidents_chart': IncidentsChartCollector,
     'resilience_panel': ResiliencePanelCollector,
+    'resilience_services': ResilienceServicesCollector,
     'unavailability_heatmap': UnavailabilityHeatmapCollector,
     'root_cause_top_triggers': RootCauseTopTriggersCollector,
     'mttr': MTTRCollector,
