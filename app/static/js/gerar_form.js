@@ -19,14 +19,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const saveTemplateBtn = document.getElementById('saveTemplateBtn');
     const templateNameInput = document.getElementById('templateNameInput');
 
-    // --- ESTADO DA APLICAÃƒâ€¡ÃƒÆ’O ---
+    // --- ESTADO DA APLICAÇÃO ---
     let reportLayout = [];
     let availableModules = [];
     let currentModuleToCustomize = null;
     let activePoll = null; // controle para polling de status
 
     // ===================================================================================
-    // --- CENTRO DE COMANDO DE CUSTOMIZAÃƒâ€¡ÃƒÆ’O DE MÃƒâ€œDULOS ---
+    // --- CENTRO DE COMANDO DE CUSTOMIZAÇÃO DE MÓDULOS ---
     // ===================================================================================
     const moduleCustomizers = {
         'sla': {
@@ -92,17 +92,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    // Registro pluginÃƒÂ¡vel: permite que arquivos JS externos adicionem customizaÃƒÂ§ÃƒÂµes
+    // Registro pluginável: permite que arquivos JS externos adicionem customizações
     if (window.ModuleCustomizers && typeof window.ModuleCustomizers === 'object') {
         Object.assign(moduleCustomizers, window.ModuleCustomizers);
     }
-    // Remove customizaÃƒÂ§ÃƒÂ£o inline do legado, usaremos o SLA Plus em plugin separado
+    // Remove customização inline do legado, usaremos o SLA Plus em plugin separado
     if (moduleCustomizers['sla']) {
         delete moduleCustomizers['sla'];
     }
     // ===================================================================================
 
-    // --- FUNÃƒâ€¡Ãƒâ€¢ES AUXILIARES ---
+    // --- FUNÇÕES AUXILIARES ---
 
     function logDebug(event, details = {}) {
         console.debug(`[gerar_form] ${event}`, details);
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderLayoutList() {
         layoutList.innerHTML = '';
         if (reportLayout.length === 0) {
-            layoutList.innerHTML = '<li class="list-group-item text-muted">Nenhum mÃƒÂ³dulo adicionado.</li>';
+            layoutList.innerHTML = '<li class="list-group-item text-muted">Nenhum módulo adicionado.</li>';
             return;
         }
         reportLayout.forEach(module => {
@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function () {
             addModuleBtn.disabled = true;
             return;
         }
-        moduleTypeSelect.innerHTML = '<option>Carregando mÃƒÂ³dulosÃ¢â‚¬Â¦</option>';
+        moduleTypeSelect.innerHTML = '<option>Carregando módulos ...</option>';
         moduleTypeSelect.disabled = true;
         addModuleBtn.disabled = true;
 
@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 const rawText = await response.text().catch(() => '');
                 logDebug('fetchClientData.error', { status: response.status, rawText });
-                moduleTypeSelect.innerHTML = '<option>Erro ao carregar mÃƒÂ³dulos</option>';
+                moduleTypeSelect.innerHTML = '<option>Erro ao carregar módulos</option>';
                 return;
             }
 
@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!data || data.error) {
                 logDebug('fetchClientData.backendError', { error: data?.error });
-                moduleTypeSelect.innerHTML = '<option>Erro ao carregar mÃƒÂ³dulos</option>';
+                moduleTypeSelect.innerHTML = '<option>Erro ao carregar módulos</option>';
                 return;
             }
 
@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Rede (Ping)
                 'latency_table': 'Rede (Ping)', 'latency_chart': 'Rede (Ping)',
                 'loss_table': 'Rede (Ping)', 'loss_chart': 'Rede (Ping)',
-                'traffic_in': 'Rede (TrÃƒÂ¡fego)', 'traffic_out': 'Rede (TrÃƒÂ¡fego)',
+                'traffic_in': 'Rede (Tráfego)', 'traffic_out': 'Rede (Tráfego)',
                 // Disponibilidade / SLA
                 'kpi': 'Disponibilidade / SLA', 'sla_table': 'Disponibilidade / SLA',
                 'sla_chart': 'Disponibilidade / SLA', 'sla_plus': 'Disponibilidade / SLA',
@@ -211,19 +211,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 'stress': 'Disponibilidade / SLA',
                 // Incidentes
                 'incidents_table': 'Incidentes', 'incidents_chart': 'Incidentes', 'unavailability_heatmap': 'Incidentes', 'root_cause_top_triggers': 'Incidentes', 'mttr': 'Incidentes',
-                // WiÃ¢â‚¬â€˜Fi
-                'wifi': 'WiÃ¢â‚¬â€˜Fi',
-                // InventÃƒÂ¡rio & ConteÃƒÂºdo
-                'inventory': 'InventÃƒÂ¡rio & ConteÃƒÂºdo', 'html': 'InventÃƒÂ¡rio & ConteÃƒÂºdo'
+                // Wi-Fi
+                'wifi': 'Wi-Fi',
+                // Inventário & Conteúdo
+                'inventory': 'Inventário & Conteúdo', 'html': 'Inventário & Conteúdo'
             };
             const CATEGORY_ORDER = [
                 'Disponibilidade / SLA',
                 'Incidentes',
                 'Desempenho',
                 'Rede (Ping)',
-                'Rede (TrÃƒÂ¡fego)',
-                'WiÃ¢â‚¬â€˜Fi',
-                'InventÃƒÂ¡rio & ConteÃƒÂºdo'
+                'Rede (Tráfego)',
+                'Wi-Fi',
+                'Inventário & Conteúdo'
             ];
             const buckets = {};
             availableModules.forEach(m => {
@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!buckets[cat] || buckets[cat].length === 0) return;
                 const og = document.createElement('optgroup');
                 og.label = cat;
-                // Ordena alfabeticamente por nome amigÃƒÂ¡vel
+                // Ordena alfabeticamente por nome amigável
                 buckets[cat].sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR'));
                 buckets[cat].forEach(m => {
                     og.appendChild(new Option(m.name, m.type));
@@ -249,11 +249,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 moduleTypeSelect.disabled = false;
                 addModuleBtn.disabled = false;
             } else {
-                moduleTypeSelect.innerHTML = '<option>Nenhum mÃƒÂ³dulo disponÃƒÂ­vel</option>';
+                moduleTypeSelect.innerHTML = '<option>Nenhum módulo disponível</option>';
             }
         } catch (error) {
             logDebug('fetchClientData.exception', { error: String(error) });
-            moduleTypeSelect.innerHTML = '<option>Erro ao carregar mÃƒÂ³dulos</option>';
+            moduleTypeSelect.innerHTML = '<option>Erro ao carregar módulos</option>';
         }
     }
 
@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function () {
         downloadLink.classList.add('disabled');
         downloadLink.href = '#';
         generateBtn.disabled = false;
-        generateBtn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> Gerar Relatorio';
+        generateBtn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> Gerar Relatório';
     }
 
     // --- EVENTOS ---
@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     customizer.load(module.custom_options || {});
                 }
                 if (customizer.modal && typeof customizer.modal.show === 'function') {
-                    // expÃƒÂµe callback para salvar no layout
+                    // Expressão callback para salvar no layout
                     if (customizer.elements && customizer.elements.saveBtn && !customizer._onSave) {
                         customizer._onSave = (opts) => {
                             const saved = opts || {};
@@ -349,7 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Regras especÃƒÂ­ficas de SLA (jÃƒÂ¡ existentes)
+    // Regras especí­ficas de SLA (já existentes)
     if (moduleCustomizers.sla) {
         const slaElements = moduleCustomizers.sla.elements;
         slaElements.comparePrevMonth.addEventListener('change', () => {
@@ -375,13 +375,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // SubmissÃƒÂ£o do form Ã¢â€ â€™ gerar Relatorio
+    // Submissão do form é para gerar Relatório
     reportForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (reportLayout.length === 0) {
             statusArea.style.display = 'block';
             statusArea.className = 'alert alert-warning mt-4';
-            statusMessage.textContent = 'Ã¢Å¡Â Ã¯Â¸Â Adicione ao menos um mÃƒÂ³dulo antes de gerar o Relatorio.';
+            statusMessage.textContent = 'Atenção! Adicione ao menos um módulo antes de gerar o Relatório.';
             return;
         }
 
@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData(reportForm);
 
         try {
-            const response = await fetch(URLS.gerar_relatorio, { method: 'POST', body: formData });
+            const response = await fetch(URLS.gerar_Relatório, { method: 'POST', body: formData });
             if (!response.ok) throw new Error(`Erro no servidor: ${response.status} ${response.statusText}`);
             const data = await response.json();
             const taskId = data.task_id;
@@ -409,11 +409,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         if ((statusData.status || '') === 'Concluido' || !!statusData.file_path) {
                             clearInterval(activePoll);
-                            statusMessage.textContent = 'Ok. Relatorio gerado com sucesso!';
+                            statusMessage.textContent = 'Ok. Relatório gerado com sucesso!';
                             downloadLink.href = URLS.download_report.replace('0', taskId);
                             downloadLink.classList.remove('disabled');
                             generateBtn.disabled = false;
-                            generateBtn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> Gerar Novo Relatorio';
+                            generateBtn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> Gerar Novo Relatório';
                         } else if (statusData.status && statusData.status.startsWith('Erro:')) {
                             clearInterval(activePoll);
                             statusArea.className = 'alert alert-danger mt-4';
@@ -429,7 +429,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         generateBtn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Tentar Novamente';
                     }
                 }, 2000);
-            } else { throw new Error("NÃƒÂ£o foi possÃƒÂ­vel iniciar a tarefa."); }
+            } else { throw new Error("Não foi possível iniciar a tarefa."); }
 
         } catch (error) {
             logDebug('submit.error', { error: String(error) });
@@ -451,9 +451,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // --- INICIALIZAÃƒâ€¡ÃƒÆ’O ---
+    // --- INICIALIZAÇÃO ---
     const today = new Date();
-    // Define perÃƒÂ­odo padrÃƒÂ£o: mÃƒÂªs corrente
+    // Define perí­odo padrão: mês corrente
     const y = today.getFullYear();
     const m = today.getMonth() + 1;
     const firstDay = `${y}-${String(m).padStart(2,'0')}-01`;
