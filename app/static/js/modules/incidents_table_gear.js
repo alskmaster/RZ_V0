@@ -22,9 +22,6 @@
         primaryGrouping: el.querySelector('#incTblPrimaryGrouping'),
         showDuration: el.querySelector('#incTblShowDuration'),
         showAcknowledgements: el.querySelector('#incTblShowAcknowledgements'),
-            <div class="mb-3"><label class="form-label" for="incTblAckFilter">Filtro de ACK</label>
-              <select class="form-select" id="incTblAckFilter"><option value="all">Todos</option><option value="only_acked">Somente com ACK</option><option value="only_unacked">Somente sem ACK</option></select>
-            </div>
         ackFilter: el.querySelector('#incTblAckFilter'),
         saveBtn: el.querySelector('#saveIncTblCustomizationBtn')
       };
@@ -85,57 +82,57 @@
     tpl.innerHTML = `
     <div class="modal fade" id="customizeIncTblModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-lg"><div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title">Personalizar Módulo: Incidentes (Tabela)</h5>
+        <div class="modal-header"><h5 class="modal-title">Personalizar Modulo: Incidentes (Tabela)</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body"><div class="row">
           <div class="col-md-6">
             <label class="form-label">Severidades</label>
-            <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblSeverityInfo"><label class="form-check-label" for="incTblSeverityInfo">Informação</label></div>
-            <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblSeverityWarning"><label class="form-check-label" for="incTblSeverityWarning">Atenção</label></div>
-            <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblSeverityAverage"><label class="form-check-label" for="incTblSeverityAverage">Média</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblSeverityInfo"><label class="form-check-label" for="incTblSeverityInfo">Informacao</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblSeverityWarning"><label class="form-check-label" for="incTblSeverityWarning">Atencao</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblSeverityAverage"><label class="form-check-label" for="incTblSeverityAverage">Media</label></div>
             <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblSeverityHigh"><label class="form-check-label" for="incTblSeverityHigh">Alta</label></div>
             <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblSeverityDisaster"><label class="form-check-label" for="incTblSeverityDisaster">Desastre</label></div>
-          </div>
-          <div class="col-md-6">
-            <div class="mb-3"><label class="form-label" for="incTblPeriodSubFilter">Período</label>
+            <div class="mb-3"><label class="form-label" for="incTblPeriodSubFilter">Periodo</label>
               <select class="form-select" id="incTblPeriodSubFilter">
-                <option value="full_month">Mês Completo</option>
-                <option value="last_24h">Últimas 24h</option>
-                <option value="last_7d">Últimos 7 dias</option>
+                <option value="full_month">Mes Completo</option>
+                <option value="last_24h">Ultimas 24h</option>
+                <option value="last_7d">Ultimos 7 dias</option>
               </select>
             </div>
-            <div class="mb-3"><label class="form-label" for="incTblNumHosts">Top N Hosts</label>
-              <input type="number" class="form-control" id="incTblNumHosts" min="1"></div>
-            <div class="mb-3"><label class="form-label" for="incTblHostNameContains">Filtrar hosts (contém)</label>
+            <div class="mb-3"><label class="form-label" for="incTblHostNameContains">Filtrar hosts (contendo)</label>
               <input type="text" class="form-control" id="incTblHostNameContains" placeholder="Parte do nome do host"></div>
-            <div class="mb-3"><label class="form-label" for="incTblPrimaryGrouping">Agrupamento</label>
             <div class="mb-3"><label class="form-label" for="incTblExcludeHosts">Excluir hosts (contendo)</label>
               <input type="text" class="form-control" id="incTblExcludeHosts" placeholder="ex: teste, lab"></div>
             <div class="mb-3"><label class="form-label" for="incTblProblemContains">Filtrar problema (contendo)</label>
               <input type="text" class="form-control" id="incTblProblemContains" placeholder="Parte do nome do problema"></div>
             <div class="mb-3"><label class="form-label" for="incTblExcludeProblemContains">Excluir problema (contendo)</label>
-              <input type="text" class="form-control" id="incTblExcludeProblemContains" placeholder="Palavras separadas por v�rgula"></div>
+              <input type="text" class="form-control" id="incTblExcludeProblemContains" placeholder="Palavras separadas por virgula"></div>
             <div class="mb-3"><label class="form-label" for="incTblTagsInclude">Tags (incluir)</label>
               <input type="text" class="form-control" id="incTblTagsInclude" placeholder="ex: service:web, env:prod"></div>
             <div class="mb-3"><label class="form-label" for="incTblTagsExclude">Tags (excluir)</label>
               <input type="text" class="form-control" id="incTblTagsExclude" placeholder="ex: env:dev"></div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3"><label class="form-label" for="incTblPrimaryGrouping">Agrupamento</label>
               <select class="form-select" id="incTblPrimaryGrouping">
                 <option value="host">Por Host</option>
                 <option value="problem">Por Problema</option>
               </select>
             </div>
-            <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblShowDuration"><label class="form-check-label" for="incTblShowDuration">Mostrar Duração</label></div>
-            <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblShowAcknowledgements"><label class="form-check-label" for="incTblShowAcknowledgements">Mostrar Reconhecimentos</label></div>
-        </div></div>
+            <div class="mb-3"><label class="form-label" for="incTblNumHosts">Top N Hosts</label>
+              <input type="number" class="form-control" id="incTblNumHosts" min="1" placeholder="Deixe em branco para todos"></div>
+            <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="incTblShowDuration"><label class="form-check-label" for="incTblShowDuration">Mostrar Duracao</label></div>
+            <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="incTblShowAcknowledgements"><label class="form-check-label" for="incTblShowAcknowledgements">Mostrar Reconhecimentos</label></div>
             <div class="mb-3"><label class="form-label" for="incTblAckFilter">Filtro de ACK</label>
               <select class="form-select" id="incTblAckFilter"><option value="all">Todos</option><option value="only_acked">Somente com ACK</option><option value="only_unacked">Somente sem ACK</option></select>
             </div>
+          </div>
+        </div></div>
         <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-          <button type="button" class="btn btn-primary" id="saveIncTblCustomizationBtn">Salvar Personalização</button></div>
+          <button type="button" class="btn btn-primary" id="saveIncTblCustomizationBtn">Salvar Personalizacao</button></div>
       </div></div>
     </div>`;
-    document.body.appendChild(tpl.firstElementChild);
     return document.getElementById('customizeIncTblModal');
   }
 })();
