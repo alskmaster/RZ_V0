@@ -9,6 +9,7 @@ class IncidentsTableCollector(BaseCollector):
     - Filtros por severidade, sub-período e nome do host.
     - Agrupamento por host ou por problema.
     - Campos opcionais: duração e acknowledgements.
+    - Suporte a filtros adicionais: ACK, tags, exclusões de host/problema.
     """
 
     _SEVERITY_MAP = {
@@ -76,9 +77,16 @@ class IncidentsTableCollector(BaseCollector):
         primary_grouping = opts.get('primary_grouping', 'host')
         show_duration = opts.get('show_duration', True)
         show_ack = opts.get('show_acknowledgements', True)
-        only_with_ack = bool(opts.get('only_with_acknowledgements', False))
+        # ACK tri-state (compatível com only_with_acknowledgements)
+        ack_filter = (opts.get('ack_filter') or 'all').lower()
+        if bool(opts.get('only_with_acknowledgements', False)):
+            ack_filter = 'only_acked'
         host_name_contains = (opts.get('host_name_contains') or '').strip()
+        exclude_hosts_contains = (opts.get('exclude_hosts_contains') or '').strip()
         problem_contains = (opts.get('problem_contains') or '').strip()
+        exclude_problem_contains = (opts.get('exclude_problem_contains') or '').strip()
+        tags_include = (opts.get('tags_include') or '').strip()
+        tags_exclude = (opts.get('tags_exclude') or '').strip()
         top_n_hosts = opts.get('num_hosts')
 
         period = self._apply_period_subfilter(period, opts.get('period_sub_filter', 'full_month'))
@@ -106,6 +114,13 @@ class IncidentsTableCollector(BaseCollector):
         df = df[(df['source'] == '0') & (df['object'] == '0') & (df['value'] == '1')]
         if selected_ids:
             df = df[df['severity'].astype(str).isin(selected_ids)]
+        # Filtro por ACK (tri-state)
+        if 'acknowledged' in df.columns and ack_filter in ('only_acked', 'only_unacked'):
+            flag = '1' if ack_filter == 'only_acked' else '0'
+            try:
+                df = df[df['acknowledged'].astype(str) == flag]
+            except Exception:
+                pass
         if df.empty:
             return self.render('incidents_table', {
                 "grouped_data": [],
@@ -120,9 +135,34 @@ class IncidentsTableCollector(BaseCollector):
         df['host_name'] = df['hosts'].apply(lambda x: host_name_map.get(x[0].get('hostid')) if isinstance(x, list) and x and isinstance(x[0], dict) and x[0].get('hostid') else 'Desconhecido')
         if host_name_contains:
             df = df[df['host_name'].str.contains(host_name_contains, case=False, na=False)]
+        if exclude_hosts_contains:
+            tokens = [t.strip().lower() for t in exclude_hosts_contains.split(',') if t.strip()]
+            if tokens:
+                df = df[~df['host_name'].astype(str).str.lower().apply(lambda nm: any(t in nm for t in tokens))]
         if problem_contains:
             df = df[df['name'].astype(str).str.contains(problem_contains, case=False, na=False)]
+        if exclude_problem_contains:
+            tokens_p = [t.strip().lower() for t in exclude_problem_contains.split(',') if t.strip()]
+            if tokens_p:
+                df = df[~df['name'].astype(str).str.lower().apply(lambda nm: any(t in nm for t in tokens_p))]
         if df.empty:
+        # Filtros por tags quando dispon�veis
+        if ('tags' in df.columns) and (tags_include or tags_exclude):
+            inc = [t.strip().lower() for t in tags_include.split(',') if t.strip()]
+            exc = [t.strip().lower() for t in tags_exclude.split(',') if t.strip()]
+            def _norm_tags(tlist):
+                try:
+                    return [ (str((tt.get('tag') if isinstance(tt, dict) else '')) + ':' + str((tt.get('value') if isinstance(tt, dict) else ''))).lower() for tt in (tlist or []) if isinstance(tt, dict) ]
+                except Exception:
+                    return []
+            try:
+                df['_tag_strs'] = df['tags'].apply(_norm_tags)
+                if inc:
+                    df = df[df['_tag_strs'].apply(lambda lst: any(any(i in s for s in lst) for i in inc))]
+                if exc:
+                    df = df[~df['_tag_strs'].apply(lambda lst: any(any(e in s for s in lst) for e in exc))]
+            except Exception:
+                pass
             return self.render('incidents_table', {
                 "grouped_data": [],
                 "selected_severities": selected_names,
@@ -178,7 +218,7 @@ class IncidentsTableCollector(BaseCollector):
         ])
 
         # Filtro opcional: exibir apenas incidentes que possuem pelo menos um reconhecimento
-        if only_with_ack:
+        if ack_filter == 'only_acked':
             try:
                 df = df[df['processed_acknowledgements'].apply(lambda lst: isinstance(lst, list) and len(lst) > 0)]
             except Exception:
@@ -237,5 +277,7 @@ class IncidentsTableCollector(BaseCollector):
             'show_acknowledgements': show_ack,
             'primary_grouping': primary_grouping,
         })
+
+
 
 

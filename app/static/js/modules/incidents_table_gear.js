@@ -14,11 +14,18 @@
         periodSubFilter: el.querySelector('#incTblPeriodSubFilter'),
         numHosts: el.querySelector('#incTblNumHosts'),
         hostNameContains: el.querySelector('#incTblHostNameContains'),
+        excludeHosts: el.querySelector('#incTblExcludeHosts'),
         problemContains: el.querySelector('#incTblProblemContains'),
+        excludeProblemContains: el.querySelector('#incTblExcludeProblemContains'),
+        tagsInclude: el.querySelector('#incTblTagsInclude'),
+        tagsExclude: el.querySelector('#incTblTagsExclude'),
         primaryGrouping: el.querySelector('#incTblPrimaryGrouping'),
         showDuration: el.querySelector('#incTblShowDuration'),
         showAcknowledgements: el.querySelector('#incTblShowAcknowledgements'),
-        onlyWithAck: el.querySelector('#incTblOnlyWithAck'),
+            <div class="mb-3"><label class="form-label" for="incTblAckFilter">Filtro de ACK</label>
+              <select class="form-select" id="incTblAckFilter"><option value="all">Todos</option><option value="only_acked">Somente com ACK</option><option value="only_unacked">Somente sem ACK</option></select>
+            </div>
+        ackFilter: el.querySelector('#incTblAckFilter'),
         saveBtn: el.querySelector('#saveIncTblCustomizationBtn')
       };
     },
@@ -35,11 +42,15 @@
       el.periodSubFilter.value = o.period_sub_filter || 'full_month';
       el.numHosts.value = o.num_hosts || '';
       el.hostNameContains.value = o.host_name_contains || '';
+      if (el.excludeHosts) el.excludeHosts.value = o.exclude_hosts_contains || '';
       el.primaryGrouping.value = o.primary_grouping || 'host';
       el.showDuration.checked = o.show_duration !== false;
       el.showAcknowledgements.checked = o.show_acknowledgements !== false;
-      el.onlyWithAck.checked = !!o.only_with_acknowledgements;
+      if (el.ackFilter) el.ackFilter.value = o.ack_filter || (o.only_with_acknowledgements ? 'only_acked' : 'all');
       if (el.problemContains) el.problemContains.value = o.problem_contains || '';
+      if (el.excludeProblemContains) el.excludeProblemContains.value = o.exclude_problem_contains || '';
+      if (el.tagsInclude) el.tagsInclude.value = o.tags_include || '';
+      if (el.tagsExclude) el.tagsExclude.value = o.tags_exclude || '';
       el.saveBtn.addEventListener('click', ()=>{ if (this._onSave) this._onSave(this.save()); this.modal.hide(); }, { once:true });
     },
     save(){
@@ -54,11 +65,15 @@
         period_sub_filter: el.periodSubFilter.value,
         num_hosts: el.numHosts.value ? parseInt(el.numHosts.value) : null,
         host_name_contains: el.hostNameContains.value || null,
+        exclude_hosts_contains: el.excludeHosts ? (el.excludeHosts.value || null) : null,
         primary_grouping: el.primaryGrouping.value,
         show_duration: !!el.showDuration.checked,
         show_acknowledgements: !!el.showAcknowledgements.checked,
-        only_with_acknowledgements: !!el.onlyWithAck.checked,
+        ack_filter: el.ackFilter ? (el.ackFilter.value || 'all') : 'all',
         problem_contains: el.problemContains ? (el.problemContains.value || null) : null,
+        exclude_problem_contains: el.excludeProblemContains ? (el.excludeProblemContains.value || null) : null,
+        tags_include: el.tagsInclude ? (el.tagsInclude.value || null) : null,
+        tags_exclude: el.tagsExclude ? (el.tagsExclude.value || null) : null,
       };
     }
   };
@@ -95,6 +110,16 @@
             <div class="mb-3"><label class="form-label" for="incTblHostNameContains">Filtrar hosts (contém)</label>
               <input type="text" class="form-control" id="incTblHostNameContains" placeholder="Parte do nome do host"></div>
             <div class="mb-3"><label class="form-label" for="incTblPrimaryGrouping">Agrupamento</label>
+            <div class="mb-3"><label class="form-label" for="incTblExcludeHosts">Excluir hosts (contendo)</label>
+              <input type="text" class="form-control" id="incTblExcludeHosts" placeholder="ex: teste, lab"></div>
+            <div class="mb-3"><label class="form-label" for="incTblProblemContains">Filtrar problema (contendo)</label>
+              <input type="text" class="form-control" id="incTblProblemContains" placeholder="Parte do nome do problema"></div>
+            <div class="mb-3"><label class="form-label" for="incTblExcludeProblemContains">Excluir problema (contendo)</label>
+              <input type="text" class="form-control" id="incTblExcludeProblemContains" placeholder="Palavras separadas por v�rgula"></div>
+            <div class="mb-3"><label class="form-label" for="incTblTagsInclude">Tags (incluir)</label>
+              <input type="text" class="form-control" id="incTblTagsInclude" placeholder="ex: service:web, env:prod"></div>
+            <div class="mb-3"><label class="form-label" for="incTblTagsExclude">Tags (excluir)</label>
+              <input type="text" class="form-control" id="incTblTagsExclude" placeholder="ex: env:dev"></div>
               <select class="form-select" id="incTblPrimaryGrouping">
                 <option value="host">Por Host</option>
                 <option value="problem">Por Problema</option>
@@ -102,9 +127,10 @@
             </div>
             <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblShowDuration"><label class="form-check-label" for="incTblShowDuration">Mostrar Duração</label></div>
             <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblShowAcknowledgements"><label class="form-check-label" for="incTblShowAcknowledgements">Mostrar Reconhecimentos</label></div>
-            <div class="form-check"><input class="form-check-input" type="checkbox" id="incTblOnlyWithAck"><label class="form-check-label" for="incTblOnlyWithAck">Exibir apenas itens com reconhecimento</label></div>
-          </div>
         </div></div>
+            <div class="mb-3"><label class="form-label" for="incTblAckFilter">Filtro de ACK</label>
+              <select class="form-select" id="incTblAckFilter"><option value="all">Todos</option><option value="only_acked">Somente com ACK</option><option value="only_unacked">Somente sem ACK</option></select>
+            </div>
         <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
           <button type="button" class="btn btn-primary" id="saveIncTblCustomizationBtn">Salvar Personalização</button></div>
       </div></div>
