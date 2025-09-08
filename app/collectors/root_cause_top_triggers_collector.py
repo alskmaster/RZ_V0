@@ -18,12 +18,15 @@ class RootCauseTopTriggersCollector(BaseCollector):
     - Respeita cliente/periodo do gerador; possui sub-filtro opcional.
 
     custom_options:
-      - top_n: int (default 5)
+      - top_n: int (default 5) [fallback]
+      - top_n_table: int (linhas da tabela; fallback para top_n)
+      - top_n_chart: int (series para grafico; fallback para top_n)
       - severities: [info, warning, average, high, disaster] (default todas)
       - period_sub_filter: full_month | last_24h | last_7d (default full_month)
       - host_name_contains: filtro textual por host visivel (opcional)
       - sort_by: 'count' | 'downtime' (default 'count')
       - show_table: bool (default True)
+      - show_chart: bool (default True)
     """
 
     _SEVERITY_FILTER_MAP = {
@@ -92,12 +95,27 @@ class RootCauseTopTriggersCollector(BaseCollector):
 
     def collect(self, all_hosts, period):
         o = self.module_config.get('custom_options', {}) or {}
-        top_n = int(o.get('top_n') or 5)
+        top_n_common = int(o.get('top_n') or 5)
+        top_n_table = int(o.get('top_n_table') or top_n_common)
+        top_n_chart = int(o.get('top_n_chart') or top_n_common)
         severities = o.get('severities', ['info', 'warning', 'average', 'high', 'disaster'])
         ids = [self._SEVERITY_FILTER_MAP[s] for s in severities if s in self._SEVERITY_FILTER_MAP]
         sort_by = (o.get('sort_by') or 'count').lower()
         show_table = o.get('show_table', True)
+        show_chart = o.get('show_chart', True)
         host_contains = (o.get('host_name_contains') or '').strip()
+        trigger_contains = (o.get('trigger_name_contains') or '').strip()
+        exclude_triggers_contains_raw = (o.get('exclude_triggers_contains') or '').strip()
+        exclude_hosts_contains_raw = (o.get('exclude_hosts_contains') or '').strip()
+        exclude_terms = [s.strip().lower() for s in exclude_hosts_contains_raw.split(',') if s and s.strip()]
+        def _to_bool(v):
+            try:
+                if isinstance(v, bool):
+                    return v
+                return str(v).strip().lower() in ('1','true','yes','on')
+            except Exception:
+                return False
+        sort_asc = _to_bool(o.get('sort_asc', False))
         period = self._apply_period_subfilter(period, o.get('period_sub_filter', 'full_month'))
         try:
             _s = dt.datetime.fromtimestamp(int(period['start'])).strftime('%d-%m-%Y')
@@ -111,11 +129,27 @@ class RootCauseTopTriggersCollector(BaseCollector):
                 all_hosts = [h for h in (all_hosts or []) if host_contains.lower() in str(h.get('nome_visivel','')).lower()]
             except Exception:
                 pass
+        # Excluir hosts por substrings (lista separada por virgula)
+        if exclude_terms:
+            try:
+                def _should_exclude(h):
+                    name = str(h.get('nome_visivel','')).lower()
+                    return any(term in name for term in exclude_terms)
+                all_hosts = [h for h in (all_hosts or []) if not _should_exclude(h)]
+            except Exception:
+                pass
+        try:
+            self._update_status(
+                f"root_cause_top_triggers | filtros: host_contains='{host_contains}', trig_contains='{trigger_contains}', excl_hosts={exclude_terms}, excl_triggers_raw='{exclude_triggers_contains_raw}', sevs={severities}, sort_by={sort_by}, sort_asc={sort_asc}, top_table={top_n_table}, top_chart={top_n_chart}"
+            )
+        except Exception:
+            pass
         if not all_hosts:
             return self.render('root_cause_top_triggers', {
                 'error': 'Nenhum host disponivel para analise no periodo.',
                 'chart_b64': None,
                 'rows': [],
+                'period': period,
             })
 
         all_host_ids = [h['hostid'] for h in all_hosts]
@@ -142,6 +176,10 @@ class RootCauseTopTriggersCollector(BaseCollector):
             corr = self.generator._correlate_problems(problems.to_dict('records'), df.to_dict('records'), period)
         except Exception:
             corr = []
+        try:
+            self._update_status(f"root_cause_top_triggers | correlacoes: {len(corr) if corr else 0}")
+        except Exception:
+            pass
         if not corr:
             return self.render('root_cause_top_triggers', {'chart_b64': None, 'rows': []})
 
@@ -174,17 +212,55 @@ class RootCauseTopTriggersCollector(BaseCollector):
             return self.render('root_cause_top_triggers', {'chart_b64': None, 'rows': []})
         out = pd.DataFrame(list(rows.values()))
         if sort_by == 'downtime':
-            out = out.sort_values(by=['Downtime_s', 'Ocorrencias'], ascending=[False, False])
+            out = out.sort_values(by=['Downtime_s', 'Ocorrencias'], ascending=[sort_asc, sort_asc])
         else:
-            out = out.sort_values(by=['Ocorrencias', 'Downtime_s'], ascending=[False, False])
-        out = out.head(max(1, top_n))
+            out = out.sort_values(by=['Ocorrencias', 'Downtime_s'], ascending=[sort_asc, sort_asc])
+        # Aplicar filtros por nome de Trigger (include/exclude)
+        try:
+            if trigger_contains:
+                out = out[out['Trigger'].astype(str).str.lower().str.contains(trigger_contains.lower(), na=False)]
+            excl_terms_tr = [s.strip().lower() for s in exclude_triggers_contains_raw.split(',') if s and s.strip()]
+            if excl_terms_tr:
+                out = out[~out['Trigger'].astype(str).str.lower().apply(lambda nm: any(t in nm for t in excl_terms_tr))]
+        except Exception:
+            pass
         out['Downtime_str'] = out['Downtime_s'].apply(self._fmt_seconds)
 
-        chart_b64 = self._img_bars(out, max_label_len=int(o.get('max_label_len') or 48), show_values=bool(o.get('show_values', True)))
+        # Top N separado para tabela e grafico (com fallback)
+        # Regra: se N <= 0, exibir tudo (sem limite)
+        def _limit(df, n):
+            try:
+                n = int(n)
+            except Exception:
+                return df
+            if n <= 0:
+                return df
+            return df.head(n)
+        out_table = _limit(out, top_n_table)
+        out_chart = _limit(out, top_n_chart)
+        # Campo para tooltip completo na tabela
+        try:
+            out_table = out_table.copy()
+            out_table['TriggerFull'] = out_table['Trigger']
+        except Exception:
+            pass
+
+        chart_b64 = None
+        if bool(show_chart):
+            chart_b64 = self._img_bars(
+                out_chart,
+                max_label_len=int(o.get('max_label_len') or 48),
+                show_values=bool(o.get('show_values', True))
+            )
+        try:
+            self._update_status(f"root_cause_top_triggers | linhas tabela={len(out_table)}, series grafico={len(out_chart)}")
+        except Exception:
+            pass
         return self.render('root_cause_top_triggers', {
             'chart_b64': chart_b64,
-            'rows': out.to_dict('records') if show_table else [],
+            'rows': out_table.to_dict('records') if show_table else [],
             'show_table': bool(show_table),
+            'period': period,
         })
 
 

@@ -9,9 +9,12 @@
       if (!this.modal) this.modal = new bootstrap.Modal(el);
       this.elements = {
         title: document.getElementById('rcttTitle'),
-        topN: document.getElementById('rcttTopN'),
+        topNTable: document.getElementById('rcttTopNTable'),
+        topNChart: document.getElementById('rcttTopNChart'),
         sortBy: document.getElementById('rcttSortBy'),
-        hostContains: document.getElementById('rcttHostContains'),
+        sortAsc: document.getElementById('rcttSortAsc'),
+        triggerContains: document.getElementById('rcttTriggerContains'),
+        excludeTriggersContains: document.getElementById('rcttExcludeTriggersContains'),
         periodSubFilter: document.getElementById('rcttPeriodSubFilter'),
         sevInfo: document.getElementById('rcttSevInfo'),
         sevWarn: document.getElementById('rcttSevWarn'),
@@ -19,17 +22,40 @@
         sevHigh: document.getElementById('rcttSevHigh'),
         sevDis: document.getElementById('rcttSevDis'),
         showTable: document.getElementById('rcttShowTable'),
+        showChart: document.getElementById('rcttShowChart'),
+        maxLabelLen: document.getElementById('rcttMaxLabelLen'),
+        showValues: document.getElementById('rcttShowValues'),
         saveBtn: document.getElementById('saveRCTTBtn')
       };
+      // Oculta campos antigos baseados em Host, se existirem (compatibilidade visual)
+      try {
+        const oldHost = document.getElementById('rcttHostContains');
+        if (oldHost && oldHost.closest) {
+          const wrap = oldHost.closest('.col-md-6') || oldHost.parentElement;
+          if (wrap) wrap.style.display = 'none';
+        }
+        const oldExclHost = document.getElementById('rcttExcludeHostsContains');
+        if (oldExclHost && oldExclHost.closest) {
+          const wrap2 = oldExclHost.closest('.col-12') || oldExclHost.parentElement;
+          if (wrap2) wrap2.style.display = 'none';
+        }
+      } catch (e) { /* noop */ }
     },
     load(o){
       this._ensure(); o = o || {}; const el = this.elements;
       try { el.title.value = (window.currentModuleToCustomize && window.currentModuleToCustomize.title) || ''; } catch(e) {}
-      el.topN.value = o.top_n || 5;
+      const tn = parseInt(o.top_n, 10) || 5;
+      el.topNTable.value = (o.top_n_table != null ? o.top_n_table : tn);
+      el.topNChart.value = (o.top_n_chart != null ? o.top_n_chart : tn);
       el.sortBy.value = o.sort_by || 'count';
-      el.hostContains.value = o.host_name_contains || '';
+      el.sortAsc.checked = !!o.sort_asc;
+      el.triggerContains.value = (o.trigger_name_contains || o.host_name_contains || '');
+      el.excludeTriggersContains.value = (o.exclude_triggers_contains || o.exclude_hosts_contains || '');
       el.periodSubFilter.value = o.period_sub_filter || 'full_month';
       el.showTable.checked = (o.show_table !== false);
+      el.showChart.checked = (o.show_chart !== false);
+      el.maxLabelLen.value = (o.max_label_len != null ? o.max_label_len : 48);
+      el.showValues.checked = (o.show_values !== false);
       const sel = new Set(o.severities || ['info','warning','average','high','disaster']);
       el.sevInfo.checked = sel.has('info');
       el.sevWarn.checked = sel.has('warning');
@@ -48,12 +74,19 @@
       if (el.sevDis.checked) severities.push('disaster');
       return {
         __title: el.title.value || '',
-        top_n: parseInt(el.topN.value || '5', 10),
+        top_n: parseInt((el.topNTable.value || el.topNChart.value || '5'), 10),
+        top_n_table: parseInt(el.topNTable.value || '5', 10),
+        top_n_chart: parseInt(el.topNChart.value || '5', 10),
         sort_by: el.sortBy.value || 'count',
-        host_name_contains: el.hostContains.value || null,
+        sort_asc: !!el.sortAsc.checked,
+        trigger_name_contains: el.triggerContains.value || null,
+        exclude_triggers_contains: el.excludeTriggersContains.value || null,
         period_sub_filter: el.periodSubFilter.value || 'full_month',
         severities: severities.length ? severities : ['info','warning','average','high','disaster'],
         show_table: !!el.showTable.checked,
+        show_chart: !!el.showChart.checked,
+        max_label_len: parseInt(el.maxLabelLen.value || '48', 10),
+        show_values: !!el.showValues.checked,
       };
     }
   };
@@ -75,8 +108,12 @@
               <input type="text" class="form-control" id="rcttTitle" placeholder="Ex: Top 5 Gatilhos"/>
             </div>
             <div class="col-md-3">
-              <label class="form-label" for="rcttTopN">Top N</label>
-              <input type="number" class="form-control" id="rcttTopN" min="1" value="5"/>
+              <label class="form-label" for="rcttTopNTable">Top N (Tabela)</label>
+              <input type="number" class="form-control" id="rcttTopNTable" min="0" value="5"/>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="rcttTopNChart">Top N (Grafico)</label>
+              <input type="number" class="form-control" id="rcttTopNChart" min="0" value="5"/>
             </div>
             <div class="col-md-3">
               <label class="form-label" for="rcttSortBy">Ordenar por</label>
@@ -84,6 +121,12 @@
                 <option value="count">Ocorrencias</option>
                 <option value="downtime">Downtime</option>
               </select>
+            </div>
+            <div class="col-md-3 form-check d-flex align-items-end">
+              <div>
+                <input class="form-check-input" type="checkbox" id="rcttSortAsc">
+                <label class="form-check-label" for="rcttSortAsc">Ordem ascendente</label>
+              </div>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="rcttHostContains">Host (contém)</label>
@@ -110,6 +153,32 @@
             <div class="col-12 form-check pt-2">
               <input class="form-check-input" type="checkbox" id="rcttShowTable" checked>
               <label class="form-check-label" for="rcttShowTable">Exibir tabela resumo</label>
+            </div>
+            <div class="col-12 form-check">
+              <input class="form-check-input" type="checkbox" id="rcttShowChart" checked>
+              <label class="form-check-label" for="rcttShowChart">Exibir gráfico</label>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="rcttMaxLabelLen">Tamanho máx. do rótulo</label>
+              <input type="number" class="form-control" id="rcttMaxLabelLen" min="10" value="48"/>
+            </div>
+            <div class="col-md-3 form-check d-flex align-items-end">
+              <div>
+                <input class="form-check-input" type="checkbox" id="rcttShowValues" checked>
+                <label class="form-check-label" for="rcttShowValues">Mostrar valores no gráfico</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="rcttTriggerContains">Trigger (contém)</label>
+              <input type="text" class="form-control" id="rcttTriggerContains" placeholder="Parte do nome do trigger"/>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="rcttExcludeTriggersContains">Excluir Triggers (contém, vírgulas)</label>
+              <input type="text" class="form-control" id="rcttExcludeTriggersContains" placeholder="ex.: ping,link,backup"/>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="rcttExcludeHostsContains">Excluir Hosts (contém, vírgulas)</label>
+              <input type="text" class="form-control" id="rcttExcludeHostsContains" placeholder="ex.: lab,dev,backup"/>
             </div>
           </div>
         </div>

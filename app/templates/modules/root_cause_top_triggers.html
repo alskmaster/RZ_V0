@@ -33,6 +33,11 @@
       </table>
     </div>
   {% endif %}
+  {% if not data.error and (not data.chart_b64) and (not data.rows or (data.rows|length == 0)) %}
+    <p><i>Sem dados para exibir.</i></p>
+  {% endif %}
+  {% if data.period %}
+  {% endif %}
 </div>
 
 
