@@ -189,7 +189,21 @@
       </div></div>
     </div>`;
     document.body.appendChild(tpl.firstElementChild);
-    return document.getElementById('customizeRCTTModal');
+    const modalRoot = document.getElementById('customizeRCTTModal');
+    // Remocao fisica de campos antigos baseados em Host, se ainda existirem no HTML gerado
+    try {
+      const hostInput = modalRoot.querySelector('#rcttHostContains');
+      if (hostInput) {
+        const hostWrap = hostInput.closest('.col-md-6') || hostInput.parentElement;
+        if (hostWrap && hostWrap.parentElement) hostWrap.parentElement.removeChild(hostWrap);
+      }
+      const exclHostInput = modalRoot.querySelector('#rcttExcludeHostsContains');
+      if (exclHostInput) {
+        const exclWrap = exclHostInput.closest('.col-12') || exclHostInput.parentElement;
+        if (exclWrap && exclWrap.parentElement) exclWrap.parentElement.removeChild(exclWrap);
+      }
+    } catch(e) { /* noop */ }
+    return modalRoot;
   }
 })();
 
