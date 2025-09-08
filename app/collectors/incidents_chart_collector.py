@@ -61,7 +61,7 @@ class IncidentsChartCollector(BaseCollector):
 
     def _img(self, fig):
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight')
+        fig.savefig(buf, format='png', bbox_inches='tight')
         plt.close(fig)
         return base64.b64encode(buf.getvalue()).decode('utf-8')
 
@@ -88,11 +88,12 @@ class IncidentsChartCollector(BaseCollector):
         plt.tight_layout()
         return self._img(fig)
 
-    def _daily(self, df, chart_type='bar', rotate=False, alternate=False):
+    def _daily(self, df, chart_type='bar', rotate=False, alternate=False, granularity='D'):
         if df.empty:
             return None
         df['clock_dt'] = pd.to_datetime(df['clock'], unit='s')
-        s = df.set_index('clock_dt').resample('D').size()
+        rule = granularity or 'D'
+        s = df.set_index('clock_dt').resample(rule).size()
         if s.empty:
             return None
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -100,16 +101,23 @@ class IncidentsChartCollector(BaseCollector):
             ax.bar(s.index, s.values, color='#e57373', edgecolor='white', linewidth=0.7)
         else:
             ax.plot(s.index, s.values, marker='o', linestyle='-', color='#1e88e5')
-        ax.set_title('Volume Diário de Incidentes')
+        ax.set_title('Volume Diario de Incidentes')
         ax.set_xlabel('Data')
         ax.set_ylabel('Incidentes')
         ax.grid(True, linestyle='--', alpha=0.7)
-        ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%d/%m'))
+        # Formatador e locator por granularidade
+        if rule == 'M':
+            ax.xaxis.set_major_locator(plt.matplotlib.dates.MonthLocator(interval=1))
+            ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%m/%y'))
+        elif rule == 'W':
+            ax.xaxis.set_major_locator(plt.matplotlib.dates.WeekdayLocator())
+            ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%d/%m'))
+        else:
+            ax.xaxis.set_major_locator(plt.matplotlib.dates.DayLocator(interval=1))
+            ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%d/%m'))
         if rotate:
             plt.xticks(rotation=45, ha='right')
-        if alternate and len(ax.get_xticklabels()) > 1:
-            loc = plt.matplotlib.dates.DayLocator(interval=1)
-            ax.xaxis.set_major_locator(loc)
+        if rule == 'D' and alternate and len(ax.get_xticklabels()) > 1:
             for i, lab in enumerate(ax.get_xticklabels()):
                 if i % 2:
                     lab.set_visible(False)
@@ -133,13 +141,18 @@ class IncidentsChartCollector(BaseCollector):
         if pivot.empty:
             return None
         fig, ax = plt.subplots(figsize=(12, 6))
-        bottom = np.zeros(len(pivot))
-        for sev in cols:
-            values = pivot[sev].values
-            color = self._SEVERITY_COLORS.get(sev, '#607d8b')
-            ax.bar(pivot.index, values, bottom=bottom, label=sev, color=color, edgecolor='white', linewidth=0.7)
-            bottom += values
-        ax.set_title('Volume Diário por Severidade')
+        if chart_type == 'line':
+            for sev in cols:
+                color = self._SEVERITY_COLORS.get(sev, '#607d8b')
+                ax.plot(pivot.index, pivot[sev].values, marker='o', linestyle='-', label=sev, color=color)
+        else:
+            bottom = np.zeros(len(pivot))
+            for sev in cols:
+                values = pivot[sev].values
+                color = self._SEVERITY_COLORS.get(sev, '#607d8b')
+                ax.bar(pivot.index, values, bottom=bottom, label=sev, color=color, edgecolor='white', linewidth=0.7)
+                bottom += values
+        ax.set_title('Volume Diario por Severidade')
         ax.set_xlabel('Data')
         ax.set_ylabel('Incidentes')
         ax.grid(True, linestyle='--', alpha=0.7)
@@ -162,13 +175,35 @@ class IncidentsChartCollector(BaseCollector):
         ids = [self._SEVERITY_FILTER_MAP[s] for s in severities if s in self._SEVERITY_FILTER_MAP]
         period = self._apply_period_subfilter(period, o.get('period_sub_filter', 'full_month'))
         chart_type = o.get('chart_type', 'severity_pie')
-        top_n = int(o.get('problem_type_top_n') or 10)
+        try:
+            _tn = int(o.get('problem_type_top_n')) if o.get('problem_type_top_n') is not None else 10
+        except Exception:
+            _tn = 10
+        top_n = None if (_tn is not None and _tn <= 0) else _tn
         daily_type = o.get('daily_volume_chart_type', 'bar')
-        daily_sev = o.get('daily_volume_severities') or []
+        # Unificação: usar as mesmas severidades globais quando não houver seleção específica
+        daily_sev = o.get('daily_volume_severities') or severities
         rotate = o.get('x_axis_rotate_labels', True)
         alternate = o.get('x_axis_alternate_days', True)
+        ack_filter = (o.get('ack_filter') or 'all').lower()
 
-        all_host_ids = [h['hostid'] for h in all_hosts]
+        # Pré-filtros por host (texto)
+        host_contains = (o.get('host_name_contains') or '').strip().lower()
+        excl_hosts = [s.strip().lower() for s in (o.get('exclude_hosts_contains') or '').split(',') if s.strip()]
+        if host_contains:
+            try:
+                all_hosts = [h for h in (all_hosts or []) if host_contains in str(h.get('nome_visivel','')).lower()]
+            except Exception:
+                pass
+        if excl_hosts:
+            try:
+                def _hex(h):
+                    nm = str(h.get('nome_visivel','')).lower()
+                    return any(t in nm for t in excl_hosts)
+                all_hosts = [h for h in (all_hosts or []) if not _hex(h)]
+            except Exception:
+                pass
+        all_host_ids = [h['hostid'] for h in (all_hosts or [])]
         problems = self.generator.obter_eventos_wrapper(all_host_ids, period, 'hostids')
         if problems is None:
             self._update_status("Erro ao coletar eventos de incidentes (gráficos).")
@@ -182,11 +217,52 @@ class IncidentsChartCollector(BaseCollector):
         for c in ('source', 'object', 'value', 'severity'):
             if c in df.columns:
                 df[c] = df[c].astype(str)
+        # Garante colunas essenciais para filtragem e agregações
+        for required in ('source', 'object', 'value', 'severity', 'clock', 'name', 'objectid'):
+            if required not in df.columns:
+                df[required] = None
         df = df[(df['source'] == '0') & (df['object'] == '0') & (df['value'] == '1')]
         if ids:
             df = df[df['severity'].astype(str).isin(ids)]
+        # Filtro por ACK (se solicitado)
+        if 'acknowledged' in df.columns and ack_filter in ('only_acked', 'only_unacked'):
+            flag = '1' if ack_filter == 'only_acked' else '0'
+            try:
+                df = df[df['acknowledged'].astype(str) == flag]
+            except Exception:
+                pass
+        # Filtros por trigger name
+        trig_contains = (o.get('trigger_name_contains') or '').strip().lower()
+        excl_trigs = [s.strip().lower() for s in (o.get('exclude_triggers_contains') or '').split(',') if s.strip()]
+        if trig_contains:
+            try:
+                df = df[df['name'].astype(str).str.lower().str.contains(trig_contains, na=False)]
+            except Exception:
+                pass
+        if excl_trigs:
+            try:
+                df = df[~df['name'].astype(str).str.lower().apply(lambda nm: any(t in nm for t in excl_trigs))]
+            except Exception:
+                pass
         if df.empty:
             return self.render('incidents_chart', {'total_incidents': 0, 'severity_counts': {}, 'charts': {}})
+        # Filtros por tags (se presentes nos eventos)
+        tags_inc = [t.strip().lower() for t in (o.get('tags_include') or '').split(',') if t.strip()]
+        tags_exc = [t.strip().lower() for t in (o.get('tags_exclude') or '').split(',') if t.strip()]
+        if ('tags' in df.columns) and (tags_inc or tags_exc):
+            def _norm_tags(tlist):
+                try:
+                    return [ (str((tt.get('tag') if isinstance(tt, dict) else '')) + ':' + str((tt.get('value') if isinstance(tt, dict) else ''))).lower() for tt in (tlist or []) if isinstance(tt, dict) ]
+                except Exception:
+                    return []
+            try:
+                df['_tag_strs'] = df['tags'].apply(_norm_tags)
+                if tags_inc:
+                    df = df[df['_tag_strs'].apply(lambda lst: any(any(inc in s for s in lst) for inc in tags_inc))]
+                if tags_exc:
+                    df = df[~df['_tag_strs'].apply(lambda lst: any(any(exc in s for s in lst) for exc in tags_exc))]
+            except Exception:
+                pass
 
         # Mapeia nomes de severidade
         df['severity_name'] = df['severity'].astype(str).map(self._SEVERITY_MAP).fillna('Desconhecido')
@@ -202,9 +278,30 @@ class IncidentsChartCollector(BaseCollector):
             colors = [self._SEVERITY_COLORS.get(s, '#607d8b') for s in labels_order]
             charts['severity_bar'] = self._bar(labels_order, values, 'Incidentes por Severidade', 'Severidade', 'Incidentes', rotate=False, colors=colors)
         elif chart_type == 'problem_type_bar':
-            # Top N problemas por nome
-            pc = df['name'].value_counts().head(top_n)
-            charts['problem_type_bar'] = self._bar(list(pc.index), list(pc.values), 'Top Incidentes por Tipo de Problema', 'Problema', 'Incidentes', rotate=True)
+            # Top problemas por chave (name ou triggerid)
+            problem_key = (o.get('problem_type_key') or 'triggerid').lower()
+            try:
+                if problem_key == 'triggerid':
+                    df['tid'] = df['objectid'].astype(str)
+                    counts = df['tid'].value_counts()
+                    if top_n is not None:
+                        counts = counts.head(top_n)
+                    name_mode = (df.groupby(['tid','name']).size().reset_index(name='n')
+                                   .sort_values(['tid','n'], ascending=[True, False])
+                                   .drop_duplicates('tid')
+                                   .set_index('tid')['name'])
+                    labels = [name_mode.get(tid, f'Trigger {tid}') for tid in counts.index]
+                    charts['problem_type_bar'] = self._bar(labels, list(counts.values), 'Top Incidentes por Tipo de Problema', 'Problema', 'Incidentes', rotate=True)
+                else:
+                    # Agrupa por 'name'
+                    df['__name'] = df['name'].astype(str).fillna('N/A')
+                    pc = df['__name'].value_counts()
+                    if top_n is not None:
+                        pc = pc.head(top_n)
+                    charts['problem_type_bar'] = self._bar(list(pc.index), list(pc.values), 'Top Incidentes por Tipo de Problema', 'Problema', 'Incidentes', rotate=True)
+            except Exception:
+                # Se algo der errado, não quebra o módulo; apenas não desenha o gráfico
+                pass
         elif chart_type in ('daily_volume', 'daily_volume_severity'):
             ddf = df
             if chart_type == 'daily_volume_severity' and daily_sev:
@@ -213,7 +310,10 @@ class IncidentsChartCollector(BaseCollector):
             if chart_type == 'daily_volume_severity':
                 charts['daily_volume'] = self._daily_by_severity(ddf, chart_type=daily_type, rotate=rotate, alternate=alternate)
             else:
-                charts['daily_volume'] = self._daily(ddf, chart_type=daily_type, rotate=rotate, alternate=alternate)
+                granularity = (o.get('time_granularity') or 'D').upper()
+                if granularity not in ('D','W','M'):
+                    granularity = 'D'
+                charts['daily_volume'] = self._daily(ddf, chart_type=daily_type, rotate=rotate, alternate=alternate, granularity=granularity)
 
         return self.render('incidents_chart', {
             'total_incidents': total,
@@ -222,3 +322,4 @@ class IncidentsChartCollector(BaseCollector):
             'chart_type': chart_type,
             'daily_volume_severities': daily_sev if chart_type == 'daily_volume_severity' else [],
         })
+

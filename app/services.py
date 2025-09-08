@@ -668,7 +668,8 @@ class ReportGenerator:
             id_type: object_ids,
             'sortfield': ['eventid'],
             'sortorder': 'ASC',
-            'select_acknowledges': 'extend'
+            'select_acknowledges': 'extend',
+            'selectTags': 'extend'
         }
         body = {'jsonrpc': '2.0', 'method': 'event.get', 'params': params, 'auth': self.token, 'id': 1}
         resposta = fazer_request_zabbix(body, self.url, allow_retry=False)

@@ -14,8 +14,17 @@
         periodSubFilter: el.querySelector('#incChPeriodSubFilter'),
         chartType: el.querySelector('#incChChartType'),
         problemTypeTopN: el.querySelector('#incChProblemTypeTopN'),
+        problemTypeKey: el.querySelector('#incChProblemTypeKey'),
         dailyType: el.querySelector('#incChDailyType'),
         dailySev: el.querySelector('#incChDailySev'),
+        timeGran: el.querySelector('#incChTimeGranularity'),
+        trigContains: el.querySelector('#incChTriggerContains'),
+        exclTrigs: el.querySelector('#incChExcludeTriggers'),
+        hostContains: el.querySelector('#incChHostContains'),
+        exclHosts: el.querySelector('#incChExcludeHosts'),
+        tagsInclude: el.querySelector('#incChTagsInclude'),
+        tagsExclude: el.querySelector('#incChTagsExclude'),
+        ackFilter: el.querySelector('#incChAckFilter'),
         xRotate: el.querySelector('#incChXRotate'),
         xAlternate: el.querySelector('#incChXAlternate'),
         saveBtn: el.querySelector('#saveIncChCustomizationBtn')
@@ -26,37 +35,56 @@
       const o = opts || {}; const el = this.elements;
       const def = ['info','warning','average','high','disaster'];
       const sel = o.severities || def;
-      el.severityInfo.checked = sel.includes('info');
-      el.severityWarning.checked = sel.includes('warning');
-      el.severityAverage.checked = sel.includes('average');
-      el.severityHigh.checked = sel.includes('high');
-      el.severityDisaster.checked = sel.includes('disaster');
-      el.periodSubFilter.value = o.period_sub_filter || 'full_month';
-      el.chartType.value = o.chart_type || 'severity_pie';
-      el.problemTypeTopN.value = o.problem_type_top_n || '';
-      el.dailyType.value = o.daily_volume_chart_type || 'bar';
-      Array.from(el.dailySev.options).forEach(opt => { opt.selected = (o.daily_volume_severities||[]).includes(opt.value); });
-      el.xRotate.checked = o.x_axis_rotate_labels !== false;
-      el.xAlternate.checked = o.x_axis_alternate_days !== false;
-      el.saveBtn.addEventListener('click', ()=>{ if (this._onSave) this._onSave(this.save()); this.modal.hide(); }, { once:true });
+      if (el.severityInfo) el.severityInfo.checked = sel.includes('info');
+      if (el.severityWarning) el.severityWarning.checked = sel.includes('warning');
+      if (el.severityAverage) el.severityAverage.checked = sel.includes('average');
+      if (el.severityHigh) el.severityHigh.checked = sel.includes('high');
+      if (el.severityDisaster) el.severityDisaster.checked = sel.includes('disaster');
+      if (el.periodSubFilter) el.periodSubFilter.value = o.period_sub_filter || 'full_month';
+      if (el.chartType) el.chartType.value = o.chart_type || 'severity_pie';
+      if (el.problemTypeTopN) el.problemTypeTopN.value = (o.problem_type_top_n != null ? o.problem_type_top_n : '');
+      if (el.problemTypeKey) el.problemTypeKey.value = o.problem_type_key || 'triggerid';
+      if (el.dailyType) el.dailyType.value = o.daily_volume_chart_type || 'bar';
+      // Unificado: o conjunto de severidades global vale para todos os gráficos
+      if (el.timeGran) el.timeGran.value = o.time_granularity || 'D';
+      if (el.trigContains) el.trigContains.value = o.trigger_name_contains || '';
+      if (el.exclTrigs) el.exclTrigs.value = o.exclude_triggers_contains || '';
+      if (el.hostContains) el.hostContains.value = o.host_name_contains || '';
+      if (el.exclHosts) el.exclHosts.value = o.exclude_hosts_contains || '';
+      if (el.tagsInclude) el.tagsInclude.value = o.tags_include || '';
+      if (el.tagsExclude) el.tagsExclude.value = o.tags_exclude || '';
+      if (el.ackFilter) el.ackFilter.value = o.ack_filter || 'all';
+      if (el.xRotate) el.xRotate.checked = o.x_axis_rotate_labels !== false;
+      if (el.xAlternate) el.xAlternate.checked = o.x_axis_alternate_days !== false;
+      el.saveBtn && el.saveBtn.addEventListener('click', ()=>{ if (this._onSave) this._onSave(this.save()); this.modal.hide(); }, { once:true });
     },
     save(){
       const el = this.elements; const severities = [];
-      if (el.severityInfo.checked) severities.push('info');
-      if (el.severityWarning.checked) severities.push('warning');
-      if (el.severityAverage.checked) severities.push('average');
-      if (el.severityHigh.checked) severities.push('high');
-      if (el.severityDisaster.checked) severities.push('disaster');
-      const dailySev = Array.from(el.dailySev.selectedOptions).map(o=>o.value);
+      if (el.severityInfo && el.severityInfo.checked) severities.push('info');
+      if (el.severityWarning && el.severityWarning.checked) severities.push('warning');
+      if (el.severityAverage && el.severityAverage.checked) severities.push('average');
+      if (el.severityHigh && el.severityHigh.checked) severities.push('high');
+      if (el.severityDisaster && el.severityDisaster.checked) severities.push('disaster');
+      // Unificado: reutiliza as mesmas severidades globais
+      const dailySev = severities.slice();
       return {
         severities,
-        period_sub_filter: el.periodSubFilter.value,
-        chart_type: el.chartType.value,
-        problem_type_top_n: el.problemTypeTopN.value ? parseInt(el.problemTypeTopN.value) : null,
-        daily_volume_chart_type: el.dailyType.value,
+        period_sub_filter: el.periodSubFilter ? el.periodSubFilter.value : 'full_month',
+        chart_type: el.chartType ? el.chartType.value : 'severity_pie',
+        problem_type_top_n: (el.problemTypeTopN && el.problemTypeTopN.value) ? parseInt(el.problemTypeTopN.value) : null,
+        problem_type_key: el.problemTypeKey ? el.problemTypeKey.value : 'triggerid',
+        daily_volume_chart_type: el.dailyType ? el.dailyType.value : 'bar',
         daily_volume_severities: dailySev,
-        x_axis_rotate_labels: !!el.xRotate.checked,
-        x_axis_alternate_days: !!el.xAlternate.checked,
+        time_granularity: el.timeGran ? el.timeGran.value : 'D',
+        trigger_name_contains: el.trigContains ? (el.trigContains.value || null) : null,
+        exclude_triggers_contains: el.exclTrigs ? (el.exclTrigs.value || null) : null,
+        host_name_contains: el.hostContains ? (el.hostContains.value || null) : null,
+        exclude_hosts_contains: el.exclHosts ? (el.exclHosts.value || null) : null,
+        tags_include: el.tagsInclude ? (el.tagsInclude.value || null) : null,
+        tags_exclude: el.tagsExclude ? (el.tagsExclude.value || null) : null,
+        ack_filter: el.ackFilter ? (el.ackFilter.value || 'all') : 'all',
+        x_axis_rotate_labels: el.xRotate ? !!el.xRotate.checked : true,
+        x_axis_alternate_days: el.xAlternate ? !!el.xAlternate.checked : true,
       };
     }
   };
@@ -87,6 +115,24 @@
               </select>
             </div>
           </div>
+            <div class="mb-3"><label class="form-label" for="incChHostContains">Filtrar Hosts (contendo)</label>
+              <input type="text" class="form-control" id="incChHostContains" placeholder="ex: firewall">
+            </div>
+            <div class="mb-3"><label class="form-label" for="incChExcludeHosts">Excluir Hosts (contendo)</label>
+              <input type="text" class="form-control" id="incChExcludeHosts" placeholder="ex: teste, lab">
+            </div>
+            <div class="mb-3"><label class="form-label" for="incChTriggerContains">Filtrar Triggers (contendo)</label>
+              <input type="text" class="form-control" id="incChTriggerContains" placeholder="ex: link down">
+            </div>
+            <div class="mb-3"><label class="form-label" for="incChExcludeTriggers">Excluir Triggers (contendo)</label>
+              <input type="text" class="form-control" id="incChExcludeTriggers" placeholder="ex: cpu, memoria">
+            </div>
+            <div class="mb-3"><label class="form-label" for="incChTagsInclude">Tags (incluir)</label>
+              <input type="text" class="form-control" id="incChTagsInclude" placeholder="ex: service:web, env:prod">
+            </div>
+            <div class="mb-3"><label class="form-label" for="incChTagsExclude">Tags (excluir)</label>
+              <input type="text" class="form-control" id="incChTagsExclude" placeholder="ex: env:dev">
+            </div>
           <div class="col-md-6">
             <div class="mb-3"><label class="form-label" for="incChChartType">Tipo de Gráfico</label>
               <select class="form-select" id="incChChartType">
@@ -97,23 +143,26 @@
                 <option value="daily_volume_severity">Volume Diário (por Severidade)</option>
               </select>
             </div>
-            <div class="mb-3"><label class="form-label" for="incChProblemTypeTopN">Top N (Tipos de Problema)</label>
-              <input type="number" class="form-control" id="incChProblemTypeTopN" min="1" placeholder="10"></div>
+            <div class="mb-3"><label class="form-label" for="incChProblemTypeTopN">Top N (Tipos de Problema) — 0 = Todos</label>
+              <input type="number" class="form-control" id="incChProblemTypeTopN" min="0" placeholder="10"></div>
+            <div class="mb-3"><label class="form-label" for="incChProblemTypeKey">Agrupar Top N por</label>
+              <select class="form-select" id="incChProblemTypeKey">
+                <option value="triggerid">Trigger (ID) — estável</option>
+                <option value="name">Nome do Evento — volátil</option>
+              </select>
+            </div>
             <div class="mb-3"><label class="form-label" for="incChDailyType">Volume Diário: Estilo</label>
               <select class="form-select" id="incChDailyType"><option value="bar">Barras</option><option value="line">Linhas</option></select>
-            </div>
-            <div class="mb-3"><label class="form-label" for="incChDailySev">Severidades (para Volume Diário por Severidade)</label>
-              <select class="form-select" id="incChDailySev" multiple size="5">
-                <option value="info">Informação</option>
-                <option value="warning">Atenção</option>
-                <option value="average">Média</option>
-                <option value="high">Alta</option>
-                <option value="disaster">Desastre</option>
-              </select>
             </div>
             <div class="form-check"><input class="form-check-input" type="checkbox" id="incChXRotate" checked><label class="form-check-label" for="incChXRotate">Rotacionar rótulos do eixo X</label></div>
             <div class="form-check"><input class="form-check-input" type="checkbox" id="incChXAlternate" checked><label class="form-check-label" for="incChXAlternate">Dias alternados no eixo X</label></div>
           </div>
+            <div class="mb-3"><label class="form-label" for="incChTimeGranularity">Granularidade do Tempo</label>
+              <select class="form-select" id="incChTimeGranularity"><option value="D">Dia</option><option value="W">Semana</option><option value="M">Mes</option></select>
+            </div>
+            <div class="mb-3"><label class="form-label" for="incChAckFilter">Filtro de ACK</label>
+              <select class="form-select" id="incChAckFilter"><option value="all">Todos</option><option value="only_acked">Somente com ACK</option><option value="only_unacked">Somente sem ACK</option></select>
+            </div>
         </div></div>
         <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
           <button type="button" class="btn btn-primary" id="saveIncChCustomizationBtn">Salvar Personalização</button></div>
