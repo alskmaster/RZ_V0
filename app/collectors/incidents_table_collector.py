@@ -106,6 +106,20 @@ class IncidentsTableCollector(BaseCollector):
                 "show_acknowledgements": show_ack,
                 "primary_grouping": primary_grouping,
             })
+            return self.render('incidents_table', {
+                "grouped_data": [],
+                "selected_severities": selected_names,
+                "show_duration": show_duration,
+                "show_acknowledgements": show_ack,
+                "primary_grouping": primary_grouping,
+            })
+            return self.render('incidents_table', {
+                "grouped_data": [],
+                "selected_severities": selected_names,
+                "show_duration": show_duration,
+                "show_acknowledgements": show_ack,
+                "primary_grouping": primary_grouping,
+            })
 
         # Filtros essenciais
         for c in ('source', 'object', 'value', 'severity'):
@@ -146,6 +160,13 @@ class IncidentsTableCollector(BaseCollector):
             if tokens_p:
                 df = df[~df['name'].astype(str).str.lower().apply(lambda nm: any(t in nm for t in tokens_p))]
         if df.empty:
+            return self.render('incidents_table', {
+                "grouped_data": [],
+                "selected_severities": selected_names,
+                "show_duration": show_duration,
+                "show_acknowledgements": show_ack,
+                "primary_grouping": primary_grouping,
+            })
         # Filtros por tags quando disponíveis
         if ('tags' in df.columns) and (tags_include or tags_exclude):
             inc = [t.strip().lower() for t in tags_include.split(',') if t.strip()]
@@ -224,13 +245,6 @@ class IncidentsTableCollector(BaseCollector):
             except Exception:
                 pass
         if df.empty:
-            return self.render('incidents_table', {
-                "grouped_data": [],
-                "selected_severities": selected_names,
-                "show_duration": show_duration,
-                "show_acknowledgements": show_ack,
-                "primary_grouping": primary_grouping,
-            })
 
         grouped_data = []
         if primary_grouping == 'host':
@@ -270,13 +284,6 @@ class IncidentsTableCollector(BaseCollector):
                     hosts_affected.append({'host_name': host_name, 'incidents': incidents_list})
                 grouped_data.append({'primary_key_name': key, 'hosts_affected': sorted(hosts_affected, key=lambda x: x['host_name'])})
 
-        return self.render('incidents_table', {
-            'grouped_data': grouped_data,
-            'selected_severities': selected_names,
-            'show_duration': show_duration,
-            'show_acknowledgements': show_ack,
-            'primary_grouping': primary_grouping,
-        })
 
 
 
