@@ -175,5 +175,9 @@ class MTTRCollector(BaseCollector):
             rows.append({'Severidade': self._SEVERITY_MAP.get(sev, sev), 'MTTR': self._fmt_seconds(mttr_sec), 'MTTD': self._fmt_seconds(mttd_sec)})
 
         chart_b64 = self._bars(labels, mttr_vals, mttd_vals)
-        return self.render('mttr', {'chart_b64': chart_b64, 'rows': rows})
+        return self.render('mttr', {
+            'chart_b64': chart_b64,
+            'rows': rows,
+            'show_summary': bool(o.get('show_summary', True)),
+        })
 

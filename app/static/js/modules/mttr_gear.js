@@ -24,6 +24,8 @@
         sevAvg: document.getElementById('mttrSevAvg'),
         sevHigh: document.getElementById('mttrSevHigh'),
         sevDis: document.getElementById('mttrSevDis'),
+        // Resumo
+        showSummary: document.getElementById('mttrShowSummary'),
         // Ação
         saveBtn: document.getElementById('saveMTTRBtn')
       };
@@ -39,6 +41,7 @@
       if (el.tagsInclude) el.tagsInclude.value = o.tags_include || '';
       if (el.tagsExclude) el.tagsExclude.value = o.tags_exclude || '';
       if (el.ackFilter) el.ackFilter.value = o.ack_filter || (o.only_acknowledged ? 'only_acked' : 'all');
+      if (el.showSummary) el.showSummary.checked = (o.show_summary !== false);
 
       const sel = new Set(o.severities || ['info','warning','average','high','disaster']);
       el.sevInfo.checked = sel.has('info');
@@ -66,7 +69,8 @@
         exclude_triggers_contains: el.excludeTriggers ? (el.excludeTriggers.value || null) : null,
         tags_include: el.tagsInclude ? (el.tagsInclude.value || null) : null,
         tags_exclude: el.tagsExclude ? (el.tagsExclude.value || null) : null,
-        ack_filter: el.ackFilter ? (el.ackFilter.value || 'all') : 'all'
+        ack_filter: el.ackFilter ? (el.ackFilter.value || 'all') : 'all',
+        show_summary: el.showSummary ? !!el.showSummary.checked : true
       };
     }
   };
@@ -135,6 +139,12 @@
                 <option value="only_unacked">Somente sem ACK</option>
               </select>
             </div>
+            <div class="col-md-4 form-check d-flex align-items-end">
+              <div>
+                <input class="form-check-input" type="checkbox" id="mttrShowSummary" checked>
+                <label class="form-check-label" for="mttrShowSummary">Exibir resumo explicativo</label>
+              </div>
+            </div>
             <div class="col-12">
               <label class="form-label">Severidades</label>
               <div class="d-flex gap-3 flex-wrap">
@@ -157,4 +167,3 @@
     return document.getElementById('customizeMTTRModal');
   }
 })();
-

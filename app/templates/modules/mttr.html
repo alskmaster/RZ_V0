@@ -5,6 +5,14 @@
     <div class="alert alert-warning" role="alert">{{ data.error }}</div>
   {% endif %}
 
+  {% if data.show_summary %}
+    <div class="alert alert-info" role="alert" style="font-size: 0.95rem;">
+      <strong>O que são MTTR e MTTD?</strong><br/>
+      MTTR (Mean Time To Restore) é o tempo médio para restaurar o serviço, contado do início do incidente até sua resolução (OK).<br/>
+      MTTD (Mean Time To Detect) aqui é medido como o tempo médio até o <em>primeiro reconhecimento</em> (ACK) do incidente, quando houver; incidentes sem ACK são ignorados no cálculo do MTTD.
+    </div>
+  {% endif %}
+
   {% if data.chart_b64 %}
     <div class="mb-3 text-center">
       <img src="data:image/png;base64,{{ data.chart_b64 }}" alt="MTTR e MTTD" style="max-width:100%; height:auto;" />
@@ -36,4 +44,3 @@
     <div class="alert alert-info" role="alert">Sem dados para exibir no período selecionado.</div>
   {% endif %}
 </div>
-
