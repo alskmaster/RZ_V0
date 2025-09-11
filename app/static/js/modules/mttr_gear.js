@@ -87,10 +87,12 @@
         </div>
         <div class="modal-body">
           <div class="row g-3">
+            <!-- Título do módulo -->
             <div class="col-12">
               <label class="form-label" for="mttrTitle">Título do módulo</label>
               <input type="text" class="form-control" id="mttrTitle" placeholder="Ex: Eficiência da Resposta (MTTR)"/>
             </div>
+            <!-- Filtro de Período -->
             <div class="col-md-4">
               <label class="form-label" for="mttrPeriodSubFilter">Período</label>
               <select class="form-select" id="mttrPeriodSubFilter">
@@ -99,7 +101,26 @@
                 <option value="last_24h">Últimas 24h</option>
               </select>
             </div>
-            <div class="col-md-8">
+            <!-- Opção de Exibir Resumo/Dica -->
+            <div class="col-md-4 form-check d-flex align-items-end">
+              <div>
+                <input class="form-check-input" type="checkbox" id="mttrShowSummary" checked>
+                <label class="form-check-label" for="mttrShowSummary">Exibir resumo/dica</label>
+              </div>
+            </div>
+            <!-- Filtro de Severidade -->
+            <div class="col-12">
+              <label class="form-label">Severidades</label>
+              <div class="d-flex gap-3 flex-wrap">
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="mttrSevInfo" checked> <label class="form-check-label" for="mttrSevInfo">Informação</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="mttrSevWarn" checked> <label class="form-check-label" for="mttrSevWarn">Atenção</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="mttrSevAvg" checked> <label class="form-check-label" for="mttrSevAvg">Média</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="mttrSevHigh" checked> <label class="form-check-label" for="mttrSevHigh">Alta</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="mttrSevDis" checked> <label class="form-check-label" for="mttrSevDis">Desastre</label></div>
+              </div>
+            </div>
+            <!-- Filtrar/Excluir host, problema e tags -->
+            <div class="col-12">
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label" for="mttrHostContains">Filtrar hosts (contendo)</label>
@@ -109,10 +130,6 @@
                   <label class="form-label" for="mttrExcludeHosts">Excluir hosts (contendo)</label>
                   <input type="text" class="form-control" id="mttrExcludeHosts" placeholder="Lista separada por vírgula"/>
                 </div>
-              </div>
-            </div>
-            <div class="col-12">
-              <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label" for="mttrTriggerContains">Filtrar problema (contendo)</label>
                   <input type="text" class="form-control" id="mttrTriggerContains" placeholder="Parte do nome do problema"/>
@@ -131,6 +148,7 @@
                 </div>
               </div>
             </div>
+            <!-- Filtro de ACK -->
             <div class="col-md-4">
               <label class="form-label" for="mttrAckFilter">Filtro de ACK</label>
               <select class="form-select" id="mttrAckFilter">
@@ -138,22 +156,6 @@
                 <option value="only_acked">Somente com ACK</option>
                 <option value="only_unacked">Somente sem ACK</option>
               </select>
-            </div>
-            <div class="col-md-4 form-check d-flex align-items-end">
-              <div>
-                <input class="form-check-input" type="checkbox" id="mttrShowSummary" checked>
-                <label class="form-check-label" for="mttrShowSummary">Exibir resumo explicativo</label>
-              </div>
-            </div>
-            <div class="col-12">
-              <label class="form-label">Severidades</label>
-              <div class="d-flex gap-3 flex-wrap">
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="mttrSevInfo" checked> <label class="form-check-label" for="mttrSevInfo">Informação</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="mttrSevWarn" checked> <label class="form-check-label" for="mttrSevWarn">Atenção</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="mttrSevAvg" checked> <label class="form-check-label" for="mttrSevAvg">Média</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="mttrSevHigh" checked> <label class="form-check-label" for="mttrSevHigh">Alta</label></div>
-                <div class="form-check"><input class="form-check-input" type="checkbox" id="mttrSevDis" checked> <label class="form-check-label" for="mttrSevDis">Desastre</label></div>
-              </div>
             </div>
           </div>
         </div>
@@ -167,3 +169,4 @@
     return document.getElementById('customizeMTTRModal');
   }
 })();
+
