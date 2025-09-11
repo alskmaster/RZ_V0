@@ -95,9 +95,18 @@ class RootCauseTopTriggersCollector(BaseCollector):
 
     def collect(self, all_hosts, period):
         o = self.module_config.get('custom_options', {}) or {}
-        top_n_common = int(o.get('top_n') or 5)
-        top_n_table = int(o.get('top_n_table') or top_n_common)
-        top_n_chart = int(o.get('top_n_chart') or top_n_common)
+        def _to_int(val, default=None):
+            try:
+                if val is None or val == "":
+                    return default
+                return int(val)
+            except Exception:
+                return default
+
+        # Permitir 0 ou vazio para "todos" (sem limite)
+        top_n_common = _to_int(o.get('top_n'), 5)
+        top_n_table = _to_int(o.get('top_n_table'), top_n_common)
+        top_n_chart = _to_int(o.get('top_n_chart'), top_n_common)
         severities = o.get('severities', ['info', 'warning', 'average', 'high', 'disaster'])
         ids = [self._SEVERITY_FILTER_MAP[s] for s in severities if s in self._SEVERITY_FILTER_MAP]
         sort_by = (o.get('sort_by') or 'count').lower()

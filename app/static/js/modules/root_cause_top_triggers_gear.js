@@ -78,6 +78,12 @@
       if (el.sevAvg.checked) severities.push('average');
       if (el.sevHigh.checked) severities.push('high');
       if (el.sevDis.checked) severities.push('disaster');
+      // Top N: 0 ou vazio = todos. Padrão visual é 5, mas se o usuário apagar ou colocar 0, envia 0.
+      let tnTable = el.topNTable.value === '' ? 0 : parseInt(el.topNTable.value, 10);
+      if (isNaN(tnTable)) tnTable = 0;
+      let tnChart = el.topNChart.value === '' ? 0 : parseInt(el.topNChart.value, 10);
+      if (isNaN(tnChart)) tnChart = 0;
+      const tnCommon = tnTable || tnChart || 5;
       return {
         __title: el.title.value || '',
         period_sub_filter: el.periodSubFilter.value || 'full_month',
@@ -88,9 +94,9 @@
         exclude_triggers_contains: el.excludeTriggersContains.value || null,
         tags_include: el.tagsInclude ? (el.tagsInclude.value || null) : null,
         tags_exclude: el.tagsExclude ? (el.tagsExclude.value || null) : null,
-        top_n: parseInt((el.topNTable.value || el.topNChart.value || '5'), 10),
-        top_n_table: parseInt(el.topNTable.value || '5', 10),
-        top_n_chart: parseInt(el.topNChart.value || '5', 10),
+        top_n: tnCommon,
+        top_n_table: tnTable,
+        top_n_chart: tnChart,
         sort_by: el.sortBy.value || 'count',
         sort_asc: !!el.sortAsc.checked,
         show_table: !!el.showTable.checked,
@@ -207,4 +213,3 @@
     return document.getElementById('customizeRCTTModal');
   }
 })();
-
