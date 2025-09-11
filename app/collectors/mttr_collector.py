@@ -65,13 +65,29 @@ class MTTRCollector(BaseCollector):
         o = self.module_config.get('custom_options', {}) or {}
         sevs = o.get('severities', ['info','warning','average','high','disaster'])
         ids = [self._SEVERITY_FILTER_MAP[s] for s in sevs if s in self._SEVERITY_FILTER_MAP]
-        only_ack = bool(o.get('only_acknowledged', False))
+        # ACK tri-state (mantém compat com only_acknowledged)
+        ack_filter = (o.get('ack_filter') or ('only_acked' if o.get('only_acknowledged') else 'all')).lower()
         host_contains = (o.get('host_name_contains') or '').strip()
+        excl_hosts_raw = (o.get('exclude_hosts_contains') or '')
+        excl_host_terms = [s.strip().lower() for s in str(excl_hosts_raw).split(',') if s.strip()]
+        trig_contains = (o.get('trigger_name_contains') or '').strip()
+        excl_trig_raw = (o.get('exclude_triggers_contains') or '')
+        excl_trig_terms = [s.strip().lower() for s in str(excl_trig_raw).split(',') if s.strip()]
+        tags_inc = (o.get('tags_include') or '').strip()
+        tags_exc = (o.get('tags_exclude') or '').strip()
         period = self._apply_period_subfilter(period, o.get('period_sub_filter', 'full_month'))
 
         if host_contains:
             try:
                 all_hosts = [h for h in (all_hosts or []) if host_contains.lower() in str(h.get('nome_visivel','')).lower()]
+            except Exception:
+                pass
+        if excl_host_terms:
+            try:
+                def _hex(name):
+                    nm = str(name or '').lower()
+                    return any(t in nm for t in excl_host_terms)
+                all_hosts = [h for h in (all_hosts or []) if not _hex(h.get('nome_visivel'))]
             except Exception:
                 pass
         if not all_hosts:
@@ -90,9 +106,37 @@ class MTTRCollector(BaseCollector):
 
         problems = df[df['value']=='1']
         if ids: problems = problems[problems['severity'].astype(str).isin(ids)]
-        if only_ack:
-            if 'acknowledges' in problems.columns:
+        # Filtro ACK: all | only_acked | only_unacked
+        if 'acknowledges' in problems.columns:
+            if ack_filter == 'only_acked':
                 problems = problems[problems['acknowledges'].apply(lambda a: isinstance(a,list) and len(a)>0)]
+            elif ack_filter == 'only_unacked':
+                problems = problems[~problems['acknowledges'].apply(lambda a: isinstance(a,list) and len(a)>0)]
+        # Filtros por trigger name
+        try:
+            if trig_contains:
+                problems = problems[problems.get('name').astype(str).str.lower().str.contains(trig_contains.lower(), na=False)]
+            if excl_trig_terms:
+                problems = problems[~problems.get('name').astype(str).str.lower().apply(lambda nm: any(t in nm for t in excl_trig_terms))]
+        except Exception:
+            pass
+        # Filtros por tags quando disponíveis
+        if ('tags' in problems.columns) and (tags_inc or tags_exc):
+            inc = [t.strip().lower() for t in tags_inc.split(',') if t.strip()]
+            exc = [t.strip().lower() for t in tags_exc.split(',') if t.strip()]
+            def _norm_tags(tlist):
+                try:
+                    return [ (str((tt.get('tag') if isinstance(tt, dict) else '')) + ':' + str((tt.get('value') if isinstance(tt, dict) else ''))).lower() for tt in (tlist or []) if isinstance(tt, dict) ]
+                except Exception:
+                    return []
+            try:
+                _tcol = problems['tags'].apply(_norm_tags)
+                if inc:
+                    problems = problems[_tcol.apply(lambda lst: any(any(i in s for s in lst) for i in inc))]
+                if exc:
+                    problems = problems[~_tcol.apply(lambda lst: any(any(e in s for s in lst) for e in exc))]
+            except Exception:
+                pass
         if problems.empty:
             return self.render('mttr', {'chart_b64': None, 'rows': []})
 

@@ -9,23 +9,37 @@
       if (!this.modal) this.modal = new bootstrap.Modal(el);
       this.elements = {
         title: document.getElementById('mttrTitle'),
-        hostContains: document.getElementById('mttrHostContains'),
         periodSubFilter: document.getElementById('mttrPeriodSubFilter'),
-        onlyAck: document.getElementById('mttrOnlyAck'),
+        // Filtros
+        hostContains: document.getElementById('mttrHostContains'),
+        excludeHosts: document.getElementById('mttrExcludeHosts'),
+        triggerContains: document.getElementById('mttrTriggerContains'),
+        excludeTriggers: document.getElementById('mttrExcludeTriggers'),
+        tagsInclude: document.getElementById('mttrTagsInclude'),
+        tagsExclude: document.getElementById('mttrTagsExclude'),
+        ackFilter: document.getElementById('mttrAckFilter'),
+        // Severidades
         sevInfo: document.getElementById('mttrSevInfo'),
         sevWarn: document.getElementById('mttrSevWarn'),
         sevAvg: document.getElementById('mttrSevAvg'),
         sevHigh: document.getElementById('mttrSevHigh'),
         sevDis: document.getElementById('mttrSevDis'),
+        // Ação
         saveBtn: document.getElementById('saveMTTRBtn')
       };
     },
     load(o){
       this._ensure(); o = o || {}; const el = this.elements;
       try { el.title.value = (window.currentModuleToCustomize && window.currentModuleToCustomize.title) || ''; } catch(e) {}
-      el.hostContains.value = o.host_name_contains || '';
       el.periodSubFilter.value = o.period_sub_filter || 'full_month';
-      el.onlyAck.checked = !!o.only_acknowledged;
+      el.hostContains.value = o.host_name_contains || '';
+      if (el.excludeHosts) el.excludeHosts.value = o.exclude_hosts_contains || '';
+      if (el.triggerContains) el.triggerContains.value = o.trigger_name_contains || '';
+      if (el.excludeTriggers) el.excludeTriggers.value = o.exclude_triggers_contains || '';
+      if (el.tagsInclude) el.tagsInclude.value = o.tags_include || '';
+      if (el.tagsExclude) el.tagsExclude.value = o.tags_exclude || '';
+      if (el.ackFilter) el.ackFilter.value = o.ack_filter || (o.only_acknowledged ? 'only_acked' : 'all');
+
       const sel = new Set(o.severities || ['info','warning','average','high','disaster']);
       el.sevInfo.checked = sel.has('info');
       el.sevWarn.checked = sel.has('warning');
@@ -44,10 +58,15 @@
       if (el.sevDis.checked) severities.push('disaster');
       return {
         __title: el.title.value || '',
-        host_name_contains: el.hostContains.value || null,
         period_sub_filter: el.periodSubFilter.value || 'full_month',
-        only_acknowledged: !!el.onlyAck.checked,
-        severities: severities.length ? severities : ['info','warning','average','high','disaster']
+        severities: severities.length ? severities : ['info','warning','average','high','disaster'],
+        host_name_contains: el.hostContains.value || null,
+        exclude_hosts_contains: el.excludeHosts ? (el.excludeHosts.value || null) : null,
+        trigger_name_contains: el.triggerContains ? (el.triggerContains.value || null) : null,
+        exclude_triggers_contains: el.excludeTriggers ? (el.excludeTriggers.value || null) : null,
+        tags_include: el.tagsInclude ? (el.tagsInclude.value || null) : null,
+        tags_exclude: el.tagsExclude ? (el.tagsExclude.value || null) : null,
+        ack_filter: el.ackFilter ? (el.ackFilter.value || 'all') : 'all'
       };
     }
   };
@@ -68,21 +87,53 @@
               <label class="form-label" for="mttrTitle">Título do módulo</label>
               <input type="text" class="form-control" id="mttrTitle" placeholder="Ex: Eficiência da Resposta (MTTR)"/>
             </div>
-            <div class="col-md-6">
-              <label class="form-label" for="mttrHostContains">Host (contém)</label>
-              <input type="text" class="form-control" id="mttrHostContains" placeholder="Parte do nome do host"/>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label" for="mttrPeriodSubFilter">Período (sub-filtro)</label>
+            <div class="col-md-4">
+              <label class="form-label" for="mttrPeriodSubFilter">Período</label>
               <select class="form-select" id="mttrPeriodSubFilter">
-                <option value="full_month">Mês completo</option>
-                <option value="last_24h">Últimas 24h</option>
+                <option value="full_month">Mês Completo</option>
                 <option value="last_7d">Últimos 7 dias</option>
+                <option value="last_24h">Últimas 24h</option>
               </select>
             </div>
-            <div class="col-md-3 form-check d-flex align-items-end">
-              <input class="form-check-input" type="checkbox" id="mttrOnlyAck"/>
-              <label class="form-check-label ms-2" for="mttrOnlyAck">Somente reconhecidos</label>
+            <div class="col-md-8">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label" for="mttrHostContains">Filtrar hosts (contendo)</label>
+                  <input type="text" class="form-control" id="mttrHostContains" placeholder="Parte do nome do host"/>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="mttrExcludeHosts">Excluir hosts (contendo)</label>
+                  <input type="text" class="form-control" id="mttrExcludeHosts" placeholder="Lista separada por vírgula"/>
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label" for="mttrTriggerContains">Filtrar problema (contendo)</label>
+                  <input type="text" class="form-control" id="mttrTriggerContains" placeholder="Parte do nome do problema"/>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="mttrExcludeTriggers">Excluir problema (contendo)</label>
+                  <input type="text" class="form-control" id="mttrExcludeTriggers" placeholder="Lista separada por vírgula"/>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="mttrTagsInclude">Filtrar tags (contendo)</label>
+                  <input type="text" class="form-control" id="mttrTagsInclude" placeholder="ex: service:web, env:prod"/>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="mttrTagsExclude">Excluir tags (contendo)</label>
+                  <input type="text" class="form-control" id="mttrTagsExclude" placeholder="Lista separada por vírgula"/>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="mttrAckFilter">Filtro de ACK</label>
+              <select class="form-select" id="mttrAckFilter">
+                <option value="all">Todos</option>
+                <option value="only_acked">Somente com ACK</option>
+                <option value="only_unacked">Somente sem ACK</option>
+              </select>
             </div>
             <div class="col-12">
               <label class="form-label">Severidades</label>
