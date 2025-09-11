@@ -1,0 +1,8 @@
+
+(function(){
+  window.ModuleCustomizers = window.ModuleCustomizers || {};
+
+  window.ModuleCustomizers['incidents_chart'] = {
+    _ensure(){
+      const el = ensureIncidentsChartModal();
+      if (!this.modal) this.modal = new bootstrap.Modal(el);

@@ -84,15 +84,15 @@
               <input type="text" class="form-control" id="resPanelTitle" placeholder="Ex: Painel de Resiliência (SLA Preciso)"/>
             </div>
             <div class="col-md-8">
-              <label class="form-label" for="resPanelHostContains">Host (contém)</label>
+              <label class="form-label" for="resPanelHostContains">Filtrar hosts (contendo)</label>
               <input type="text" class="form-control" id="resPanelHostContains" placeholder="Parte do nome do host"/>
             </div>
             <div class="col-md-4">
-              <label class="form-label" for="resPanelPeriodSubFilter">Período (Sub-filtro)</label>
+              <label class="form-label" for="resPanelPeriodSubFilter">Período</label>
               <select class="form-select" id="resPanelPeriodSubFilter">
-                <option value="full_month">Mês completo</option>
-                <option value="last_24h">Últimas 24h</option>
+                <option value="full_month">Mês Completo</option>
                 <option value="last_7d">Últimos 7 dias</option>
+                <option value="last_24h">Últimas 24h</option>
               </select>
             </div>
             <div class="col-md-4">
@@ -104,7 +104,7 @@
               <label class="form-check-label" for="resPanelHighlight">Destacar abaixo da meta</label>
             </div>
             <div class="col-md-6">
-              <label class="form-label" for="resPanelHostExclude">Excluir hosts (contém)</label>
+              <label class="form-label" for="resPanelHostExclude">Excluir hosts (contendo)</label>
               <input type="text" class="form-control" id="resPanelHostExclude" placeholder="Lista separada por vírgula"/>
             </div>
             <div class="col-md-4">
