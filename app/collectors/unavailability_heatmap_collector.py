@@ -23,6 +23,7 @@ class UnavailabilityHeatmapCollector(BaseCollector):
       - period_sub_filter: full_month | last_24h | last_7d
       - palette: colormap do matplotlib (default: 'OrRd')
       - annotate: bool, insere numeros nas celulas (default: True)
+      - show_summary: bool, exibe resumo explicativo (default: True)
     """
 
     _SEVERITY_FILTER_MAP = {
@@ -77,6 +78,7 @@ class UnavailabilityHeatmapCollector(BaseCollector):
         host_contains = (o.get('host_name_contains') or '').strip()
         palette = o.get('palette', 'OrRd')
         annotate = o.get('annotate', True)
+        show_summary = o.get('show_summary', True)
         period = self._apply_period_subfilter(period, o.get('period_sub_filter', 'full_month'))
         try:
             _s = dt.datetime.fromtimestamp(int(period['start'])).strftime('%d-%m-%Y')
@@ -150,7 +152,26 @@ class UnavailabilityHeatmapCollector(BaseCollector):
 
         chart_b64 = self._img(mat, palette=palette, annotate=bool(annotate))
         total = int(np.sum(mat))
-        summary = f"Mapa de calor baseado em {total} incidente(s) no periodo selecionado."
+
+        summary = None
+        if show_summary:
+            sev_labels = {
+                'info': 'Informação', 'warning': 'Atenção', 'average': 'Média', 'high': 'Alta', 'disaster': 'Desastre'
+            }
+            try:
+                per_s = dt.datetime.fromtimestamp(int(period['start'])).strftime('%d/%m/%Y')
+                per_e = dt.datetime.fromtimestamp(int(period['end'])).strftime('%d/%m/%Y')
+                per_txt = f"{per_s} a {per_e}"
+            except Exception:
+                per_txt = "período selecionado"
+            sev_txt = ", ".join([sev_labels.get(s, s) for s in severities]) or "todas as severidades"
+            summary = (
+                "Esta visão mostra a concentração de incidentes (eventos PROBLEM) por dia da semana e hora do dia. "
+                "Cores mais quentes indicam maior volume na combinação de dia/hora. "
+                f"Severidades consideradas: {sev_txt}. "
+                f"Período: {per_txt}. "
+                f"Total de incidentes mapeados: {total}."
+            )
 
         return self.render('unavailability_heatmap', {
             'chart_b64': chart_b64,
