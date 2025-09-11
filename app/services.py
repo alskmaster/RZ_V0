@@ -312,7 +312,28 @@ class ReportGenerator:
                         html_part = collector_instance.collect(all_hosts, period, previous_month_data=wifi_prev_month_df)
                     else:
                         html_part = collector_instance.collect(all_hosts, period)
-                final_html_parts.append(html_part)
+                # Ensure only strings are appended to final HTML parts
+                if isinstance(html_part, str):
+                    final_html_parts.append(html_part)
+                elif isinstance(html_part, (bytes, bytearray)):
+                    try:
+                        final_html_parts.append(html_part.decode('utf-8', errors='ignore'))
+                    except Exception:
+                        final_html_parts.append('')
+                        try:
+                            current_app.logger.warning(
+                                f"[ReportGenerator.generate] Coletor '{module_type}' retornou bytes nao decodificaveis; ignorando.")
+                        except Exception:
+                            pass
+                else:
+                    # Collector returned None or unexpected type; log and continue gracefully
+                    final_html_parts.append('')
+                    try:
+                        tname = type(html_part).__name__
+                        current_app.logger.warning(
+                            f"[ReportGenerator.generate] Coletor '{module_type}' retornou tipo inesperado: {tname}; substituindo por string vazia.")
+                    except Exception:
+                        pass
             except Exception as e:
                 current_app.logger.error(f"Erro ao executar o plugin '{module_type}': {e}", exc_info=True)
                 final_html_parts.append(f"<p>Erro critico ao processar modulo '{module_type}'.</p>")
@@ -326,11 +347,13 @@ class ReportGenerator:
         except Exception:
             periodo_label = str(ref_month_str)
 
+        # Guard against non-string parts during join
+        safe_join = ''.join(p if isinstance(p, str) else '' for p in final_html_parts)
         dados_gerais = {
             'group_name': client.name,
             'periodo_referencia': periodo_label,
             'data_emissao': dt.datetime.now().strftime('%d/%m/%Y'),
-            'report_content': ''.join(final_html_parts)
+            'report_content': safe_join
         }
         try:
             miolo_html = render_template('_MIOLO_BASE.html', **dados_gerais, modules={'pandas': pd})

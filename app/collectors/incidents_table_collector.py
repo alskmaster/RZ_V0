@@ -1,22 +1,22 @@
-from .base_collector import BaseCollector
+﻿from .base_collector import BaseCollector
 import datetime
 import pandas as pd
 
 
 class IncidentsTableCollector(BaseCollector):
     """
-    Módulo Incidentes (Tabela): apenas informações tabulares, sem gráficos.
-    - Filtros por severidade, sub-período e nome do host.
+    MÃ³dulo Incidentes (Tabela): apenas informaÃ§Ãµes tabulares, sem grÃ¡ficos.
+    - Filtros por severidade, sub-perÃ­odo e nome do host.
     - Agrupamento por host ou por problema.
-    - Campos opcionais: duração e acknowledgements.
-    - Suporte a filtros adicionais: ACK, tags, exclusões de host/problema.
+    - Campos opcionais: duraÃ§Ã£o e acknowledgements.
+    - Suporte a filtros adicionais: ACK, tags, exclusÃµes de host/problema.
     """
 
     _SEVERITY_MAP = {
-        '0': 'Não Classificado',
-        '1': 'Informação',
-        '2': 'Atenção',
-        '3': 'Média',
+        '0': 'NÃ£o Classificado',
+        '1': 'InformaÃ§Ã£o',
+        '2': 'AtenÃ§Ã£o',
+        '3': 'MÃ©dia',
         '4': 'Alta',
         '5': 'Desastre'
     }
@@ -36,7 +36,7 @@ class IncidentsTableCollector(BaseCollector):
         try:
             return datetime.datetime.fromtimestamp(int(ts)).strftime('%d/%m/%Y %H:%M:%S')
         except Exception:
-            return "Inválido"
+            return "InvÃ¡lido"
 
     def _format_duration(self, seconds):
         if not seconds:
@@ -58,7 +58,7 @@ class IncidentsTableCollector(BaseCollector):
             if seconds or not parts: parts.append(f"{seconds}s")
             return " ".join(parts)
         except Exception:
-            return "Inválido"
+            return "InvÃ¡lido"
 
     def _apply_period_subfilter(self, period, sub):
         start, end = period['start'], period['end']
@@ -77,7 +77,7 @@ class IncidentsTableCollector(BaseCollector):
         primary_grouping = opts.get('primary_grouping', 'host')
         show_duration = opts.get('show_duration', True)
         show_ack = opts.get('show_acknowledgements', True)
-        # ACK tri-state (compatível com only_with_acknowledgements)
+        # ACK tri-state (compatÃ­vel com only_with_acknowledgements)
         ack_filter = (opts.get('ack_filter') or 'all').lower()
         if bool(opts.get('only_with_acknowledgements', False)):
             ack_filter = 'only_acked'
@@ -95,24 +95,10 @@ class IncidentsTableCollector(BaseCollector):
         problems = self.generator.obter_eventos_wrapper(all_host_ids, period, 'hostids')
         if problems is None:
             self._update_status("Erro ao coletar eventos de incidentes (tabela).")
-            return self.render('incidents_table', {"error": "Não foi possível coletar dados de incidentes."})
+            return self.render('incidents_table', {"error": "NÃ£o foi possÃ­vel coletar dados de incidentes."})
 
         df = pd.DataFrame(problems)
         if df.empty:
-            return self.render('incidents_table', {
-                "grouped_data": [],
-                "selected_severities": selected_names,
-                "show_duration": show_duration,
-                "show_acknowledgements": show_ack,
-                "primary_grouping": primary_grouping,
-            })
-            return self.render('incidents_table', {
-                "grouped_data": [],
-                "selected_severities": selected_names,
-                "show_duration": show_duration,
-                "show_acknowledgements": show_ack,
-                "primary_grouping": primary_grouping,
-            })
             return self.render('incidents_table', {
                 "grouped_data": [],
                 "selected_severities": selected_names,
@@ -144,7 +130,7 @@ class IncidentsTableCollector(BaseCollector):
                 "primary_grouping": primary_grouping,
             })
 
-        # Host visível
+        # Host visÃ­vel
         host_name_map = {h['hostid']: h['nome_visivel'] for h in all_hosts}
         df['host_name'] = df['hosts'].apply(lambda x: host_name_map.get(x[0].get('hostid')) if isinstance(x, list) and x and isinstance(x[0], dict) and x[0].get('hostid') else 'Desconhecido')
         if host_name_contains:
@@ -167,7 +153,7 @@ class IncidentsTableCollector(BaseCollector):
                 "show_acknowledgements": show_ack,
                 "primary_grouping": primary_grouping,
             })
-        # Filtros por tags quando dispon�veis
+        # Filtros por tags quando disponíveis
         if ('tags' in df.columns) and (tags_include or tags_exclude):
             inc = [t.strip().lower() for t in tags_include.split(',') if t.strip()]
             exc = [t.strip().lower() for t in tags_exclude.split(',') if t.strip()]
@@ -184,18 +170,19 @@ class IncidentsTableCollector(BaseCollector):
                     df = df[~df['_tag_strs'].apply(lambda lst: any(any(e in s for s in lst) for e in exc))]
             except Exception:
                 pass
-            return self.render('incidents_table', {
-                "grouped_data": [],
-                "selected_severities": selected_names,
-                "show_duration": show_duration,
-                "show_acknowledgements": show_ack,
-                "primary_grouping": primary_grouping,
-            })
+            if df.empty:
+                return self.render('incidents_table', {
+                    "grouped_data": [],
+                    "selected_severities": selected_names,
+                    "show_duration": show_duration,
+                    "show_acknowledgements": show_ack,
+                    "primary_grouping": primary_grouping,
+                })
 
-        # Campos de exibição
+        # Campos de exibiÃ§Ã£o
         df['severity_name'] = df['severity'].astype(str).map(self._SEVERITY_MAP).fillna('Desconhecido')
         df['formatted_clock'] = df['clock'].apply(self._format_timestamp)
-        # Correlação PROBLEM -> OK usando todos os eventos do período (para determinar fim real)
+        # CorrelaÃ§Ã£o PROBLEM -> OK usando todos os eventos do perÃ­odo (para determinar fim real)
         end_map = {}
         try:
             problems_only = [p for p in (problems or []) if str(p.get('source')) == '0' and str(p.get('object')) == '0' and str(p.get('value')) == '1']
@@ -203,7 +190,7 @@ class IncidentsTableCollector(BaseCollector):
             end_map = {(str(c.get('triggerid')), int(c.get('start'))): int(c.get('end')) for c in (correlated or []) if c.get('start') is not None}
         except Exception:
             end_map = {}
-        # Duração: se houver r_event (OK), usa-o como fim; caso contrário, usa o fim do período do relatório
+        # DuraÃ§Ã£o: se houver r_event (OK), usa-o como fim; caso contrÃ¡rio, usa o fim do perÃ­odo do relatÃ³rio
         try:
             period_end_ts = int(period.get('end'))
         except Exception:
@@ -224,11 +211,14 @@ class IncidentsTableCollector(BaseCollector):
                 except Exception:
                     return period_end_ts
             return period_end_ts
-        # Garantir numéricos seguros para cálculo
+        # Garantir numÃ©ricos seguros para cÃ¡lculo
         df['start_ts'] = pd.to_numeric(df['clock'], errors='coerce').fillna(period_end_ts).astype(int)
         df['end_ts'] = df.apply(_end_ts, axis=1)
         df['duration_seconds'] = (df['end_ts'] - df['start_ts']).clip(lower=0)
         df['formatted_duration'] = df['duration_seconds'].apply(self._format_duration)
+        # Garante coluna 'acknowledges' presente para evitar KeyError
+        if 'acknowledges' not in df.columns:
+            df['acknowledges'] = None
         df['processed_acknowledgements'] = df['acknowledges'].apply(lambda acks: [
             {
                 'alias': ack.get('alias', 'N/A'),
@@ -245,7 +235,7 @@ class IncidentsTableCollector(BaseCollector):
             except Exception:
                 pass
         if df.empty:
-
+            return self.render('incidents_table', {"grouped_data": [], "selected_severities": selected_names, "show_duration": show_duration, "show_acknowledgements": show_ack, "primary_grouping": primary_grouping})
         grouped_data = []
         if primary_grouping == 'host':
             if top_n_hosts:
@@ -284,7 +274,12 @@ class IncidentsTableCollector(BaseCollector):
                     hosts_affected.append({'host_name': host_name, 'incidents': incidents_list})
                 grouped_data.append({'primary_key_name': key, 'hosts_affected': sorted(hosts_affected, key=lambda x: x['host_name'])})
 
-
-
-
+        # Renderiza resultado final
+        return self.render('incidents_table', {
+            "grouped_data": grouped_data,
+            "selected_severities": selected_names,
+            "show_duration": show_duration,
+            "show_acknowledgements": show_ack,
+            "primary_grouping": primary_grouping,
+        })
 
