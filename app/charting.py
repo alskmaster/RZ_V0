@@ -206,7 +206,7 @@ def generate_chart(
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 
-def generate_multi_bar_chart(df, title, x_label, colors, *, label_wrap=45):
+def generate_multi_bar_chart(df, title, x_label, colors, *, label_wrap=48, show_values=False, rotate_x=False):
     """
     Gera gráfico horizontal de barras múltiplas (Min/Avg/Max) para hosts.
 
@@ -243,9 +243,9 @@ def generate_multi_bar_chart(df, title, x_label, colors, *, label_wrap=45):
         df_sorted = df_sorted.nlargest(MAX_BARS, 'Avg').sort_values(by='Avg', ascending=True)
 
     try:
-        wrap = int(label_wrap) if label_wrap is not None else 45
+        wrap = int(label_wrap) if label_wrap is not None else 48
     except Exception:
-        wrap = 45
+        wrap = 48
     y_labels = ['\n'.join(textwrap.wrap(str(label), width=wrap)) for label in df_sorted['Host']]
 
     plt.style.use('seaborn-v0_8-whitegrid')
@@ -280,8 +280,25 @@ def generate_multi_bar_chart(df, title, x_label, colors, *, label_wrap=45):
     ax.set_title(title, fontsize=16)
     ax.grid(True, which='major', axis='x', linestyle='--', linewidth=0.5)
     ax.legend()
+    # Rotacionar rótulos do eixo X, se solicitado
+    if rotate_x:
+        for tick in ax.get_xticklabels():
+            tick.set_rotation(45)
     for spine in ['top', 'right', 'left', 'bottom']:
         ax.spines[spine].set_visible(False)
+
+    # Exibir valores nas barras, se solicitado
+    if show_values:
+        def annotate_bars(values, y_positions):
+            for val, y0 in zip(values, y_positions):
+                try:
+                    v = float(val)
+                except Exception:
+                    continue
+                ax.text(v, y0, f" {v:.1f}", va='center', ha='left', fontsize=font_size-1)
+        annotate_bars(max_vals, [i - bar_height for i in y])
+        annotate_bars(avg_vals, y)
+        annotate_bars(min_vals, [i + bar_height for i in y])
 
     plt.subplots_adjust(left=0.4, right=0.95, top=0.9, bottom=0.1)
     buffer = BytesIO()
