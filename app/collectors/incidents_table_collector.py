@@ -107,11 +107,18 @@ class IncidentsTableCollector(BaseCollector):
                 "primary_grouping": primary_grouping,
             })
 
-        # Filtros essenciais
-        for c in ('source', 'object', 'value', 'severity'):
+        # Filtros essenciais (tolerante a ausencia de 'source'/'object')
+        for c in ('value', 'severity', 'source', 'object'):
             if c in df.columns:
                 df[c] = df[c].astype(str)
-        df = df[(df['source'] == '0') & (df['object'] == '0') & (df['value'] == '1')]
+        mask = pd.Series([True] * len(df))
+        if 'source' in df.columns:
+            mask &= (df['source'] == '0')
+        if 'object' in df.columns:
+            mask &= (df['object'] == '0')
+        if 'value' in df.columns:
+            mask &= (df['value'] == '1')
+        df = df[mask]
         if selected_ids:
             df = df[df['severity'].astype(str).isin(selected_ids)]
         # Filtro por ACK (tri-state)
@@ -163,6 +170,14 @@ class IncidentsTableCollector(BaseCollector):
                 except Exception:
                     return []
             try:
+                # Garante 'tags' carregado quando filtros forem solicitados
+                if 'tags' not in df.columns:
+                    try:
+                        if 'eventid' in df.columns and len(df['eventid']) > 0:
+                            tags_map = self.generator.obter_eventos_tags_details(df['eventid'].tolist()) or {}
+                            df['tags'] = df['eventid'].astype(str).map(lambda eid: tags_map.get(str(eid), []))
+                    except Exception:
+                        pass
                 df['_tag_strs'] = df['tags'].apply(_norm_tags)
                 if inc:
                     df = df[df['_tag_strs'].apply(lambda lst: any(any(i in s for s in lst) for i in inc))]
@@ -185,7 +200,7 @@ class IncidentsTableCollector(BaseCollector):
         # CorrelaÃ§Ã£o PROBLEM -> OK usando todos os eventos do perÃ­odo (para determinar fim real)
         end_map = {}
         try:
-            problems_only = [p for p in (problems or []) if str(p.get('source')) == '0' and str(p.get('object')) == '0' and str(p.get('value')) == '1']
+            problems_only = [p for p in (problems or []) if str(p.get('value')) == '1']
             correlated = self.generator._correlate_problems(problems_only, problems, period)
             end_map = {(str(c.get('triggerid')), int(c.get('start'))): int(c.get('end')) for c in (correlated or []) if c.get('start') is not None}
         except Exception:
@@ -216,9 +231,22 @@ class IncidentsTableCollector(BaseCollector):
         df['end_ts'] = df.apply(_end_ts, axis=1)
         df['duration_seconds'] = (df['end_ts'] - df['start_ts']).clip(lower=0)
         df['formatted_duration'] = df['duration_seconds'].apply(self._format_duration)
-        # Garante coluna 'acknowledges' presente para evitar KeyError
-        if 'acknowledges' not in df.columns:
-            df['acknowledges'] = None
+        # Carrega ACKs detalhados sob demanda (apenas se for exibir reconhecimentos)
+        if bool(show_ack):
+            try:
+                if 'eventid' in df.columns and len(df['eventid']) > 0:
+                    ack_map = self.generator.obter_eventos_ack_details(df['eventid'].tolist()) or {}
+                    df['acknowledges'] = df['eventid'].astype(str).map(lambda eid: ack_map.get(str(eid), []))
+                else:
+                    if 'acknowledges' not in df.columns:
+                        df['acknowledges'] = None
+            except Exception:
+                if 'acknowledges' not in df.columns:
+                    df['acknowledges'] = None
+        else:
+            # Garante coluna 'acknowledges' presente para evitar KeyError
+            if 'acknowledges' not in df.columns:
+                df['acknowledges'] = None
         df['processed_acknowledgements'] = df['acknowledges'].apply(lambda acks: [
             {
                 'alias': ack.get('alias', 'N/A'),

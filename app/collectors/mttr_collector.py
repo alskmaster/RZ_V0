@@ -100,11 +100,17 @@ class MTTRCollector(BaseCollector):
         df = pd.DataFrame(evs)
         if df.empty:
             return self.render('mttr', {'chart_b64': None, 'rows': []})
-        for c in ('source','object','value','severity'):
-            if c in df.columns: df[c]=df[c].astype(str)
-        df = df[(df['source']=='0') & (df['object']=='0')]
+        for c in ('value','severity','source','object'):
+            if c in df.columns:
+                df[c]=df[c].astype(str)
+        mask = pd.Series([True]*len(df))
+        if 'source' in df.columns:
+            mask &= (df['source']=='0')
+        if 'object' in df.columns:
+            mask &= (df['object']=='0')
+        df = df[mask]
 
-        problems = df[df['value']=='1']
+        problems = df[df['value']=='1'] if 'value' in df.columns else df
         if ids: problems = problems[problems['severity'].astype(str).isin(ids)]
         # Filtro ACK: all | only_acked | only_unacked
         if 'acknowledges' in problems.columns:

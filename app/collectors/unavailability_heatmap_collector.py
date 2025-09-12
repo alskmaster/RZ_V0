@@ -126,10 +126,17 @@ class UnavailabilityHeatmapCollector(BaseCollector):
         if df.empty:
             return self.render('unavailability_heatmap', {'chart_b64': None})
 
-        for c in ('source', 'object', 'value', 'severity', 'clock'):
+        for c in ('value', 'severity', 'clock', 'source', 'object'):
             if c in df.columns:
                 df[c] = df[c].astype(str)
-        df = df[(df['source'] == '0') & (df['object'] == '0') & (df['value'] == '1')]
+        mask = pd.Series([True] * len(df))
+        if 'source' in df.columns:
+            mask &= (df['source'] == '0')
+        if 'object' in df.columns:
+            mask &= (df['object'] == '0')
+        if 'value' in df.columns:
+            mask &= (df['value'] == '1')
+        df = df[mask]
         if ids:
             df = df[df['severity'].astype(str).isin(ids)]
         if df.empty:

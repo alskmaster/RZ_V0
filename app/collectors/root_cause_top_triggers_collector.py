@@ -171,11 +171,17 @@ class RootCauseTopTriggersCollector(BaseCollector):
         df = pd.DataFrame(events)
         if df.empty:
             return self.render('root_cause_top_triggers', {'chart_b64': None, 'rows': []})
-        for c in ('source', 'object', 'value', 'severity'):
+        # Tolerar ausencia de 'source'/'object' quando API ja filtra por gatilhos
+        for c in ('value', 'severity', 'source', 'object'):
             if c in df.columns:
                 df[c] = df[c].astype(str)
-        df = df[(df['source'] == '0') & (df['object'] == '0')]
-        problems = df[df['value'] == '1']
+        mask = pd.Series([True] * len(df))
+        if 'source' in df.columns:
+            mask &= (df['source'] == '0')
+        if 'object' in df.columns:
+            mask &= (df['object'] == '0')
+        df = df[mask]
+        problems = df[df['value'] == '1'] if 'value' in df.columns else df
         if ids:
             problems = problems[problems['severity'].astype(str).isin(ids)]
         if problems.empty:

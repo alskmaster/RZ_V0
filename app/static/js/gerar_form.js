@@ -310,6 +310,7 @@ document.addEventListener('DOMContentLoaded', function () {
             renderLayoutList();
         } else if (targetBtn.classList.contains('customize-module-btn')) {
             currentModuleToCustomize = module;
+            try { window.currentModuleToCustomize = module; } catch(e) {}
             const customizer = moduleCustomizers[module.type] || (window.ModuleCustomizers && window.ModuleCustomizers[module.type]);
             if (customizer) {
                 // Garante que o modal exista, mesmo para plugins carregados depois
@@ -320,15 +321,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     customizer.load(module.custom_options || {});
                 }
                 if (customizer.modal && typeof customizer.modal.show === 'function') {
-                    // Expressão callback para salvar no layout
-                    if (customizer.elements && customizer.elements.saveBtn && !customizer._onSave) {
+                    // Sempre reatribui o callback para garantir instância correta
+                    if (customizer.elements && customizer.elements.saveBtn) {
                         customizer._onSave = (opts) => {
+                            const target = currentModuleToCustomize || module;
                             const saved = opts || {};
                             if ('__title' in saved) {
-                                try { module.title = String(saved.__title || '').trim(); } catch(e) {}
+                                try { target.title = String(saved.__title || '').trim(); } catch(e) {}
                                 delete saved.__title;
                             }
-                            module.custom_options = saved;
+                            target.custom_options = saved;
                             renderLayoutList();
                         };
                     }

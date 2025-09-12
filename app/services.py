@@ -678,43 +678,152 @@ class ReportGenerator:
         return self.get_history_aggregated(itemids, time_from, time_till, value_type=vt)
 
     # -------------------- Events --------------------
-    def obter_eventos(self, object_ids, periodo, id_type='hostids', max_depth=3):
+    def obter_eventos(self, object_ids, periodo, id_type='hostids', max_depth=3, _chunk_size_hint=20,
+                      include_acks=False, include_tags=False):
+        """
+        Coleta eventos com abordagem resiliente:
+        - Limita campos pesados (acknowledges/tags) para reduzir carga.
+        - Em caso de erro/500, primeiro divide por lotes de objetos (hostids/triggerids),
+          e só depois quebra o período, até esgotar max_depth.
+        """
         time_from, time_till = periodo['start'], periodo['end']
         if max_depth <= 0:
             current_app.logger.error("Limite de profundidade atingido em obter_eventos.")
             return None
+
+        # Parâmetros enxutos para diminuir payload
         params = {
-            'output': 'extend',
+            'output': ['eventid', 'clock', 'value', 'objectid', 'r_eventid', 'hosts', 'name', 'severity', 'acknowledged'],
             'selectHosts': ['hostid'],
-            'time_from': time_from,
-            'time_till': time_till,
+            'time_from': int(time_from),
+            'time_till': int(time_till),
             id_type: object_ids,
             'sortfield': ['eventid'],
             'sortorder': 'ASC',
-            'select_acknowledges': 'extend',
-            'selectTags': 'extend'
+            # Filtrar apenas eventos de gatilhos (reduz volume)
+            'filter': {'source': 0, 'object': 0},
         }
+        if include_acks:
+            params['select_acknowledges'] = ['alias', 'message', 'clock']
+        if include_tags:
+            params['selectTags'] = ['tag', 'value']
         body = {'jsonrpc': '2.0', 'method': 'event.get', 'params': params, 'auth': self.token, 'id': 1}
         resposta = fazer_request_zabbix(body, self.url, allow_retry=False)
+
+        # Se a API retornou erro (ex.: 500 ou payload muito grande), aplicar fallbacks
         if isinstance(resposta, dict) and 'error' in resposta:
+            # 1) Primeiro, tente dividir por lotes de objetos (mais eficaz quando há muitos hosts)
+            try:
+                if isinstance(object_ids, (list, tuple)) and len(object_ids) > 1:
+                    self._update_status("Consulta pesada detectada, dividindo por objetos...")
+                    results = []
+                    # Ajuste dinâmico do tamanho do lote conforme profundidade
+                    chunk_size = max(1, int(_chunk_size_hint))
+                    for chunk in self._iter_chunks(list(object_ids), chunk_size):
+                        sub = self.obter_eventos(chunk, periodo, id_type, max_depth - 1,
+                                                  _chunk_size_hint=max(1, chunk_size // 2),
+                                                  include_acks=include_acks, include_tags=include_tags)
+                        if sub is None:
+                            return None
+                        if isinstance(sub, list):
+                            results.extend(sub)
+                    return results
+            except Exception:
+                pass
+
+            # 2) Se ainda falhou, tentar janelas diárias
+            try:
+                day = 24 * 3600
+                if int(time_till) - int(time_from) > day:
+                    self._update_status("Consulta pesada: quebrando por dias...")
+                    results = []
+                    cur = int(time_from)
+                    end = int(time_till)
+                    while cur <= end:
+                        sub_end = min(end, cur + day - 1)
+                        sub_period = {'start': cur, 'end': sub_end}
+                        sub = self.obter_eventos(object_ids, sub_period, id_type, max_depth - 1,
+                                                 _chunk_size_hint=_chunk_size_hint,
+                                                 include_acks=include_acks, include_tags=include_tags)
+                        if sub is None:
+                            # Se uma janela diária falhar, aborta estratégia diária
+                            results = None
+                            break
+                        if isinstance(sub, list):
+                            results.extend(sub)
+                        cur = sub_end + 1
+                    if results is not None:
+                        return results
+            except Exception:
+                pass
+
+            # 3) Último recurso: dividir o período ao meio
             self._update_status("Consulta pesada detectada, quebrando o periodo.")
-            mid = time_from + (time_till - time_from) // 2
-            p1 = {'start': time_from, 'end': mid}
-            p2 = {'start': mid + 1, 'end': time_till}
-            e1 = self.obter_eventos(object_ids, p1, id_type, max_depth - 1)
+            mid = int(time_from) + int((int(time_till) - int(time_from)) // 2)
+            p1 = {'start': int(time_from), 'end': int(mid)}
+            p2 = {'start': int(mid) + 1, 'end': int(time_till)}
+            e1 = self.obter_eventos(object_ids, p1, id_type, max_depth - 1, _chunk_size_hint=_chunk_size_hint,
+                                    include_acks=include_acks, include_tags=include_tags)
             if e1 is None:
                 return None
-            e2 = self.obter_eventos(object_ids, p2, id_type, max_depth - 1)
+            e2 = self.obter_eventos(object_ids, p2, id_type, max_depth - 1, _chunk_size_hint=_chunk_size_hint,
+                                    include_acks=include_acks, include_tags=include_tags)
             if e2 is None:
                 return None
-            return e1 + e2
+            return (e1 or []) + (e2 or [])
+
         return resposta
+
+    def obter_eventos_ack_details(self, event_ids):
+        """Busca acknowledges detalhados apenas para os event_ids informados, em lotes.
+        Retorna dict {eventid: [ack,...]} minimalista para merge posterior.
+        """
+        if not event_ids:
+            return {}
+        out = {}
+        for chunk in self._iter_chunks(list(set(map(str, event_ids))), 200):
+            params = {
+                'output': ['eventid', 'acknowledged'],
+                'eventids': chunk,
+                'select_acknowledges': ['alias', 'message', 'clock']
+            }
+            body = {'jsonrpc': '2.0', 'method': 'event.get', 'params': params, 'auth': self.token, 'id': 1}
+            data = fazer_request_zabbix(body, self.url, allow_retry=False)
+            if isinstance(data, list):
+                for ev in data:
+                    eid = str(ev.get('eventid'))
+                    acks = ev.get('acknowledges') or []
+                    out[eid] = acks
+        return out
+
+    def obter_eventos_tags_details(self, event_ids):
+        """Busca tags (tag,value) apenas para os event_ids informados, em lotes.
+        Retorna dict {eventid: [ {tag, value}, ... ] } para merge posterior.
+        """
+        if not event_ids:
+            return {}
+        out = {}
+        for chunk in self._iter_chunks(list(set(map(str, event_ids))), 200):
+            params = {
+                'output': ['eventid'],
+                'eventids': chunk,
+                'selectTags': ['tag', 'value']
+            }
+            body = {'jsonrpc': '2.0', 'method': 'event.get', 'params': params, 'auth': self.token, 'id': 1}
+            data = fazer_request_zabbix(body, self.url, allow_retry=False)
+            if isinstance(data, list):
+                for ev in data:
+                    eid = str(ev.get('eventid'))
+                    tags = ev.get('tags') or []
+                    out[eid] = tags
+        return out
 
     def obter_eventos_wrapper(self, object_ids, periodo, id_type='objectids'):
         if not object_ids:
             return []
         self._update_status(f"Processando eventos para {len(object_ids)} objetos em uma unica chamada...")
-        evs = self.obter_eventos(object_ids, periodo, id_type)
+        # Padrão: coleta 'leve' (sem acks/tags) para reduzir carga e evitar 500
+        evs = self.obter_eventos(object_ids, periodo, id_type, max_depth=6, include_acks=False, include_tags=False)
         if evs is None:
             current_app.logger.critical("Falha critica ao coletar eventos.")
             return None
