@@ -11,8 +11,8 @@ import base64
 
 class IncidentsChartCollector(BaseCollector):
     """
-    MÃ³dulo Incidentes (GrÃ¡ficos): apenas visualizaÃ§Ãµes (sem tabelas).
-    OpÃ§Ãµes suportadas (custom_options):
+    Módulo Incidentes (Gráficos): apenas visualizaçõeses (sem tabelas).
+    Opções suportadas (custom_options):
       - severities: [info, warning, average, high, disaster]
       - period_sub_filter: full_month | last_24h | last_7d
       - chart_type: severity_pie | severity_bar | problem_type_bar | daily_volume | daily_volume_severity
@@ -24,19 +24,19 @@ class IncidentsChartCollector(BaseCollector):
     """
 
     _SEVERITY_MAP = {
-        '0': 'NÃ£o Classificado',
-        '1': 'InformaÃ§Ã£o',
-        '2': 'AtenÃ§Ã£o',
-        '3': 'MÃ©dia',
+        '0': 'Não Classificado',
+        '1': 'Informação',
+        '2': 'Atenção',
+        '3': 'Média',
         '4': 'Alta',
         '5': 'Desastre'
     }
-    _SEVERITY_ORDER = ['NÃ£o Classificado', 'InformaÃ§Ã£o', 'AtenÃ§Ã£o', 'MÃ©dia', 'Alta', 'Desastre']
+    _SEVERITY_ORDER = ['Não Classificado', 'Informação', 'Atenção', 'Média', 'Alta', 'Desastre']
     _SEVERITY_COLORS = {
-        'NÃ£o Classificado': '#9e9e9e',
-        'InformaÃ§Ã£o': '#2196f3',
-        'AtenÃ§Ã£o': '#ffb300',
-        'MÃ©dia': '#fb8c00',
+        'Não Classificado': '#9e9e9e',
+        'Informação': '#2196f3',
+        'Atenção': '#ffb300',
+        'Média': '#fb8c00',
         'Alta': '#e53935',
         'Desastre': '#8e0000',
     }
@@ -181,13 +181,13 @@ class IncidentsChartCollector(BaseCollector):
             _tn = 10
         top_n = None if (_tn is not None and _tn <= 0) else _tn
         daily_type = o.get('daily_volume_chart_type', 'bar')
-        # UnificaÃ§Ã£o: usar as mesmas severidades globais quando nÃ£o houver seleÃ§Ã£o especÃ­fica
+        # Unificação: usar as mesmas severidades globais quando não houver seleção especí­fica
         daily_sev = o.get('daily_volume_severities') or severities
         rotate = o.get('x_axis_rotate_labels', True)
         alternate = o.get('x_axis_alternate_days', True)
         ack_filter = (o.get('ack_filter') or 'all').lower()
 
-        # PrÃ©-filtros por host (texto)
+        # Pró-filtros por host (texto)
         host_contains = (o.get('host_name_contains') or '').strip().lower()
         excl_hosts = [s.strip().lower() for s in (o.get('exclude_hosts_contains') or '').split(',') if s.strip()]
         if host_contains:
@@ -206,18 +206,18 @@ class IncidentsChartCollector(BaseCollector):
         all_host_ids = [h['hostid'] for h in (all_hosts or [])]
         problems = self.generator.obter_eventos_wrapper(all_host_ids, period, 'hostids')
         if problems is None:
-            self._update_status("Erro ao coletar eventos de incidentes (grÃ¡ficos).")
-            return self.render('incidents_chart', {"error": "NÃ£o foi possÃ­vel coletar dados de incidentes."})
+            self._update_status("Erro ao coletar eventos de incidentes (gráficos).")
+            return self.render('incidents_chart', {"error": "Não foi possível coletar dados de incidentes."})
 
         df = pd.DataFrame(problems)
         if df.empty:
             return self.render('incidents_chart', {'total_incidents': 0, 'severity_counts': {}, 'charts': {}})
 
-        # NormalizaÃ§Ã£o e filtros
+        # Normalização e filtros
         for c in ('value', 'severity', 'source', 'object'):
             if c in df.columns:
                 df[c] = df[c].astype(str)
-        # Garante colunas essenciais para filtragem e agregaÃ§Ãµes
+        # Garante colunas essenciais para filtragem e agregações
         for required in ('clock', 'name', 'objectid'):
             if required not in df.columns:
                 df[required] = None
@@ -307,7 +307,7 @@ class IncidentsChartCollector(BaseCollector):
                         pc = pc.head(top_n)
                     charts['problem_type_bar'] = self._bar(list(pc.index), list(pc.values), 'Top Incidentes por Tipo de Problema', 'Problema', 'Incidentes', rotate=True)
             except Exception:
-                # Se algo der errado, nÃ£o quebra o mÃ³dulo; apenas nÃ£o desenha o grÃ¡fico
+                # Se algo der errado, não quebra o módulo; apenas não desenha o gráfico
                 pass
         elif chart_type in ('daily_volume', 'daily_volume_severity'):
             ddf = df

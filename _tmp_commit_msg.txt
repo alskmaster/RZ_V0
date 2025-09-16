@@ -1,1 +1,15 @@
-[Ajuste] [WebApp] [Incidentes] - Unifica severidades e corrige engrenagem
+[Adjust] [Services] [Zabbix] - Resilient event fetch and tolerant collectors
+Core
+- Lightweight event.get (filter source/object=0; essential output)
+- Chunking by objects (down to 1 per request) and daily windows fallback before halving
+- Increased depth and on-demand helpers for ACK/TAG by eventids
+
+Incidents Table
+- Tolerant filtering without requiring source/object; use value=="1" when present
+- ACKs/TAGs loaded on-demand when options/filters request them
+
+Incidents Charts / MTTR / Heatmap / Root Cause
+- Same tolerant strategy (conditional masks; PROBLEM via value=="1" when available)
+
+Reliability
+- Reduced Zabbix 500s by lowering payload and partitioning
