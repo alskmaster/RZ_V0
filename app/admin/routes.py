@@ -1,4 +1,4 @@
-# app/admin/routes.py
+﻿# app/admin/routes.py
 import os
 import re
 import datetime as dt
@@ -62,7 +62,7 @@ def _sanitize_url(url: str) -> str:
     # se for base do zabbix, tenta acrescentar endpoint da API
     if url.endswith("/"):
         url = url[:-1]
-    # heurística: se não contém api_jsonrpc, sugere acrescentar (não obrigatório)
+    # heurí­stica: se não contém api_jsonrpc, sugere acrescentar (não obrigatório)
     if not url.lower().endswith("api_jsonrpc.php"):
         # não alteramos silenciosamente, apenas registramos no log
         _log_debug("Zabbix URL sem api_jsonrpc.php (pode estar ok se já inclui)", url=url)
@@ -92,7 +92,7 @@ class MetricKeyProfileForm(FlaskForm):
         default=10
     )
     calculation_type = SelectField(
-        'Tipo de Cálculo',
+        'Tipo de cálculo',
         choices=[(calc.name, calc.value) for calc in CalculationType],
         validators=[DataRequired(message="O tipo de cálculo é obrigatório.")]
     )
@@ -147,10 +147,10 @@ def dashboard():
         _log_debug("Estatísticas carregadas", **stats)
     except Exception as e:
         current_app.logger.error(
-            f"[{rid}] Erro ao carregar estatísticas do dashboard: {e}", exc_info=True
+            f"[{rid}] Erro ao carregar Estatísticas do dashboard: {e}", exc_info=True
         )
         stats = {'users': 0, 'clients': 0, 'reports': 0}
-        flash('Não foi possível carregar as estatísticas do dashboard.', 'warning')
+        flash('não foi possível carregar as Estatísticas do dashboard.', 'warning')
     return render_template('admin/dashboard.html', title="Dashboard", stats=stats)
 
 
@@ -174,6 +174,19 @@ def add_client():
         zabbix_user = (request.form.get('zabbix_user') or '').strip()
         zabbix_password = request.form.get('zabbix_password')  # não logar
 
+        softdesk_enabled = bool(request.form.get('softdesk_enabled'))
+        softdesk_base_url = (request.form.get('softdesk_base_url') or '').strip()
+        softdesk_api_key = (request.form.get('softdesk_api_key') or '').strip()
+
+        if not softdesk_enabled:
+            softdesk_base_url = None
+            softdesk_api_key = None
+        elif not softdesk_base_url or not softdesk_api_key:
+            flash('Para habilitar o Softdesk, informe URL e API Key.', 'danger')
+            _log_debug("Softdesk habilitado sem dados completos", url=bool(softdesk_base_url), key=bool(softdesk_api_key))
+            return redirect(url_for('admin.add_client'))
+
+
         # --- NOVO: SLA contract ---
         raw_sla = (request.form.get('sla_contract') or '').strip()
         sla_value = 99.9
@@ -189,18 +202,19 @@ def add_client():
             "POST /client/add recebido",
             method=request.method,
             has_pw=bool(zabbix_password),
+            softdesk_enabled=softdesk_enabled,
             form_keys=sorted(list(request.form.keys())),
             files=list(request.files.keys())
         )
 
-        # Validações mínimas
+        # Validações mí­nimas
         if not all([name, zabbix_url, zabbix_user, zabbix_password]):
             flash('Todos os campos são obrigatórios.', 'danger')
             _log_debug("Validação falhou: campos obrigatórios ausentes",
                        name=bool(name), url=bool(zabbix_url), user=bool(zabbix_user), pw=bool(zabbix_password))
             return redirect(url_for('admin.add_client'))
 
-        # Idempotência básica por nome (evita duplicatas acidentais)
+        # Impotância básica por nome (evita duplicatas acidentais)
         existing = Client.query.filter(Client.name.ilike(name)).first()
         if existing:
             flash('Já existe um cliente com esse nome.', 'warning')
@@ -212,7 +226,10 @@ def add_client():
             zabbix_url=zabbix_url,
             zabbix_user=zabbix_user,
             zabbix_password=zabbix_password,  # Considerar criptografar/secret manager no futuro
-            sla_contract=sla_value
+            sla_contract=sla_value,
+            softdesk_enabled=softdesk_enabled,
+            softdesk_base_url=softdesk_base_url or None,
+            softdesk_api_key=softdesk_api_key or None
         )
 
         group_ids = [g for g in request.form.getlist('zabbix_groups[]') if g]
@@ -223,7 +240,7 @@ def add_client():
             if 'logo' in request.files:
                 save_file_for_model(new_client, 'logo_path', 'logo')
 
-            # Persistência atômica (uma transação)
+            # Persistência atómica (uma transação)
             db.session.add(new_client)
             db.session.flush()  # obtém new_client.id antes
 
@@ -266,6 +283,11 @@ def edit_client(client_id):
         zabbix_user = (request.form.get('zabbix_user') or '').strip()
         zabbix_password = request.form.get('zabbix_password')  # opcional
 
+        softdesk_enabled = bool(request.form.get('softdesk_enabled'))
+        softdesk_base_url = (request.form.get('softdesk_base_url') or '').strip()
+        softdesk_api_key = (request.form.get('softdesk_api_key') or '').strip()
+
+
         # --- NOVO: SLA contract ---
         raw_sla = (request.form.get('sla_contract') or '').strip()
         if raw_sla:
@@ -280,18 +302,29 @@ def edit_client(client_id):
             client_id=client_id,
             method=request.method,
             has_pw=bool(zabbix_password),
+            softdesk_enabled=softdesk_enabled,
             form_keys=sorted(list(request.form.keys())),
             files=list(request.files.keys()),
             sla=client.sla_contract
         )
 
+        if softdesk_enabled:
+            if not softdesk_base_url and not (client.softdesk_base_url or '').strip():
+                flash('Para habilitar o Softdesk, informe a URL.', 'danger')
+                _log_debug("Softdesk habilitado sem URL no edit", client_id=client_id)
+                return redirect(url_for('admin.edit_client', client_id=client_id))
+            if not softdesk_api_key and not (client.softdesk_api_key or '').strip():
+                flash('Para habilitar o Softdesk, informe a API Key.', 'danger')
+                _log_debug("Softdesk habilitado sem API Key no edit", client_id=client_id)
+                return redirect(url_for('admin.edit_client', client_id=client_id))
+
         if not all([name, zabbix_url, zabbix_user]):
-            flash('Nome, URL do Zabbix e Usuário são obrigatórios.', 'danger')
+            flash('Nome, URL do Zabbix e usuário são obrigatórios.', 'danger')
             _log_debug("Validação falhou no edit: campos obrigatórios ausentes",
                        name=bool(name), url=bool(zabbix_url), user=bool(zabbix_user))
             return redirect(url_for('admin.edit_client', client_id=client_id))
 
-        # Idempotência por nome (exceto o próprio)
+        # Idempotância por nome (exceto o próprio)
         existing = Client.query.filter(Client.name.ilike(name), Client.id != client_id).first()
         if existing:
             flash('Já existe outro cliente com esse nome.', 'warning')
@@ -304,6 +337,16 @@ def edit_client(client_id):
             client.zabbix_user = zabbix_user
             if zabbix_password:
                 client.zabbix_password = zabbix_password
+
+            client.softdesk_enabled = softdesk_enabled
+            if softdesk_enabled:
+                if softdesk_base_url:
+                    client.softdesk_base_url = softdesk_base_url
+                if softdesk_api_key:
+                    client.softdesk_api_key = softdesk_api_key
+            else:
+                client.softdesk_base_url = None
+                client.softdesk_api_key = None
 
             # Upload (se houver)
             if 'logo' in request.files:
@@ -338,7 +381,7 @@ def edit_client(client_id):
             all_zabbix_groups = get_host_groups(config, config.get('ZABBIX_URL'))
             _log_debug("Grupos retornados do Zabbix", count=len(all_zabbix_groups))
     except Exception as e:
-        flash(f'Não foi possível conectar ao Zabbix para listar os grupos: {e}', 'warning')
+        flash(f'não foi possível conectar ao Zabbix para listar os grupos: {e}', 'warning')
         current_app.logger.error(
             f"[{rid}] Falha ao buscar grupos Zabbix para o cliente {client.id}: {e}", exc_info=True
         )
@@ -381,7 +424,7 @@ def list_users():
     _ensure_request_id()
     _log_debug("Listando usuários")
     users = User.query.all()
-    return render_template('admin/users.html', users=users, title="Usuários")
+    return render_template('admin/users.html', users=users, title="usuários")
 
 
 @admin.route('/user/add', methods=['GET', 'POST'])
@@ -412,7 +455,7 @@ def add_user():
             return redirect(url_for('admin.add_user'))
 
     roles = Role.query.all()
-    return render_template('admin/user_form.html', title="Adicionar Usuário", user=None, roles=roles, action="Adicionar")
+    return render_template('admin/user_form.html', title="Adicionar usuário", user=None, roles=roles, action="Adicionar")
 
 
 @admin.route('/user/edit/<int:user_id>', methods=['GET', 'POST'])
@@ -691,3 +734,4 @@ def test_zabbix():
     except Exception as e:
         current_app.logger.error(f"[{rid}] Erro ao testar conexão Zabbix: {e}", exc_info=True)
         return jsonify({'success': False, 'message': f'Erro de conexão: {e}'})
+

@@ -446,6 +446,9 @@ def get_available_modules(client_id):
             break
     if wifi_found:
         available_modules.append({'type': 'wifi', 'name': 'Wi-Fi (Utilizacao por AP/SSID)'})
+
+    if getattr(client, 'softdesk_enabled', False):
+        available_modules.append({'type': 'softdesk_root_cause', 'name': 'Causa-Raiz Softdesk'})
     # --------- FIM DO BLOCO NOVO ----------------------------------------------------------
 
     # Disponibilidade / SLA (novos)
@@ -668,6 +671,7 @@ def test_events(client_id, mes_ref):
         "diagnostico": "Coleta em lote estao INCOMPLETA." if total_diario > total_lote else "Coleta em lote parece COMPLETA.",
         "detalhes_diarios": dias_com_eventos
     })
+
 
 
 

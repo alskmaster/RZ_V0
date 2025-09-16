@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+﻿document.addEventListener('DOMContentLoaded', function () {
     // --- ELEMENTOS DO DOM ---
     const clientSelect = document.getElementById('client_id');
     const dateFromInput = document.getElementById('date_from');
@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'top_hosts': 'Disponibilidade / SLA', 'top_problems': 'Disponibilidade / SLA',
                 'stress': 'Disponibilidade / SLA',
                 // Incidentes
-                'incidents_table': 'Incidentes', 'incidents_chart': 'Incidentes', 'unavailability_heatmap': 'Incidentes', 'root_cause_top_triggers': 'Incidentes', 'mttr': 'Incidentes',
+                'incidents_table': 'Incidentes', 'incidents_chart': 'Incidentes', 'unavailability_heatmap': 'Incidentes', 'root_cause_top_triggers': 'Incidentes', 'mttr': 'Incidentes', 'softdesk_root_cause': 'Incidentes',
                 // Wi-Fi
                 'wifi': 'Wi-Fi',
                 // Inventário & Conteúdo
@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Salvar de cada customizer
+    // Salvar de cada customizador
     Object.keys(moduleCustomizers).forEach(moduleType => {
         const customizer = moduleCustomizers[moduleType];
         if (customizer.elements && customizer.elements.saveBtn) {
@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Regras especí­ficas de SLA (já existentes)
+    // Regras específicas de SLA (já existentes)
     if (moduleCustomizers.sla) {
         const slaElements = moduleCustomizers.sla.elements;
         slaElements.comparePrevMonth.addEventListener('change', () => {
@@ -473,4 +473,4 @@ document.addEventListener('DOMContentLoaded', function () {
     renderLayoutList();
 });
 
-
+// Fim do app/static/js/gerar_form.js

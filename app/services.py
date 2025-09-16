@@ -1,4 +1,4 @@
-"""
+﻿"""
 Clean services.py (ASCII only)
 Consolidates the prior working logic with new modules (sla_chart, sla_table, sla_plus).
 """
@@ -23,7 +23,7 @@ from .pdf_builder import PDFBuilder
 from .collectors.cpu_collector import CpuCollector  # legado
 from .collectors.cpu_table_collector import CpuTableCollector
 from .collectors.cpu_chart_collector import CpuChartCollector
-from .collectors.mem_collector import MemCollector  # legado (tabela+gráfico)
+from .collectors.mem_collector import MemCollector  # legado (tabela+grÃ¡fico)
 from .collectors.mem_table_collector import MemTableCollector
 from .collectors.mem_chart_collector import MemChartCollector
 from .collectors.disk_collector import DiskCollector
@@ -51,6 +51,7 @@ from .collectors.critical_performance_collector import CriticalPerformanceCollec
 from .collectors.capacity_forecast_collector import CapacityForecastCollector
 from .collectors.itil_availability_collector import ITILAvailabilityCollector
 from .collectors.executive_summary_collector import ExecutiveSummaryCollector
+from .collectors.softdesk_root_cause_collector import SoftdeskRootCauseCollector
 
 
 # Registry of collectors
@@ -73,7 +74,7 @@ COLLECTOR_MAP = {
     'inventory': InventoryCollector,
     'html': HtmlCollector,
     'wifi': WiFiCollector,
-    # Incidentes divididos em dois módulos
+    # Incidentes divididos em dois mÃ³dulos
     'incidents': IncidentsCollector,           # compatibilidade (tabelas)
     'incidents_table': IncidentsTableCollector,
     'incidents_chart': IncidentsChartCollector,
@@ -88,6 +89,7 @@ COLLECTOR_MAP = {
     'capacity_forecast': CapacityForecastCollector,
     'itil_availability': ITILAvailabilityCollector,
     'executive_summary': ExecutiveSummaryCollector,
+    'softdesk_root_cause': SoftdeskRootCauseCollector,
 }
 
 
@@ -176,7 +178,7 @@ class ReportGenerator:
 
         self._update_status("Iniciando geracao do relatorio.")
 
-        # Periodo: aceita faixa customizada (date_from/date_to) ou mês de referência
+        # Periodo: aceita faixa customizada (date_from/date_to) ou mÃªs de referÃªncia
         period = None
         ref_label = None
         if custom_start and custom_end:
@@ -290,12 +292,12 @@ class ReportGenerator:
                 continue
             try:
                 collector_instance = collector_class(self, module_config)
-                # Log do período base entregue ao coletor (BR dd-mm-YYYY)
+                # Log do perÃ­odo base entregue ao coletor (BR dd-mm-YYYY)
                 try:
                     _s = dt.datetime.fromtimestamp(int(period['start'])).strftime('%d-%m-%Y')
                     _e = dt.datetime.fromtimestamp(int(period['end'])).strftime('%d-%m-%Y')
                     self._update_status(
-                        f"Módulo '{module_type}': período base {_s} – {_e} | hosts={len(all_hosts)}"
+                        f"MÃ³dulo '{module_type}': perÃ­odo base {_s} â€“ {_e} | hosts={len(all_hosts)}"
                     )
                 except Exception:
                     pass
@@ -343,7 +345,7 @@ class ReportGenerator:
         try:
             _s = dt.datetime.fromtimestamp(int(period['start']))
             _e = dt.datetime.fromtimestamp(int(period['end']))
-            periodo_label = f"{_s.strftime('%d-%m-%Y')} – {_e.strftime('%d-%m-%Y')}"
+            periodo_label = f"{_s.strftime('%d-%m-%Y')} â€“ {_e.strftime('%d-%m-%Y')}"
         except Exception:
             periodo_label = str(ref_month_str)
 
@@ -426,13 +428,13 @@ class ReportGenerator:
             return None, "Falha ao coletar eventos do grupo."
         all_problems = [p for p in all_group_events if p.get('source') == '0' and p.get('object') == '0' and p.get('value') == '1']
 
-        # Constrói dataframe detalhado de incidentes por host/problema/clock
+        # ConstrÃ³i dataframe detalhado de incidentes por host/problema/clock
         host_map = {str(h['hostid']): h['nome_visivel'] for h in (all_hosts or [])}
         detailed_rows = []
         severity_counts = {}
         sev_map = {
-            '0': 'Não Classificado', '1': 'Informação', '2': 'Atenção',
-            '3': 'Média', '4': 'Alta', '5': 'Desastre'
+            '0': 'NÃ£o Classificado', '1': 'InformaÃ§Ã£o', '2': 'AtenÃ§Ã£o',
+            '3': 'MÃ©dia', '4': 'Alta', '5': 'Desastre'
         }
         for ev in (all_problems or []):
             try:
@@ -441,14 +443,14 @@ class ReportGenerator:
                 host_name = host_map.get(hostid, f'Host {hostid}') if hostid else 'Desconhecido'
                 prob_name = ev.get('name') or f"Trigger {ev.get('objectid') or ev.get('triggerid') or '?'}"
                 clk = int(ev.get('clock', 0))
-                detailed_rows.append({'Host': host_name, 'Problema': prob_name, 'Ocorrências': 1, 'clock': clk})
+                detailed_rows.append({'Host': host_name, 'Problema': prob_name, 'OcorrÃªncias': 1, 'clock': clk})
                 sev_raw = ev.get('severity', 'Desconhecido')
                 sev_key = sev_map.get(str(sev_raw), 'Desconhecido')
                 severity_counts[sev_key] = severity_counts.get(sev_key, 0) + 1
             except Exception:
                 continue
         import pandas as _pd
-        df_top_incidents = _pd.DataFrame(detailed_rows, columns=['Host', 'Problema', 'Ocorrências', 'clock']) if detailed_rows else _pd.DataFrame(columns=['Host', 'Problema', 'Ocorrências', 'clock'])
+        df_top_incidents = _pd.DataFrame(detailed_rows, columns=['Host', 'Problema', 'OcorrÃªncias', 'clock']) if detailed_rows else _pd.DataFrame(columns=['Host', 'Problema', 'OcorrÃªncias', 'clock'])
 
         # KPIs em lista (conforme coletor KPI)
         avg_sla = float(df_sla['SLA (%)'].mean()) if not df_sla.empty else 100.0
@@ -464,14 +466,14 @@ class ReportGenerator:
         top_offender = None
         try:
             if not df_top_incidents.empty:
-                top_offender = df_top_incidents.groupby('Host')['Ocorrências'].sum().sort_values(ascending=False).index.tolist()[0]
+                top_offender = df_top_incidents.groupby('Host')['OcorrÃªncias'].sum().sort_values(ascending=False).index.tolist()[0]
         except Exception:
             top_offender = None
         kpis_data = [
-            {'label': 'Média de SLA', 'value': f"{avg_sla:.2f}%", 'sublabel': 'Mês atual', 'trend': None, 'status': 'atingido' if (goal and avg_sla >= float(goal)) else 'nao-atingido'},
+            {'label': 'MÃ©dia de SLA', 'value': f"{avg_sla:.2f}%", 'sublabel': 'MÃªs atual', 'trend': None, 'status': 'atingido' if (goal and avg_sla >= float(goal)) else 'nao-atingido'},
             {'label': 'Hosts com SLA', 'value': f"{hosts_ok}/{total_hosts}", 'sublabel': 'SLA >= meta', 'trend': None, 'status': 'ok' if hosts_ok == total_hosts and total_hosts > 0 else 'info'},
-            {'label': 'Total de Incidentes', 'value': str(int(df_top_incidents['Ocorrências'].sum())) if not df_top_incidents.empty else '0', 'sublabel': 'no período', 'trend': None, 'status': 'info'},
-            {'label': 'Principal Ofensor', 'value': top_offender or '—', 'sublabel': 'mais incidentes', 'trend': None, 'status': 'critico' if top_offender else 'info'},
+            {'label': 'Total de Incidentes', 'value': str(int(df_top_incidents['OcorrÃªncias'].sum())) if not df_top_incidents.empty else '0', 'sublabel': 'no perÃ­odo', 'trend': None, 'status': 'info'},
+            {'label': 'Principal Ofensor', 'value': top_offender or 'â€”', 'sublabel': 'mais incidentes', 'trend': None, 'status': 'critico' if top_offender else 'info'},
         ]
 
         return {'df_sla_problems': df_sla, 'df_top_incidents': df_top_incidents, 'kpis': kpis_data, 'severity_counts': severity_counts}, None
@@ -621,7 +623,7 @@ class ReportGenerator:
     # -------------- Trends/History helpers --------------
     def get_history_aggregated(self, itemids, time_from, time_till, value_type=0, agg_method='mean'):
         """
-        Fallback para agregar via history.get quando trend.get não retorna dados.
+        Fallback para agregar via history.get quando trend.get nÃ£o retorna dados.
         Retorna uma lista de dicts com chaves: itemid, value_min, value_avg, value_max.
         """
         if not itemids:
@@ -660,7 +662,7 @@ class ReportGenerator:
         """
         API usada pelos coletores resilientes (CPU/Mem/Disk): retorna estrutura tipo trends
         (itemid, value_min, value_avg, value_max), usando trend.get e fallback para history.get com value_type
-        inferido quando possível a partir de items_meta.
+        inferido quando possÃ­vel a partir de items_meta.
         """
         if not itemids:
             return []
@@ -684,14 +686,14 @@ class ReportGenerator:
         Coleta eventos com abordagem resiliente:
         - Limita campos pesados (acknowledges/tags) para reduzir carga.
         - Em caso de erro/500, primeiro divide por lotes de objetos (hostids/triggerids),
-          e só depois quebra o período, até esgotar max_depth.
+          e sÃ³ depois quebra o perÃ­odo, atÃ© esgotar max_depth.
         """
         time_from, time_till = periodo['start'], periodo['end']
         if max_depth <= 0:
             current_app.logger.error("Limite de profundidade atingido em obter_eventos.")
             return None
 
-        # Parâmetros enxutos para diminuir payload
+        # ParÃ¢metros enxutos para diminuir payload
         params = {
             'output': ['eventid', 'clock', 'value', 'objectid', 'r_eventid', 'hosts', 'name', 'severity', 'acknowledged'],
             'selectHosts': ['hostid'],
@@ -712,12 +714,12 @@ class ReportGenerator:
 
         # Se a API retornou erro (ex.: 500 ou payload muito grande), aplicar fallbacks
         if isinstance(resposta, dict) and 'error' in resposta:
-            # 1) Primeiro, tente dividir por lotes de objetos (mais eficaz quando há muitos hosts)
+            # 1) Primeiro, tente dividir por lotes de objetos (mais eficaz quando hÃ¡ muitos hosts)
             try:
                 if isinstance(object_ids, (list, tuple)) and len(object_ids) > 1:
                     self._update_status("Consulta pesada detectada, dividindo por objetos...")
                     results = []
-                    # Ajuste dinâmico do tamanho do lote conforme profundidade
+                    # Ajuste dinÃ¢mico do tamanho do lote conforme profundidade
                     chunk_size = max(1, int(_chunk_size_hint))
                     for chunk in self._iter_chunks(list(object_ids), chunk_size):
                         sub = self.obter_eventos(chunk, periodo, id_type, max_depth - 1,
@@ -731,7 +733,7 @@ class ReportGenerator:
             except Exception:
                 pass
 
-            # 2) Se ainda falhou, tentar janelas diárias
+            # 2) Se ainda falhou, tentar janelas diÃ¡rias
             try:
                 day = 24 * 3600
                 if int(time_till) - int(time_from) > day:
@@ -746,7 +748,7 @@ class ReportGenerator:
                                                  _chunk_size_hint=_chunk_size_hint,
                                                  include_acks=include_acks, include_tags=include_tags)
                         if sub is None:
-                            # Se uma janela diária falhar, aborta estratégia diária
+                            # Se uma janela diÃ¡ria falhar, aborta estratÃ©gia diÃ¡ria
                             results = None
                             break
                         if isinstance(sub, list):
@@ -757,7 +759,7 @@ class ReportGenerator:
             except Exception:
                 pass
 
-            # 3) Último recurso: dividir o período ao meio
+            # 3) Ãšltimo recurso: dividir o perÃ­odo ao meio
             self._update_status("Consulta pesada detectada, quebrando o periodo.")
             mid = int(time_from) + int((int(time_till) - int(time_from)) // 2)
             p1 = {'start': int(time_from), 'end': int(mid)}
@@ -822,7 +824,7 @@ class ReportGenerator:
         if not object_ids:
             return []
         self._update_status(f"Processando eventos para {len(object_ids)} objetos em uma unica chamada...")
-        # Padrão: coleta 'leve' (sem acks/tags) para reduzir carga e evitar 500
+        # PadrÃ£o: coleta 'leve' (sem acks/tags) para reduzir carga e evitar 500
         evs = self.obter_eventos(object_ids, periodo, id_type, max_depth=6, include_acks=False, include_tags=False)
         if evs is None:
             current_app.logger.critical("Falha critica ao coletar eventos.")
@@ -869,7 +871,7 @@ class ReportGenerator:
                             end_clock = int(ev_end.get('clock'))
                         except Exception:
                             end_clock = None
-                # Fallback: procurar primeiro OK após o PROBLEM
+                # Fallback: procurar primeiro OK apÃ³s o PROBLEM
                 if end_clock is None:
                     for ev in evs:
                         try:
@@ -922,7 +924,7 @@ class ReportGenerator:
             rows.append({
                 'Host': host_map.get(hid, f'Host {hid}'),
                 'SLA (%)': float(sla),
-                'Tempo Indisponível': downtime_str,
+                'Tempo IndisponÃ­vel': downtime_str,
                 'Downtime (s)': int(d)
             })
         return rows
@@ -938,6 +940,9 @@ class ReportGenerator:
         import pandas as pd
         rows = [{'Host': host_map.get(h, f'Host {h}'), 'Problemas': c} for h, c in cnt.items()]
         return pd.DataFrame(rows)
+
+
+
 
 
 

@@ -1,4 +1,4 @@
-{% extends 'admin/base.html' %}
+﻿{% extends 'admin/base.html' %}
 {% block title %}{{ action }} Cliente{% endblock %}
 
 {% block admin_content %}
@@ -14,7 +14,7 @@
 
         <div class="card mb-4">
             <div class="card-header">
-                <span class="badge bg-primary me-2">1º</span> Conexão com o Zabbix
+                <span class="badge bg-primary me-2">1Âº</span> Conexão com o Zabbix
             </div>
             <div class="card-body">
                 <div class="row">
@@ -114,6 +114,34 @@
                     </div>
                 </div>
             </div>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <span class="badge bg-secondary me-2">Opcional</span> Integrações
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="softdesk_enabled" name="softdesk_enabled" {% if client and client.softdesk_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="softdesk_enabled">Habilitar Softdesk</label>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="softdesk_base_url" class="form-label">URL Base do Softdesk</label>
+                            <input type="url" class="form-control" id="softdesk_base_url" name="softdesk_base_url" value="{{ client.softdesk_base_url if client and client.softdesk_base_url else '' }}" placeholder="https://softdesk.exemplo" data-softdesk-field {% if not (client and client.softdesk_enabled) %}disabled{% endif %}>
+                            <small class="text-muted">Informe a raiz da API (sem sufixo de chamado).</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="softdesk_api_key" class="form-label">API Key do Softdesk</label>
+                            <input type="password" class="form-control" id="softdesk_api_key" name="softdesk_api_key" autocomplete="off" placeholder="Token gerado no Softdesk" data-softdesk-field {% if not (client and client.softdesk_enabled) %}disabled{% endif %}>
+                            {% if client and client.softdesk_enabled and client.softdesk_api_key %}
+                            <small class="text-muted">Deixe em branco para manter a chave atual.</small>
+                            {% else %}
+                            <small class="text-muted">Cole aqui a chave vigente no Softdesk.</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </fieldset>
 
         <div class="mt-4">
@@ -132,6 +160,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const addGroupBtn = document.getElementById('add-group-btn');
     const form = document.getElementById('form-cliente');
     const slaInput = document.getElementById('sla_contract');
+    const softdeskToggle = document.getElementById('softdesk_enabled');
+    const softdeskFields = document.querySelectorAll('[data-softdesk-field]');
+
+    function updateSoftdeskFields() {
+        if (!softdeskToggle) {
+            return;
+        }
+        const enabled = softdeskToggle.checked;
+        softdeskFields.forEach((el) => {
+            el.disabled = !enabled;
+        });
+    }
+
+    if (softdeskToggle) {
+        updateSoftdeskFields();
+        softdeskToggle.addEventListener('change', updateSoftdeskFields);
+    }
+
 
     // CSRF token para requisições AJAX e para logs
     const csrfToken = '{{ csrf_token() }}';
@@ -255,3 +301,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+

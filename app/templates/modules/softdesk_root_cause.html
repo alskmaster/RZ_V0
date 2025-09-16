@@ -1,0 +1,85 @@
+﻿<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Causa-Raiz Softdesk' }}</h2>
+
+  {% if data.period_label %}
+    <p><strong>Periodo analisado:</strong> {{ data.period_label }}</p>
+  {% endif %}
+
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+  {% endif %}
+  {% if data.info and not data.error %}
+    <div class="alert alert-info" role="alert">{{ data.info }}</div>
+  {% endif %}
+
+  {% if data.tickets and data.tickets|length > 0 %}
+    {% for ticket in data.tickets %}
+      <div class="card mb-4">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+          <span><strong>Chamado {{ ticket.ticket_id }}</strong></span>
+          <span class="text-muted">Duracao agregada: {{ ticket.total_duration }}</span>
+        </div>
+        <div class="card-body">
+          {% if ticket.softdesk %}
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <ul class="list-unstyled mb-0">
+                  <li><strong>Titulo:</strong> {{ ticket.softdesk.titulo or '-' }}</li>
+                  <li><strong>Cliente:</strong> {{ ticket.softdesk.cliente or '-' }}</li>
+                  <li><strong>Prioridade:</strong> {{ ticket.softdesk.prioridade or '-' }}</li>
+                  <li><strong>Status:</strong> {{ ticket.softdesk.status or '-' }}</li>
+                  <li><strong>Atendente:</strong> {{ ticket.softdesk.atendente or '-' }}</li>
+                </ul>
+              </div>
+              <div class="col-md-6">
+                <ul class="list-unstyled mb-0">
+                  <li><strong>Hosts impactados:</strong> {{ ticket.hosts | join(', ') }}</li>
+                  <li><strong>Abertura:</strong> {{ ticket.softdesk.abertura or '-' }}</li>
+                  <li><strong>Encerramento:</strong> {{ ticket.softdesk.encerramento or '-' }}</li>
+                  <li><strong>Nota de fechamento:</strong> {{ ticket.softdesk.nota_fechamento or '-' }}</li>
+                  <li><strong>Causa raiz:</strong> {{ ticket.softdesk.causa_raiz or '-' }}</li>
+                  {% if ticket.softdesk.protocolo_operadora %}
+                    <li><strong>Protocolo da operadora:</strong> {{ ticket.softdesk.protocolo_operadora }}</li>
+                  {% endif %}
+                </ul>
+              </div>
+            </div>
+          {% else %}
+            <div class="alert alert-secondary" role="alert">
+              Detalhes do chamado nao retornados pela API do Softdesk.
+            </div>
+          {% endif %}
+
+          <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>Host</th>
+                  <th>Incidente</th>
+                  <th>Severidade</th>
+                  <th>Inicio</th>
+                  <th>Fim</th>
+                  <th class="text-end">Duracao</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in ticket.events %}
+                  <tr>
+                    <td>{{ row.host }}</td>
+                    <td style="max-width: 420px; overflow-wrap: anywhere;">{{ row.problem }}</td>
+                    <td>{{ row.severity }}</td>
+                    <td>{{ row.start }}</td>
+                    <td>{{ row.end }}</td>
+                    <td class="text-end">{{ row.duration }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% elif not data.error %}
+    <p><i>Nenhum chamado do Softdesk correlacionado a incidentes no periodo.</i></p>
+  {% endif %}
+</div>

@@ -1,11 +1,11 @@
-# app/models.py
+﻿# app/models.py
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 import datetime as dt
-from . import db  # Importa a instância 'db' do nosso __init__.py
+from . import db  # Importa a instÃ¢ncia 'db' do nosso __init__.py
 import enum
 
-# --- Tabela de Associação (Muitos-para-Muitos entre User e Client) ---
+# --- Tabela de AssociaÃ§Ã£o (Muitos-para-Muitos entre User e Client) ---
 user_client_association = db.Table('user_client_association',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
     db.Column('client_id', db.Integer, db.ForeignKey('client.id'), primary_key=True)
@@ -16,14 +16,14 @@ user_client_association = db.Table('user_client_association',
 class SystemConfig(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     company_name = db.Column(db.String(100), default="Conversys IT Solutions")
-    footer_text = db.Column(db.String(255), default=f"Conversys IT Solutions Copyright {dt.datetime.now().year} – Todos os direitos Reservados | Política de privacidade")
+    footer_text = db.Column(db.String(255), default=f"Conversys IT Solutions Copyright {dt.datetime.now().year} â€“ Todos os direitos Reservados | PolÃ­tica de privacidade")
     primary_color = db.Column(db.String(7), default="#2c3e50")
     secondary_color = db.Column(db.String(7), default="#3498db")
     logo_dark_bg_path = db.Column(db.String(255), nullable=True)
     logo_light_bg_path = db.Column(db.String(255), nullable=True)
     login_background_path = db.Column(db.String(255), nullable=True)
     default_cover_path = db.Column(db.String(255), nullable=True)
-    # Campos que parecem estar faltando baseados no routes.py, adicionados para consistência
+    # Campos que parecem estar faltando baseados no routes.py, adicionados para consistÃªncia
     color_scheme = db.Column(db.String(10), default="light")
     color_bg_main = db.Column(db.String(7), default="#f8f9fa")
     color_bg_card = db.Column(db.String(7), default="#ffffff")
@@ -47,6 +47,11 @@ class Client(db.Model):
 
     # === (Reintroduzido) Meta de SLA por cliente ===
     sla_contract = db.Column(db.Float, nullable=False, default=99.9)
+
+    # Credenciais opcionais para integrações externas (Softdesk, etc.)
+    softdesk_enabled = db.Column(db.Boolean, nullable=False, default=False)
+    softdesk_base_url = db.Column(db.String(255), nullable=True)
+    softdesk_api_key = db.Column(db.String(255), nullable=True)
 
     logo_path = db.Column(db.String(255))
     reports = db.relationship('Report', backref='client', lazy='dynamic')
@@ -111,13 +116,13 @@ class AuditLog(db.Model):
     timestamp = db.Column(db.DateTime, default=dt.datetime.utcnow)
     user = db.relationship('User', backref='audit_logs')
 
-# --- MODELOS PARA TEMPLATES DE RELATÓRIO ---
+# --- MODELOS PARA TEMPLATES DE RELATÃ“RIO ---
 class ReportTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref='report_templates')
-    # Layout salvo como JSON bruto para o builder (compatível com UI)
+    # Layout salvo como JSON bruto para o builder (compatÃ­vel com UI)
     layout_json = db.Column(db.Text, nullable=True)
     modules = db.relationship('ReportTemplateModule', backref='template', lazy='dynamic', cascade="all, delete-orphan")
 
@@ -128,7 +133,7 @@ class ReportTemplateModule(db.Model):
     order = db.Column(db.Integer, nullable=False)
     config = db.Column(db.Text, nullable=True)
 
-# --- NOVO MODELO PARA GERENCIAMENTO DINÂMICO DE CHAVES (KEYS) ---
+# --- NOVO MODELO PARA GERENCIAMENTO DINÃ‚MICO DE CHAVES (KEYS) ---
 class CalculationType(enum.Enum):
     DIRECT = "direct"
     INVERSE = "inverse"
@@ -145,3 +150,5 @@ class MetricKeyProfile(db.Model):
 
     def __repr__(self):
         return f"<MetricKeyProfile {self.metric_type} - {self.key_string} (Prio: {self.priority})>"
+
+
