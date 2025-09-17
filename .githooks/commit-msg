@@ -12,7 +12,7 @@ fi
 HEADER=$(sed -e 's/\r$//' "$MSG_FILE" | grep -v '^#' | grep -m1 -E '.+')
 
 # Regex: [texto] [texto] [texto] - descr
-echo "$HEADER" | grep -E '^\[[^\]]+\] \[[^\]]+\] \[[^\]]+\] - .+' >/dev/null 2>&1
+printf '%s\n' "$HEADER" | grep -E '^\[[^][]+\] \[[^][]+\] \[[^][]+\] - .+' >/dev/null 2>&1
 OK=$?
 
 if [ $OK -ne 0 ]; then
