@@ -55,6 +55,21 @@ class SoftdeskRootCauseCollector(BaseCollector):
         secs = seconds % 60
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
+    def _format_datetime_parts(self, date_part, time_part=None):
+        if not date_part:
+            return None
+        try:
+            if time_part:
+                iso = f"{date_part}T{time_part}"
+                dt_obj = dt.datetime.fromisoformat(iso)
+            else:
+                dt_obj = dt.datetime.fromisoformat(date_part)
+            return dt_obj.strftime('%d/%m/%Y %H:%M:%S') if time_part else dt_obj.strftime('%d/%m/%Y')
+        except Exception:
+            if time_part:
+                return f"{date_part} {time_part}"
+            return date_part
+
     def _extract_ticket_ids(self, acknowledges):
         tickets = set()
         for ack in acknowledges or []:
@@ -109,8 +124,8 @@ class SoftdeskRootCauseCollector(BaseCollector):
                     'prioridade': (obj.get('prioridade') or {}).get('descricao'),
                     'status': (obj.get('status') or {}).get('descricao'),
                     'atendente': (obj.get('atendente') or {}).get('nome'),
-                    'abertura': f"{obj.get('data_abertura')}T{obj.get('hora_abertura')}" if obj.get('data_abertura') else None,
-                    'encerramento': f"{obj.get('data_encerramento')}T{obj.get('hora_encerramento')}" if obj.get('data_encerramento') else None,
+                    'abertura': self._format_datetime_parts(obj.get('data_abertura'), obj.get('hora_abertura')),
+                    'encerramento': self._format_datetime_parts(obj.get('data_encerramento'), obj.get('hora_encerramento')),
                     'nota_fechamento': _get_custom(5) or None,
                     'causa_raiz': _get_custom(6) or None,
                     'protocolo_operadora': _get_custom(7) or None,
@@ -315,6 +330,20 @@ class SoftdeskRootCauseCollector(BaseCollector):
 
         grouped = []
         for ticket_id, group in df.groupby('ticket_ids'):
+            intervals = []
+            for _, raw in group.iterrows():
+                start_val = int(raw.get('clock', 0))
+                end_val = int(raw.get('end_ts', start_val))
+                intervals.append((start_val, end_val))
+            intervals.sort()
+            merged = []
+            for start_val, end_val in intervals:
+                if not merged or start_val > merged[-1][1]:
+                    merged.append([start_val, end_val])
+                else:
+                    merged[-1][1] = max(merged[-1][1], end_val)
+            total_seconds = sum(end_val - start_val for start_val, end_val in merged)
+
             events_rows = []
             for _, row in group.sort_values('clock').iterrows():
                 events_rows.append({
@@ -329,8 +358,8 @@ class SoftdeskRootCauseCollector(BaseCollector):
                 'ticket_id': str(ticket_id),
                 'softdesk': ticket_details.get(str(ticket_id)),
                 'hosts': sorted({row.get('host_name') or 'Desconhecido' for _, row in group.iterrows()}),
-                'total_duration_seconds': int(group['duration'].sum()),
-                'total_duration': self._format_duration(group['duration'].sum()),
+                'total_duration_seconds': int(total_seconds),
+                'total_duration': self._format_duration(total_seconds),
                 'events': events_rows
             })
 

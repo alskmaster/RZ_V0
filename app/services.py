@@ -74,7 +74,7 @@ COLLECTOR_MAP = {
     'inventory': InventoryCollector,
     'html': HtmlCollector,
     'wifi': WiFiCollector,
-    # Incidentes divididos em dois mÃ³dulos
+    # Incidentes divididos em dois módulos
     'incidents': IncidentsCollector,           # compatibilidade (tabelas)
     'incidents_table': IncidentsTableCollector,
     'incidents_chart': IncidentsChartCollector,
@@ -178,7 +178,7 @@ class ReportGenerator:
 
         self._update_status("Iniciando geracao do relatorio.")
 
-        # Periodo: aceita faixa customizada (date_from/date_to) ou mÃªs de referÃªncia
+        # Periodo: aceita faixa customizada (date_from/date_to) ou mês de referência
         period = None
         ref_label = None
         if custom_start and custom_end:
@@ -297,7 +297,7 @@ class ReportGenerator:
                     _s = dt.datetime.fromtimestamp(int(period['start'])).strftime('%d-%m-%Y')
                     _e = dt.datetime.fromtimestamp(int(period['end'])).strftime('%d-%m-%Y')
                     self._update_status(
-                        f"MÃ³dulo '{module_type}': perÃ­odo base {_s} â€“ {_e} | hosts={len(all_hosts)}"
+                        f"Módulo '{module_type}': perído base {_s} à {_e} | hosts={len(all_hosts)}"
                     )
                 except Exception:
                     pass
@@ -345,7 +345,7 @@ class ReportGenerator:
         try:
             _s = dt.datetime.fromtimestamp(int(period['start']))
             _e = dt.datetime.fromtimestamp(int(period['end']))
-            periodo_label = f"{_s.strftime('%d-%m-%Y')} â€“ {_e.strftime('%d-%m-%Y')}"
+            periodo_label = f"{_s.strftime('%d-%m-%Y')} à {_e.strftime('%d-%m-%Y')}"
         except Exception:
             periodo_label = str(ref_month_str)
 
@@ -428,13 +428,13 @@ class ReportGenerator:
             return None, "Falha ao coletar eventos do grupo."
         all_problems = [p for p in all_group_events if p.get('source') == '0' and p.get('object') == '0' and p.get('value') == '1']
 
-        # ConstrÃ³i dataframe detalhado de incidentes por host/problema/clock
+        # Constrói dataframe detalhado de incidentes por host/problema/clock
         host_map = {str(h['hostid']): h['nome_visivel'] for h in (all_hosts or [])}
         detailed_rows = []
         severity_counts = {}
         sev_map = {
-            '0': 'NÃ£o Classificado', '1': 'InformaÃ§Ã£o', '2': 'AtenÃ§Ã£o',
-            '3': 'MÃ©dia', '4': 'Alta', '5': 'Desastre'
+            '0': 'Não Classificado', '1': 'Informação', '2': 'Atenção',
+            '3': 'Média', '4': 'Alta', '5': 'Desastre'
         }
         for ev in (all_problems or []):
             try:
@@ -443,14 +443,14 @@ class ReportGenerator:
                 host_name = host_map.get(hostid, f'Host {hostid}') if hostid else 'Desconhecido'
                 prob_name = ev.get('name') or f"Trigger {ev.get('objectid') or ev.get('triggerid') or '?'}"
                 clk = int(ev.get('clock', 0))
-                detailed_rows.append({'Host': host_name, 'Problema': prob_name, 'OcorrÃªncias': 1, 'clock': clk})
+                detailed_rows.append({'Host': host_name, 'Problema': prob_name, 'Ocorrências': 1, 'clock': clk})
                 sev_raw = ev.get('severity', 'Desconhecido')
                 sev_key = sev_map.get(str(sev_raw), 'Desconhecido')
                 severity_counts[sev_key] = severity_counts.get(sev_key, 0) + 1
             except Exception:
                 continue
         import pandas as _pd
-        df_top_incidents = _pd.DataFrame(detailed_rows, columns=['Host', 'Problema', 'OcorrÃªncias', 'clock']) if detailed_rows else _pd.DataFrame(columns=['Host', 'Problema', 'OcorrÃªncias', 'clock'])
+        df_top_incidents = _pd.DataFrame(detailed_rows, columns=['Host', 'Problema', 'Ocorrências', 'clock']) if detailed_rows else _pd.DataFrame(columns=['Host', 'Problema', 'Ocorrências', 'clock'])
 
         # KPIs em lista (conforme coletor KPI)
         avg_sla = float(df_sla['SLA (%)'].mean()) if not df_sla.empty else 100.0
@@ -466,13 +466,13 @@ class ReportGenerator:
         top_offender = None
         try:
             if not df_top_incidents.empty:
-                top_offender = df_top_incidents.groupby('Host')['OcorrÃªncias'].sum().sort_values(ascending=False).index.tolist()[0]
+                top_offender = df_top_incidents.groupby('Host')['Ocorrências'].sum().sort_values(ascending=False).index.tolist()[0]
         except Exception:
             top_offender = None
         kpis_data = [
-            {'label': 'MÃ©dia de SLA', 'value': f"{avg_sla:.2f}%", 'sublabel': 'MÃªs atual', 'trend': None, 'status': 'atingido' if (goal and avg_sla >= float(goal)) else 'nao-atingido'},
+            {'label': 'Média de SLA', 'value': f"{avg_sla:.2f}%", 'sublabel': 'Mês atual', 'trend': None, 'status': 'atingido' if (goal and avg_sla >= float(goal)) else 'nao-atingido'},
             {'label': 'Hosts com SLA', 'value': f"{hosts_ok}/{total_hosts}", 'sublabel': 'SLA >= meta', 'trend': None, 'status': 'ok' if hosts_ok == total_hosts and total_hosts > 0 else 'info'},
-            {'label': 'Total de Incidentes', 'value': str(int(df_top_incidents['OcorrÃªncias'].sum())) if not df_top_incidents.empty else '0', 'sublabel': 'no perÃ­odo', 'trend': None, 'status': 'info'},
+            {'label': 'Total de Incidentes', 'value': str(int(df_top_incidents['Ocorrências'].sum())) if not df_top_incidents.empty else '0', 'sublabel': 'no perÃ­odo', 'trend': None, 'status': 'info'},
             {'label': 'Principal Ofensor', 'value': top_offender or 'â€”', 'sublabel': 'mais incidentes', 'trend': None, 'status': 'critico' if top_offender else 'info'},
         ]
 
@@ -588,7 +588,7 @@ class ReportGenerator:
                 if isinstance(part, list) and part:
                     all_trends.extend(part)
             except Exception:
-                current_app.logger.warning("Falha em um lote de trend.get; seguindo para o proximo.", exc_info=True)
+                current_app.logger.warning("Falha em um lote de trend.get; seguindo para o próximo.", exc_info=True)
                 continue
         return all_trends
 
@@ -623,7 +623,7 @@ class ReportGenerator:
     # -------------- Trends/History helpers --------------
     def get_history_aggregated(self, itemids, time_from, time_till, value_type=0, agg_method='mean'):
         """
-        Fallback para agregar via history.get quando trend.get nÃ£o retorna dados.
+        Fallback para agregar via history.get quando trend.get não retorna dados.
         Retorna uma lista de dicts com chaves: itemid, value_min, value_avg, value_max.
         """
         if not itemids:
@@ -686,7 +686,7 @@ class ReportGenerator:
         Coleta eventos com abordagem resiliente:
         - Limita campos pesados (acknowledges/tags) para reduzir carga.
         - Em caso de erro/500, primeiro divide por lotes de objetos (hostids/triggerids),
-          e sÃ³ depois quebra o perÃ­odo, atÃ© esgotar max_depth.
+          e só depois quebra o perÃ­odo, até esgotar max_depth.
         """
         time_from, time_till = periodo['start'], periodo['end']
         if max_depth <= 0:
@@ -748,7 +748,7 @@ class ReportGenerator:
                                                  _chunk_size_hint=_chunk_size_hint,
                                                  include_acks=include_acks, include_tags=include_tags)
                         if sub is None:
-                            # Se uma janela diÃ¡ria falhar, aborta estratÃ©gia diÃ¡ria
+                            # Se uma janela diÃ¡ria falhar, aborta estratégia diÃ¡ria
                             results = None
                             break
                         if isinstance(sub, list):
@@ -824,7 +824,7 @@ class ReportGenerator:
         if not object_ids:
             return []
         self._update_status(f"Processando eventos para {len(object_ids)} objetos em uma unica chamada...")
-        # PadrÃ£o: coleta 'leve' (sem acks/tags) para reduzir carga e evitar 500
+        # Padrão: coleta 'leve' (sem acks/tags) para reduzir carga e evitar 500
         evs = self.obter_eventos(object_ids, periodo, id_type, max_depth=6, include_acks=False, include_tags=False)
         if evs is None:
             current_app.logger.critical("Falha critica ao coletar eventos.")
@@ -871,7 +871,7 @@ class ReportGenerator:
                             end_clock = int(ev_end.get('clock'))
                         except Exception:
                             end_clock = None
-                # Fallback: procurar primeiro OK apÃ³s o PROBLEM
+                # Fallback: procurar primeiro OK após o PROBLEM
                 if end_clock is None:
                     for ev in evs:
                         try:
