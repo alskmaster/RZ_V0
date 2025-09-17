@@ -58,6 +58,7 @@ from .collectors.capacity_forecast_collector import CapacityForecastCollector
 from .collectors.itil_availability_collector import ITILAvailabilityCollector
 from .collectors.executive_summary_collector import ExecutiveSummaryCollector
 from .collectors.softdesk_root_cause_collector import SoftdeskRootCauseCollector
+from .collectors.uptime_summary_collector import UptimeSummaryCollector
 
 
 # Registry of collectors
@@ -102,6 +103,7 @@ COLLECTOR_MAP = {
     'itil_availability': ITILAvailabilityCollector,
     'executive_summary': ExecutiveSummaryCollector,
     'softdesk_root_cause': SoftdeskRootCauseCollector,
+    'uptime_summary': UptimeSummaryCollector,
 }
 
 
@@ -410,37 +412,25 @@ class ReportGenerator:
 
     # -------------------- Availability data --------------------
     def _collect_availability_data(self, all_hosts, period, sla_goal, trends_only=False):
-        all_host_ids = [h['hostid'] for h in all_hosts]
-        # icmpping items with triggers (to correlate problems)
-        ping_items = self.get_items(all_host_ids, 'icmpping', search_by_key=True, exact_key_search=True, include_triggers=True)
-        if not ping_items:
-            return None, "Nenhum item 'icmpping' encontrado."
-        hosts_with_ping_ids = {it['hostid'] for it in ping_items}
-        hosts_for_sla = [h for h in all_hosts if h['hostid'] in hosts_with_ping_ids]
-        if not hosts_for_sla:
-            return None, "Nenhum host com PING para calcular SLA."
-        ping_trigger_ids = list({t['triggerid'] for it in ping_items for t in (it.get('triggers') or [])})
-        if not ping_trigger_ids:
-            return None, "Nenhum trigger de PING encontrado."
+        all_host_ids = [h['hostid'] for h in all_hosts if h.get('hostid') is not None]
+        if not all_host_ids:
+            return None, "Nenhum host valido para calcular disponibilidade."
 
-        ping_events = self.obter_eventos_wrapper(ping_trigger_ids, period, 'objectids')
-        if ping_events is None:
-            return None, "Falha ao coletar eventos de PING."
-
-        ping_problems = [p for p in ping_events if p.get('source') == '0' and p.get('object') == '0' and p.get('value') == '1']
-        correlated = self._correlate_problems(ping_problems, ping_events, period)
-        df_sla = pd.DataFrame(self._calculate_sla(correlated, hosts_for_sla, period))
-
-        if trends_only:
-            return {'df_sla_problems': df_sla}, None
-
-        # Count problems for all hosts (group scope)
         all_group_events = self.obter_eventos_wrapper(all_host_ids, period, 'hostids')
         if all_group_events is None:
             return None, "Falha ao coletar eventos do grupo."
-        all_problems = [p for p in all_group_events if p.get('source') == '0' and p.get('object') == '0' and p.get('value') == '1']
 
-        # Constrói dataframe detalhado de incidentes por host/problema/clock
+        all_problems = [
+            ev for ev in (all_group_events or [])
+            if str(ev.get('source', '0')) == '0' and str(ev.get('object', '0')) == '0' and str(ev.get('value', '0')) == '1'
+        ]
+        correlated = self._correlate_problems(all_problems, all_group_events, period)
+        rows, intervals_by_host, incidents_by_host = self._calculate_sla(correlated, all_hosts, period)
+        df_sla = pd.DataFrame(rows)
+
+        if trends_only:
+            return {'df_sla_problems': df_sla, 'downtime_intervals_by_host': intervals_by_host, 'incidents_by_host': incidents_by_host}, None
+
         host_map = {str(h['hostid']): h['nome_visivel'] for h in (all_hosts or [])}
         detailed_rows = []
         severity_counts = {}
@@ -464,7 +454,6 @@ class ReportGenerator:
         import pandas as _pd
         df_top_incidents = _pd.DataFrame(detailed_rows, columns=['Host', 'Problema', 'Ocorrências', 'clock']) if detailed_rows else _pd.DataFrame(columns=['Host', 'Problema', 'Ocorrências', 'clock'])
 
-        # KPIs em lista (conforme coletor KPI)
         avg_sla = float(df_sla['SLA (%)'].mean()) if not df_sla.empty else 100.0
         total_hosts = len(self.cached_data.get('all_hosts', [])) or len(all_hosts)
         try:
@@ -485,10 +474,74 @@ class ReportGenerator:
             {'label': 'Média de SLA', 'value': f"{avg_sla:.2f}%", 'sublabel': 'Mês atual', 'trend': None, 'status': 'atingido' if (goal and avg_sla >= float(goal)) else 'nao-atingido'},
             {'label': 'Hosts com SLA', 'value': f"{hosts_ok}/{total_hosts}", 'sublabel': 'SLA >= meta', 'trend': None, 'status': 'ok' if hosts_ok == total_hosts and total_hosts > 0 else 'info'},
             {'label': 'Total de Incidentes', 'value': str(int(df_top_incidents['Ocorrências'].sum())) if not df_top_incidents.empty else '0', 'sublabel': 'no período', 'trend': None, 'status': 'info'},
-            {'label': 'Principal Ofensor', 'value': top_offender or 'â€”', 'sublabel': 'mais incidentes', 'trend': None, 'status': 'critico' if top_offender else 'info'},
+            {'label': 'Principal Ofensor', 'value': top_offender or 'N/A', 'sublabel': 'mais incidentes', 'trend': None, 'status': 'critico' if top_offender else 'info'},
         ]
 
-        return {'df_sla_problems': df_sla, 'df_top_incidents': df_top_incidents, 'kpis': kpis_data, 'severity_counts': severity_counts}, None
+        return {'df_sla_problems': df_sla, 'df_top_incidents': df_top_incidents, 'kpis': kpis_data, 'severity_counts': severity_counts, 'downtime_intervals_by_host': intervals_by_host, 'incidents_by_host': incidents_by_host}, None
+
+    def obter_disponibilidade_sla(self, host_ids, period, service_tag=None):
+        host_ids = sorted({str(hid) for hid in (host_ids or []) if hid is not None})
+        if not host_ids:
+            return {}
+        try:
+            period_start = int(period.get('start'))
+            period_end = int(period.get('end'))
+        except Exception:
+            return {}
+        sanitized_period = {'start': period_start, 'end': period_end}
+        cache = self.cached_data.setdefault('uptime_summary_cache', {})
+        cache_key = (tuple(host_ids), period_start, period_end, str(service_tag or ''))
+        if cache_key in cache:
+            return cache[cache_key]
+        all_hosts = self.cached_data.get('all_hosts') or []
+        host_map = {str(h.get('hostid')): h for h in all_hosts if h.get('hostid') is not None}
+        subset_hosts = [host_map[h] for h in host_ids if h in host_map]
+        if not subset_hosts:
+            cache[cache_key] = {}
+            return cache[cache_key]
+        try:
+            sla_goal = self._get_client_sla_contract()
+        except Exception:
+            sla_goal = None
+        data, err = self._collect_availability_data(subset_hosts, sanitized_period, sla_goal)
+        if err or not data:
+            cache[cache_key] = {}
+            return cache[cache_key]
+        intervals_map = data.get('downtime_intervals_by_host') or {}
+        if isinstance(intervals_map, dict):
+            intervals_map = {str(k): [dict(entry) for entry in list(v)] for k, v in intervals_map.items()}
+        else:
+            intervals_map = {}
+        incidents_map = data.get('incidents_by_host') or {}
+        if isinstance(incidents_map, dict):
+            incidents_map = {str(k): [dict(entry) for entry in list(v)] for k, v in incidents_map.items()}
+        else:
+            incidents_map = {}
+        df_sla = data.get('df_sla_problems')
+        result = {}
+        if isinstance(df_sla, pd.DataFrame) and not df_sla.empty:
+            for _, row in df_sla.iterrows():
+                hostid = str(row.get('HostID')) if row.get('HostID') is not None else None
+                if not hostid or hostid not in host_ids:
+                    continue
+                try:
+                    sli_val = float(row.get('SLA (%)'))
+                except (TypeError, ValueError):
+                    sli_val = 0.0
+                result[hostid] = {
+                    'sli': sli_val,
+                    'downtimes': intervals_map.get(hostid, []),
+                    'incidents': incidents_map.get(hostid, []),
+                }
+        for hid in host_ids:
+            if hid not in result:
+                result[hid] = {
+                    'sli': 100.0,
+                    'downtimes': intervals_map.get(hid, []),
+                    'incidents': incidents_map.get(hid, []),
+                }
+        cache[cache_key] = result
+        return result
 
     # -------------------- Helpers --------------------
     def _normalize_string(self, s):
@@ -970,44 +1023,136 @@ class ReportGenerator:
                     end_clock = int(evs[-1].get('clock', p_clock))
                 if end_clock is None:
                     end_clock = p_clock
-                out.append({'triggerid': tid, 'hostid': hostid, 'start': p_clock, 'end': max(end_clock, p_clock)})
+                out.append({
+                    'triggerid': tid,
+                    'hostid': hostid,
+                    'start': p_clock,
+                    'end': max(end_clock, p_clock),
+                    'name': p.get('name'),
+                    'severity': p.get('severity'),
+                    'eventid': p.get('eventid'),
+                })
             except Exception:
                 continue
         return out
 
     def _calculate_sla(self, correlated_problems, hosts_for_sla, period):
         if not hosts_for_sla:
-            return []
+            return [], {}, {}
         host_map = {str(h['hostid']): h['nome_visivel'] for h in hosts_for_sla}
         p_start = int(period['start'])
         p_end = int(period['end'])
         total = max(1, p_end - p_start)
-        downtime = {str(h['hostid']): 0 for h in hosts_for_sla}
+
+        intervals_per_host = {str(h['hostid']): [] for h in hosts_for_sla if h.get('hostid') is not None}
         for pr in (correlated_problems or []):
-            hid = str(pr.get('hostid')) if pr.get('hostid') is not None else None
-            if hid not in downtime:
+            hostid_raw = pr.get('hostid')
+            if hostid_raw is None:
                 continue
-            s = max(p_start, int(pr.get('start', p_start)))
-            e = min(p_end, int(pr.get('end', p_end)))
-            if e > s:
-                downtime[hid] += (e - s)
-        rows = []
-        for hid, d in downtime.items():
-            sla = max(0.0, min(100.0, 100.0 * (1.0 - (d / total))))
+            hid = str(hostid_raw)
             try:
-                hours = int(d // 3600)
-                minutes = int((d % 3600) // 60)
-                seconds = int(d % 60)
+                s = max(p_start, int(pr.get('start', p_start)))
+                e = min(p_end, int(pr.get('end', p_end)))
+            except Exception:
+                continue
+            if e < s:
+                e = s
+            entry = {
+                'start': s,
+                'end': e,
+                'duration': max(0, e - s),
+                'name': pr.get('name'),
+                'severity': pr.get('severity'),
+                'eventid': pr.get('eventid'),
+            }
+            intervals_per_host.setdefault(hid, []).append(entry)
+
+        rows = []
+        merged_map = {}
+        incidents_map = {}
+        for host in hosts_for_sla:
+            hid = str(host.get('hostid'))
+            name = host_map.get(hid, f'Host {hid}')
+            incidents = intervals_per_host.get(hid, [])
+            incidents_sorted = sorted(incidents, key=lambda item: item['start']) if incidents else []
+            merged = []
+            if incidents_sorted:
+                cur_s = incidents_sorted[0]['start']
+                cur_e = incidents_sorted[0]['end']
+                for item in incidents_sorted[1:]:
+                    if item['start'] <= cur_e:
+                        if item['end'] > cur_e:
+                            cur_e = item['end']
+                    else:
+                        merged.append((cur_s, cur_e))
+                        cur_s, cur_e = item['start'], item['end']
+                merged.append((cur_s, cur_e))
+            downtime_sec = sum(max(0, e - s) for s, e in merged)
+            try:
+                sla = max(0.0, min(100.0, 100.0 * (1.0 - (downtime_sec / total))))
+            except Exception:
+                sla = 100.0
+            try:
+                hours = int(downtime_sec // 3600)
+                minutes = int((downtime_sec % 3600) // 60)
+                seconds = int(downtime_sec % 60)
+                downtime_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+            except Exception:
+                downtime_str = "00:00:00"
+            row = {
+                'HostID': hid,
+                'Host': name,
+                'SLA (%)': float(sla),
+                'Tempo Indisponivel': downtime_str,
+                'Downtime (s)': int(downtime_sec)
+            }
+            row['Tempo Indisponível'] = downtime_str
+            rows.append(row)
+            merged_map[hid] = [
+                {'start': s, 'end': e, 'duration': max(0, e - s)} for s, e in merged
+            ]
+            incidents_map[hid] = incidents_sorted
+
+        for hid, incidents in intervals_per_host.items():
+            if hid in host_map:
+                continue
+            incidents_sorted = sorted(incidents, key=lambda item: item['start']) if incidents else []
+            merged = []
+            if incidents_sorted:
+                cur_s = incidents_sorted[0]['start']
+                cur_e = incidents_sorted[0]['end']
+                for item in incidents_sorted[1:]:
+                    if item['start'] <= cur_e:
+                        if item['end'] > cur_e:
+                            cur_e = item['end']
+                    else:
+                        merged.append((cur_s, cur_e))
+                        cur_s, cur_e = item['start'], item['end']
+                merged.append((cur_s, cur_e))
+            downtime_sec = sum(max(0, e - s) for s, e in merged)
+            try:
+                hours = int(downtime_sec // 3600)
+                minutes = int((downtime_sec % 3600) // 60)
+                seconds = int(downtime_sec % 60)
                 downtime_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
             except Exception:
                 downtime_str = "00:00:00"
             rows.append({
-                'Host': host_map.get(hid, f'Host {hid}'),
-                'SLA (%)': float(sla),
+                'HostID': hid,
+                'host_id': hid,
+                'Host': f'Host {hid}',
+                'SLA (%)': float(max(0.0, min(100.0, 100.0 * (1.0 - (downtime_sec / total))))),
+                'Tempo Indisponivel': downtime_str,
+                'Downtime (s)': int(downtime_sec),
                 'Tempo Indisponível': downtime_str,
-                'Downtime (s)': int(d)
+                'incident_count': len(incidents_sorted),
             })
-        return rows
+            merged_map[hid] = [
+                {'start': s, 'end': e, 'duration': max(0, e - s)} for s, e in merged
+            ]
+            incidents_map[hid] = incidents_sorted
+
+        return rows, merged_map, incidents_map
 
     def _count_problems_by_host(self, problems, all_hosts):
         host_map = {str(h['hostid']): h['nome_visivel'] for h in (all_hosts or [])}

@@ -459,6 +459,7 @@ def get_available_modules(client_id):
     try:
         available_modules.append({'type': 'resilience_panel', 'name': 'Painel de Resiliência (SLA Preciso)'})
         available_modules.append({'type': 'resilience_services', 'name': 'SLA de Serviços (Preciso)'})
+        available_modules.append({'type': 'uptime_summary', 'name': 'Resumo de Disponibilidade (Uptime)'})
     except Exception:
         pass
     available_modules.append({'type': 'inventory', 'name': 'Inventário de Hosts'})

@@ -113,29 +113,42 @@ class ResiliencePanelCollector(BaseCollector):
             })
 
         df = data['df_sla_problems']
+        incidents_map_raw = data.get('incidents_by_host') or {}
+        incidents_map = {}
+        for key, value in incidents_map_raw.items():
+            try:
+                incidents_map[str(key)] = list(value) if isinstance(value, (list, tuple)) else []
+            except Exception:
+                incidents_map[str(key)] = []
         rows = []
         if isinstance(df, pd.DataFrame) and not df.empty:
             for _, r in df.iterrows():
                 sla_val = None
+                host_id = r.get('HostID')
+                host_id_str = str(host_id) if host_id is not None else None
                 try:
                     sla_val = float(r.get('SLA (%)'))
                 except Exception:
                     sla_val = None
                 dsecs = int(r.get('Downtime (s)') or 0)
+                incident_count = len(incidents_map.get(host_id_str, [])) if host_id_str else 0
                 rows.append({
                     'host': r.get('Host'),
+                    'host_id': host_id_str,
                     'sla': sla_val,
                     'sla_str': (f"{sla_val:.{decimals}f}" if sla_val is not None else None),
                     'downtime': dsecs,
                     'downtime_hms': self._fmt_seconds(dsecs),
+                    'incident_count': incident_count,
                 })
 
         # Ordenação e Top N
         try:
-            if sort_by in ('sla','downtime','host') and rows:
+            if sort_by in ('sla','downtime','host','incidents') and rows:
                 rows.sort(key=(
                     (lambda x: (x['sla'] if x['sla'] is not None else -1.0)) if sort_by=='sla' else
                     (lambda x: x['downtime']) if sort_by=='downtime' else
+                    (lambda x: x.get('incident_count', 0)) if sort_by=='incidents' else
                     (lambda x: str(x['host']).lower())
                 ), reverse=(not sort_asc))
         except Exception:

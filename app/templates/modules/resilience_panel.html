@@ -25,6 +25,7 @@
             <th>Host</th>
             <th class="text-end">SLA (%)</th>
             <th class="text-end">Downtime</th>
+            <th class="text-end">Triggers</th>
           </tr>
         </thead>
         <tbody>
@@ -35,6 +36,7 @@
               <td>{{ row.host }}</td>
               <td class="text-end">{% if row.sla is not none %}{{ row.sla_str }}{% else %}N/A{% endif %}</td>
               <td class="text-end">{{ row.downtime_hms }}</td>
+              <td class="text-end">{{ row.incident_count or 0 }}</td>
             </tr>
           {% endfor %}
         </tbody>
