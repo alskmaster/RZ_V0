@@ -484,7 +484,7 @@ class ReportGenerator:
         kpis_data = [
             {'label': 'Média de SLA', 'value': f"{avg_sla:.2f}%", 'sublabel': 'Mês atual', 'trend': None, 'status': 'atingido' if (goal and avg_sla >= float(goal)) else 'nao-atingido'},
             {'label': 'Hosts com SLA', 'value': f"{hosts_ok}/{total_hosts}", 'sublabel': 'SLA >= meta', 'trend': None, 'status': 'ok' if hosts_ok == total_hosts and total_hosts > 0 else 'info'},
-            {'label': 'Total de Incidentes', 'value': str(int(df_top_incidents['Ocorrências'].sum())) if not df_top_incidents.empty else '0', 'sublabel': 'no perÃ­odo', 'trend': None, 'status': 'info'},
+            {'label': 'Total de Incidentes', 'value': str(int(df_top_incidents['Ocorrências'].sum())) if not df_top_incidents.empty else '0', 'sublabel': 'no período', 'trend': None, 'status': 'info'},
             {'label': 'Principal Ofensor', 'value': top_offender or 'â€”', 'sublabel': 'mais incidentes', 'trend': None, 'status': 'critico' if top_offender else 'info'},
         ]
 
@@ -548,28 +548,28 @@ class ReportGenerator:
                 pattern = re.compile('|'.join(re.escape(i) for i in interfaces if i), re.IGNORECASE)
                 traffic_items = [item for item in traffic_items if pattern.search(str(item.get('key_', '')))]
             except Exception:
-                current_app.logger.warning('Falha ao aplicar filtro de interfaces para trafego.', exc_info=True)
+                current_app.logger.warning('Falha ao aplicar filtro de interfaces para tráfego.', exc_info=True)
         if not traffic_items:
             return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
-                f"Nenhum item de trafego '{key_filter}' encontrado para as interfaces selecionadas."
+                f"Nenhum item de tráfego '{key_filter}' encontrado para as interfaces selecionadas."
             )
         try:
             chunk = int(chunk_size) if chunk_size else 150
         except Exception:
             chunk = 150
-        self._update_status(f"Buscando tendencias para {len(traffic_items)} itens de trafego...")
+        self._update_status(f"Buscando tendências para {len(traffic_items)} itens de tráfego...")
         item_ids = [item.get('itemid') for item in traffic_items]
         trends = self.get_trends_chunked(item_ids, period['start'], period['end'], chunk_size=chunk)
         if not trends:
             return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
-                f"Nenhuma tendencia retornada para '{key_filter}'. Verifique a disponibilidade do Zabbix."
+                f"Nenhuma tendência retornada para '{key_filter}'. Verifique a disponibilidade do Zabbix."
             )
         try:
             df_trends = pd.DataFrame(trends)
             required_cols = {'value_min', 'value_avg', 'value_max', 'itemid'}
             if not required_cols.issubset(df_trends.columns):
                 return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
-                    f"Tendencias de '{key_filter}' retornaram um formato inesperado."
+                    f"Tendências de '{key_filter}' retornaram um formato inesperado."
                 )
             df_trends[['value_min', 'value_avg', 'value_max']] = df_trends[['value_min', 'value_avg', 'value_max']].astype(float)
             item_map = {str(item.get('itemid')): item.get('hostid') for item in traffic_items}
@@ -578,7 +578,7 @@ class ReportGenerator:
             df_trends.dropna(subset=['hostid'], inplace=True)
             if df_trends.empty:
                 return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
-                    f"Nenhuma medida valida retornada para '{key_filter}'."
+                    f"Nenhuma medida válida retornada para '{key_filter}'."
                 )
             agg_functions = {
                 'Min': ('value_min', 'sum'),
@@ -588,7 +588,7 @@ class ReportGenerator:
             df_agg = df_trends.groupby('hostid').agg(**agg_functions).reset_index()
             if df_agg.empty:
                 return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
-                    f"Nao foi possivel agregar dados de '{key_filter}'."
+                    f"Nao foi possível agregar dados de '{key_filter}'."
                 )
             conversion = 8 / (1024 * 1024)
             for col in ['Min', 'Avg', 'Max']:
@@ -597,12 +597,12 @@ class ReportGenerator:
             df_agg.dropna(subset=['Host'], inplace=True)
             if df_agg.empty:
                 return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
-                    f"Nenhum host valido encontrado para '{key_filter}'."
+                    f"Nenhum host válido encontrado para '{key_filter}'."
                 )
             df_agg = df_agg[['Host', 'Min', 'Avg', 'Max']].reset_index(drop=True)
             return df_agg, None
         except Exception:
-            current_app.logger.error('Falha ao processar tendencias de trafego.', exc_info=True)
+            current_app.logger.error('Falha ao processar tendências de tráfego.', exc_info=True)
             return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), 'Erro interno ao processar dados de trafego.'
 
 
@@ -634,7 +634,7 @@ class ReportGenerator:
             current_app.logger.debug("[ReportGenerator.get_trends] Back-compat: period dict.")
         if time_from is None or time_till is None:
             raise TypeError("get_trends requires time_from and time_till or a period dict as second arg.")
-        self._update_status(f"Buscando tendencias para {len(itemids)} itens.")
+        self._update_status(f"Buscando tendências para {len(itemids)} itens.")
         body = {
             'jsonrpc': '2.0', 'method': 'trend.get',
             'params': {
@@ -647,7 +647,7 @@ class ReportGenerator:
         }
         trends = fazer_request_zabbix(body, self.url)
         if not isinstance(trends, list):
-            current_app.logger.error("Falha ao buscar trends: resposta invalida do Zabbix.")
+            current_app.logger.error("Falha ao buscar trends: resposta inválida do Zabbix.")
             return []
         return trends
 
@@ -742,7 +742,7 @@ class ReportGenerator:
         """
         API usada pelos coletores resilientes (CPU/Mem/Disk): retorna estrutura tipo trends
         (itemid, value_min, value_avg, value_max), usando trend.get e fallback para history.get com value_type
-        inferido quando possÃ­vel a partir de items_meta.
+        inferido quando possível a partir de items_meta.
         """
         if not itemids:
             return []
@@ -766,14 +766,14 @@ class ReportGenerator:
         Coleta eventos com abordagem resiliente:
         - Limita campos pesados (acknowledges/tags) para reduzir carga.
         - Em caso de erro/500, primeiro divide por lotes de objetos (hostids/triggerids),
-          e só depois quebra o perÃ­odo, até esgotar max_depth.
+          e só depois quebra o período, até esgotar max_depth.
         """
         time_from, time_till = periodo['start'], periodo['end']
         if max_depth <= 0:
             current_app.logger.error("Limite de profundidade atingido em obter_eventos.")
             return None
 
-        # ParÃ¢metros enxutos para diminuir payload
+        # Parâmetros enxutos para diminuir payload
         params = {
             'output': ['eventid', 'clock', 'value', 'objectid', 'r_eventid', 'hosts', 'name', 'severity', 'acknowledged'],
             'selectHosts': ['hostid'],
@@ -794,12 +794,12 @@ class ReportGenerator:
 
         # Se a API retornou erro (ex.: 500 ou payload muito grande), aplicar fallbacks
         if isinstance(resposta, dict) and 'error' in resposta:
-            # 1) Primeiro, tente dividir por lotes de objetos (mais eficaz quando hÃ¡ muitos hosts)
+            # 1) Primeiro, tente dividir por lotes de objetos (mais eficaz quando há muitos hosts)
             try:
                 if isinstance(object_ids, (list, tuple)) and len(object_ids) > 1:
                     self._update_status("Consulta pesada detectada, dividindo por objetos...")
                     results = []
-                    # Ajuste dinÃ¢mico do tamanho do lote conforme profundidade
+                    # Ajuste dinâmico do tamanho do lote conforme profundidade
                     chunk_size = max(1, int(_chunk_size_hint))
                     for chunk in self._iter_chunks(list(object_ids), chunk_size):
                         sub = self.obter_eventos(chunk, periodo, id_type, max_depth - 1,
@@ -813,7 +813,7 @@ class ReportGenerator:
             except Exception:
                 pass
 
-            # 2) Se ainda falhou, tentar janelas diÃ¡rias
+            # 2) Se ainda falhou, tentar janelas diárias
             try:
                 day = 24 * 3600
                 if int(time_till) - int(time_from) > day:
@@ -828,7 +828,7 @@ class ReportGenerator:
                                                  _chunk_size_hint=_chunk_size_hint,
                                                  include_acks=include_acks, include_tags=include_tags)
                         if sub is None:
-                            # Se uma janela diÃ¡ria falhar, aborta estratégia diÃ¡ria
+                            # Se uma janela diária falhar, aborta estratégia diária
                             results = None
                             break
                         if isinstance(sub, list):
@@ -839,8 +839,8 @@ class ReportGenerator:
             except Exception:
                 pass
 
-            # 3) Ãšltimo recurso: dividir o perÃ­odo ao meio
-            self._update_status("Consulta pesada detectada, quebrando o periodo.")
+            # 3) Último recurso: dividir o perí­odo ao meio
+            self._update_status("Consulta pesada detectada, quebrando o período.")
             mid = int(time_from) + int((int(time_till) - int(time_from)) // 2)
             p1 = {'start': int(time_from), 'end': int(mid)}
             p2 = {'start': int(mid) + 1, 'end': int(time_till)}
@@ -1004,7 +1004,7 @@ class ReportGenerator:
             rows.append({
                 'Host': host_map.get(hid, f'Host {hid}'),
                 'SLA (%)': float(sla),
-                'Tempo IndisponÃ­vel': downtime_str,
+                'Tempo Indisponível': downtime_str,
                 'Downtime (s)': int(d)
             })
         return rows
