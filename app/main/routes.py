@@ -422,7 +422,8 @@ def get_available_modules(client_id):
         pass
 
     if check_key('vfs.fs.size'):
-        available_modules.append({'type': 'disk', 'name': 'Uso de Disco'})
+        available_modules.append({'type': 'disk_table', 'name': 'Uso de Disco (Tabela)'})
+        available_modules.append({'type': 'disk_chart', 'name': 'Uso de Disco (Gr?ficos)'})
 
     if check_key('net.if.in'):
         available_modules.append({'type': 'traffic_in_table', 'name': 'Trafego de Entrada (Tabela)'})

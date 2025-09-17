@@ -27,6 +27,8 @@ from .collectors.mem_collector import MemCollector  # legado (tabela+grafico)
 from .collectors.mem_table_collector import MemTableCollector
 from .collectors.mem_chart_collector import MemChartCollector
 from .collectors.disk_collector import DiskCollector
+from .collectors.disk_table_collector import DiskTableCollector
+from .collectors.disk_chart_collector import DiskChartCollector
 from .collectors.traffic_collector import TrafficCollector
 from .collectors.traffic_in_chart_collector import TrafficInChartCollector
 from .collectors.traffic_in_table_collector import TrafficInTableCollector
@@ -67,6 +69,8 @@ COLLECTOR_MAP = {
     'mem_table': MemTableCollector,
     'mem_chart': MemChartCollector,
     'disk': DiskCollector,
+    'disk_table': DiskTableCollector,
+    'disk_chart': DiskChartCollector,
     'traffic_in': TrafficCollector,
     'traffic_out': TrafficCollector,
     'traffic_out_chart': TrafficOutChartCollector,
