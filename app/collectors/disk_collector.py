@@ -1,4 +1,4 @@
-import pandas as pd
+﻿import pandas as pd
 
 from .base_collector import BaseCollector
 from app.charting import generate_multi_bar_chart
@@ -20,7 +20,7 @@ class DiskCollector(BaseCollector):
 
         module_data = {'tabela': None, 'grafico': None}
         if show_table:
-            df_table = df_disk.rename(columns={'Host': 'Host', 'Filesystem': 'Filesystem', 'Min': 'M?nimo (%)', 'Avg': 'M?dio (%)', 'Max': 'M?ximo (%)'})
+            df_table = df_disk.rename(columns={'Host': 'Host', 'Filesystem': 'Filesystem', 'Min': 'Minimo (%)', 'Avg': 'Medio (%)', 'Max': 'Maximo (%)'})
             module_data['tabela'] = df_table.to_html(classes='table', index=False, float_format='%.2f')
         if show_chart:
             df_chart = df_disk.copy()
@@ -33,3 +33,4 @@ class DiskCollector(BaseCollector):
                 ['#d1b3ff', '#a366ff', '#7a1aff']
             )
         return self.render('disk', module_data)
+

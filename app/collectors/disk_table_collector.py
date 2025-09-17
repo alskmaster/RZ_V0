@@ -22,7 +22,7 @@ class DiskTableCollector(BaseCollector):
             decimals = 0
 
         if df_disk.empty:
-            warning = warning or 'Não foram encontrados dados de disco para o período selecionado.'
+            warning = warning or 'Nao foram encontrados dados de disco para o periodo selecionado.'
             table_html = None
             summary = None
         else:
@@ -42,10 +42,10 @@ class DiskTableCollector(BaseCollector):
                     per_e = dt.datetime.fromtimestamp(int(period['end'])).strftime('%d/%m/%Y')
                     per_txt = f"{per_s} a {per_e}"
                 except Exception:
-                    per_txt = 'período selecionado'
+                    per_txt = 'periodo selecionado'
                 total_rows = len(df_fmt)
                 summary = (
-                    f"Tabela de uso de disco por host (pior filesystem). Período: {per_txt}. Linhas exibidas: {total_rows}."
+                    f"Tabela de uso de disco por host (pior filesystem). periodo: {per_txt}. Linhas exibidas: {total_rows}."
                 )
                 if top_n and top_n > 0:
                     summary += f" Top N aplicado: {top_n}."
@@ -58,3 +58,4 @@ class DiskTableCollector(BaseCollector):
         if not self.module_config.get('title'):
             self.module_config['title'] = self.DEFAULT_TITLE
         return self.render('disk_table', data)
+

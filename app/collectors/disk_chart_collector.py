@@ -8,7 +8,7 @@ from .disk_shared import collect_disk_dataframe
 
 
 class DiskChartCollector(BaseCollector):
-    """Coletor para o módulo Uso de Disco (Gráficos)."""
+    """Coletor para o Modulo Uso de Disco (Gráficos)."""
 
     DEFAULT_TITLE = 'Uso de Disco (Gráficos)'
 
@@ -22,7 +22,7 @@ class DiskChartCollector(BaseCollector):
         rotate_x = bool(opts.get('rotate_x_labels', False))
 
         if df_disk.empty:
-            warning = warning or 'Não foram encontrados dados de disco para o período selecionado.'
+            warning = warning or 'Nao foram encontrados dados de disco para o periodo selecionado.'
             img = None
             summary = None
         else:
@@ -45,11 +45,11 @@ class DiskChartCollector(BaseCollector):
                     per_e = dt.datetime.fromtimestamp(int(period['end'])).strftime('%d/%m/%Y')
                     per_txt = f"{per_s} a {per_e}"
                 except Exception:
-                    per_txt = 'período selecionado'
+                    per_txt = 'periodo selecionado'
                 total_hosts = len(df_plot) if df_plot is not None else 0
                 summary = (
-                    f"Visualização do uso de disco por host (pior filesystem). "
-                    f"Período: {per_txt}. Itens exibidos: {total_hosts}."
+                    f"Visualizacao do uso de disco por host (pior filesystem). "
+                    f"periodo: {per_txt}. Itens exibidos: {total_hosts}."
                 )
                 if top_n and top_n > 0:
                     summary += f" Top N aplicado: {top_n}."
@@ -61,4 +61,6 @@ class DiskChartCollector(BaseCollector):
         if not self.module_config.get('title'):
             self.module_config['title'] = self.DEFAULT_TITLE
         return self.render('disk_chart', data)
+
+
 

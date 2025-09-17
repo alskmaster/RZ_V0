@@ -88,7 +88,7 @@ def gerar_relatorio():
     date_to = request.form.get('date_to')
     report_layout_json = request.form.get('report_layout')
 
-    # Migracao automatica de modulos legados para novos (Tabela/Graficos)
+    # Migracao automatica de modulos legados para novos (Tabela/Gráficos)
     def _migrate_layout(layout):
         import copy, json
         try:
@@ -387,10 +387,10 @@ def get_available_modules(client_id):
         available_modules.append({'type': 'incidents_chart', 'name': 'Incidentes (Gráficos)'})
         available_modules.append({'type': 'unavailability_heatmap', 'name': 'Mapa de Calor de Indisponibilidade'})
         available_modules.append({'type': 'root_cause_top_triggers', 'name': 'Causa-Raiz (Top Gatilhos)'})
-        available_modules.append({'type': 'mttr', 'name': 'Eficiencia da Resposta (MTTR)'})
+        available_modules.append({'type': 'mttr', 'name': 'Eficiência da Resposta (MTTR)'})
     
     if check_key('icmppingsec'):
-        available_modules.append({'type': 'latency', 'name': 'Latencia de Rede (Ping)'})
+        available_modules.append({'type': 'latency', 'name': 'Latência de Rede (Ping)'})
     if check_key('icmppingloss'):
         available_modules.append({'type': 'loss', 'name': 'Perda de Pacotes (Ping)'})
 
@@ -398,39 +398,39 @@ def get_available_modules(client_id):
         available_modules.append({'type': 'cpu', 'name': 'Desempenho de CPU'})
         # CPU (novos modulos)
         available_modules.append({'type': 'cpu_table', 'name': 'CPU (Tabela)'})
-        available_modules.append({'type': 'cpu_chart', 'name': 'CPU (Graficos)'})
+        available_modules.append({'type': 'cpu_chart', 'name': 'CPU (Gráficos)'})
     if check_key('vm.memory.size[pused]') or check_key('vm.memory.size[pavailable]'):
-        available_modules.append({'type': 'mem', 'name': 'Desempenho de Memoria'})
+        available_modules.append({'type': 'mem', 'name': 'Desempenho de Memória'})
     
-    # Memoria (novos modulos separados)
+    # Memória (novos modulos separados)
     try:
         if check_key('vm.memory.size[pused]') or check_key('vm.memory.size[pavailable]'):
-            available_modules.append({'type': 'mem_table', 'name': 'Memoria (Tabela)'})
-            available_modules.append({'type': 'mem_chart', 'name': 'Memoria (Graficos)'})
+            available_modules.append({'type': 'mem_table', 'name': 'Memória (Tabela)'})
+            available_modules.append({'type': 'mem_chart', 'name': 'Memória (Gráficos)'})
     except Exception:
         pass
 
-    # Ping (Latencia e Perda) novos modulos separados
+    # Ping (Latência e Perda) novos modulos separados
     try:
         if check_key('icmppingsec'):
-            available_modules.append({'type': 'latency_table', 'name': 'Latencia (Tabela)'})
-            available_modules.append({'type': 'latency_chart', 'name': 'Latencia (Graficos)'})
+            available_modules.append({'type': 'latency_table', 'name': 'Latência (Tabela)'})
+            available_modules.append({'type': 'latency_chart', 'name': 'Latência (Gráficos)'})
         if check_key('icmppingloss'):
             available_modules.append({'type': 'loss_table', 'name': 'Perda de Pacotes (Tabela)'})
-            available_modules.append({'type': 'loss_chart', 'name': 'Perda de Pacotes (Graficos)'})
+            available_modules.append({'type': 'loss_chart', 'name': 'Perda de Pacotes (Gráficos)'})
     except Exception:
         pass
 
     if check_key('vfs.fs.size'):
         available_modules.append({'type': 'disk_table', 'name': 'Uso de Disco (Tabela)'})
-        available_modules.append({'type': 'disk_chart', 'name': 'Uso de Disco (Gr?ficos)'})
+        available_modules.append({'type': 'disk_chart', 'name': 'Uso de Disco (Gráficos)'})
 
     if check_key('net.if.in'):
-        available_modules.append({'type': 'traffic_in_table', 'name': 'Trafego de Entrada (Tabela)'})
-        available_modules.append({'type': 'traffic_in_chart', 'name': 'Trafego de Entrada (Graficos)'})
+        available_modules.append({'type': 'traffic_in_table', 'name': 'Tráfego de Entrada (Tabela)'})
+        available_modules.append({'type': 'traffic_in_chart', 'name': 'Tráfego de Entrada (Gráficos)'})
     if check_key('net.if.out'):
-        available_modules.append({'type': 'traffic_out_table', 'name': 'Trafego de Saida (Tabela)'})
-        available_modules.append({'type': 'traffic_out_chart', 'name': 'Trafego de Saida (Graficos)'})
+        available_modules.append({'type': 'traffic_out_table', 'name': 'Tráfego de Saida (Tabela)'})
+        available_modules.append({'type': 'traffic_out_chart', 'name': 'Tráfego de Saida (Gráficos)'})
     
     # --------- NOVO: Descoberta de Wi-Fi (clientcountnumber / perfis wifi_clients) ----------
     try:
@@ -449,7 +449,7 @@ def get_available_modules(client_id):
             wifi_found = True
             break
     if wifi_found:
-        available_modules.append({'type': 'wifi', 'name': 'Wi-Fi (Utilizacao por AP/SSID)'})
+        available_modules.append({'type': 'wifi', 'name': 'Wi-Fi (Utilização por AP/SSID)'})
 
     if getattr(client, 'softdesk_enabled', False):
         available_modules.append({'type': 'softdesk_root_cause', 'name': 'Causa-Raiz Softdesk'})
@@ -457,23 +457,23 @@ def get_available_modules(client_id):
 
     # Disponibilidade / SLA (novos)
     try:
-        available_modules.append({'type': 'resilience_panel', 'name': 'Painel de Resiliencia (SLA Preciso)'})
-        available_modules.append({'type': 'resilience_services', 'name': 'SLA de Servicos (Preciso)'})
+        available_modules.append({'type': 'resilience_panel', 'name': 'Painel de Resiliência (SLA Preciso)'})
+        available_modules.append({'type': 'resilience_services', 'name': 'SLA de Serviços (Preciso)'})
     except Exception:
         pass
-    available_modules.append({'type': 'inventory', 'name': 'Inventario de Hosts'})
+    available_modules.append({'type': 'inventory', 'name': 'Inventário de Hosts'})
     available_modules.append({'type': 'html', 'name': 'Texto/HTML Customizado'})
     # Sempre disponivel: status do agente e MTTR
     available_modules.append({'type': 'agent_status', 'name': 'Status do Agente Zabbix'})
     # Novos modulos
     available_modules.append({'type': 'recurring_problems', 'name': 'Problemas Recorrentes'})
-    available_modules.append({'type': 'critical_performance', 'name': 'Desempenho Critico (por ItemID)'})
+    available_modules.append({'type': 'critical_performance', 'name': 'Desempenho Crítico (por ItemID)'})
     
     # Limpa modulos legados do backend (mostrar apenas versoes novas)
     # Extensoes adicionais
-    available_modules.append({'type': 'capacity_forecast', 'name': 'Previsao de Capacidade'})
+    available_modules.append({'type': 'capacity_forecast', 'name': 'Previsão de Capacidade'})
     available_modules.append({'type': 'itil_availability', 'name': 'Disponibilidade por Incidente (ITIL)'})
-    available_modules.append({'type': 'executive_summary', 'name': 'Sumario Executivo'})
+    available_modules.append({'type': 'executive_summary', 'name': 'Sumário Executivo'})
     legacy_types = {'cpu', 'mem', 'latency', 'loss', 'sla', 'sla_table', 'sla_chart', 'sla_plus', 'kpi', 'top_hosts', 'top_problems', 'stress', 'sla_incidents_table'}
     try:
         available_modules = [m for m in available_modules if m.get('type') not in legacy_types]
