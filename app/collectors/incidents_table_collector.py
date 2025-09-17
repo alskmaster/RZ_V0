@@ -5,18 +5,18 @@ import pandas as pd
 
 class IncidentsTableCollector(BaseCollector):
     """
-    MÃ³dulo Incidentes (Tabela): apenas informaÃ§Ãµes tabulares, sem grÃ¡ficos.
-    - Filtros por severidade, sub-perÃ­odo e nome do host.
+    Módulo Incidentes (Tabela): apenas informações tabulares, sem gráficos.
+    - Filtros por severidade, sub-período e nome do host.
     - Agrupamento por host ou por problema.
-    - Campos opcionais: duraÃ§Ã£o e acknowledgements.
-    - Suporte a filtros adicionais: ACK, tags, exclusÃµes de host/problema.
+    - Campos opcionais: duração e acknowledgements.
+    - Suporte a filtros adicionais: ACK, tags, exclusões de host/problema.
     """
 
     _SEVERITY_MAP = {
-        '0': 'NÃ£o Classificado',
-        '1': 'InformaÃ§Ã£o',
-        '2': 'AtenÃ§Ã£o',
-        '3': 'MÃ©dia',
+        '0': 'Não Classificado',
+        '1': 'Informação',
+        '2': 'Atenção',
+        '3': 'Média',
         '4': 'Alta',
         '5': 'Desastre'
     }
@@ -36,7 +36,7 @@ class IncidentsTableCollector(BaseCollector):
         try:
             return datetime.datetime.fromtimestamp(int(ts)).strftime('%d/%m/%Y %H:%M:%S')
         except Exception:
-            return "InvÃ¡lido"
+            return "Inválido"
 
     def _format_duration(self, seconds):
         if not seconds:
@@ -58,7 +58,7 @@ class IncidentsTableCollector(BaseCollector):
             if seconds or not parts: parts.append(f"{seconds}s")
             return " ".join(parts)
         except Exception:
-            return "InvÃ¡lido"
+            return "Inválido"
 
     def _apply_period_subfilter(self, period, sub):
         start, end = period['start'], period['end']
@@ -95,7 +95,7 @@ class IncidentsTableCollector(BaseCollector):
         problems = self.generator.obter_eventos_wrapper(all_host_ids, period, 'hostids')
         if problems is None:
             self._update_status("Erro ao coletar eventos de incidentes (tabela).")
-            return self.render('incidents_table', {"error": "NÃ£o foi possÃ­vel coletar dados de incidentes."})
+            return self.render('incidents_table', {"error": "Não foi possível coletar dados de incidentes."})
 
         df = pd.DataFrame(problems)
         if df.empty:
@@ -137,7 +137,7 @@ class IncidentsTableCollector(BaseCollector):
                 "primary_grouping": primary_grouping,
             })
 
-        # Host visÃ­vel
+        # Host visí­vel
         host_name_map = {h['hostid']: h['nome_visivel'] for h in all_hosts}
         df['host_name'] = df['hosts'].apply(lambda x: host_name_map.get(x[0].get('hostid')) if isinstance(x, list) and x and isinstance(x[0], dict) and x[0].get('hostid') else 'Desconhecido')
         if host_name_contains:
@@ -194,10 +194,10 @@ class IncidentsTableCollector(BaseCollector):
                     "primary_grouping": primary_grouping,
                 })
 
-        # Campos de exibiÃ§Ã£o
+        # Campos de exibição
         df['severity_name'] = df['severity'].astype(str).map(self._SEVERITY_MAP).fillna('Desconhecido')
         df['formatted_clock'] = df['clock'].apply(self._format_timestamp)
-        # CorrelaÃ§Ã£o PROBLEM -> OK usando todos os eventos do perÃ­odo (para determinar fim real)
+        # Correlação PROBLEM -> OK usando todos os eventos do período (para determinar fim real)
         end_map = {}
         try:
             problems_only = [p for p in (problems or []) if str(p.get('value')) == '1']
@@ -205,7 +205,7 @@ class IncidentsTableCollector(BaseCollector):
             end_map = {(str(c.get('triggerid')), int(c.get('start'))): int(c.get('end')) for c in (correlated or []) if c.get('start') is not None}
         except Exception:
             end_map = {}
-        # DuraÃ§Ã£o: se houver r_event (OK), usa-o como fim; caso contrÃ¡rio, usa o fim do perÃ­odo do relatÃ³rio
+        # Duração: se houver r_event (OK), usa-o como fim; caso contrário, usa o fim do período do relatório
         try:
             period_end_ts = int(period.get('end'))
         except Exception:
@@ -226,7 +226,7 @@ class IncidentsTableCollector(BaseCollector):
                 except Exception:
                     return period_end_ts
             return period_end_ts
-        # Garantir numÃ©ricos seguros para cÃ¡lculo
+        # Garantir numéricos seguros para cálculo
         df['start_ts'] = pd.to_numeric(df['clock'], errors='coerce').fillna(period_end_ts).astype(int)
         df['end_ts'] = df.apply(_end_ts, axis=1)
         df['duration_seconds'] = (df['end_ts'] - df['start_ts']).clip(lower=0)
