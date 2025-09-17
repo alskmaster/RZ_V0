@@ -132,7 +132,7 @@
             const titleDisplay = module.title ? `"${module.title}"` : '';
             // Detecta se há customizer registrado para o módulo.
             // Fall-back: garante o botão para tipos conhecidos mesmo se o registro atrasar.
-            const knownCustomizable = new Set(['incidents_table', 'incidents_chart', 'wifi', 'disk', 'traffic_in_table', 'traffic_in_chart', 'latency_table', 'latency_chart', 'loss_table', 'loss_chart', 'cpu_table', 'cpu_chart', 'mem_table', 'mem_chart', 'agent_status', 'mttr', 'critical_performance', 'capacity_forecast', 'itil_availability', 'resilience_panel', 'resilience_services', 'recurring_problems', 'root_cause_top_triggers', 'unavailability_heatmap', 'html', 'inventory']);
+            const knownCustomizable = new Set(['incidents_table', 'incidents_chart', 'wifi', 'disk', 'traffic_in_table', 'traffic_in_chart', 'traffic_out_table', 'traffic_out_chart', 'latency_table', 'latency_chart', 'loss_table', 'loss_chart', 'cpu_table', 'cpu_chart', 'mem_table', 'mem_chart', 'agent_status', 'mttr', 'critical_performance', 'capacity_forecast', 'itil_availability', 'resilience_panel', 'resilience_services', 'recurring_problems', 'root_cause_top_triggers', 'unavailability_heatmap', 'html', 'inventory']);
             const isCustomizable = (
                 (module.type in moduleCustomizers) ||
                 (window.ModuleCustomizers && (module.type in window.ModuleCustomizers)) ||
@@ -208,7 +208,7 @@
                 // Rede (Ping)
                 'latency_table': 'Rede (Ping)', 'latency_chart': 'Rede (Ping)',
                 'loss_table': 'Rede (Ping)', 'loss_chart': 'Rede (Ping)',
-                'traffic_in': 'Rede (Trafego)', 'traffic_in_table': 'Rede (Trafego)', 'traffic_in_chart': 'Rede (Trafego)', 'traffic_out': 'Rede (Trafego)',
+                'traffic_in': 'Rede (Trafego)', 'traffic_in_table': 'Rede (Trafego)', 'traffic_in_chart': 'Rede (Trafego)', 'traffic_out': 'Rede (Trafego)', 'traffic_out_table': 'Rede (Trafego)', 'traffic_out_chart': 'Rede (Trafego)',
                 // Disponibilidade / SLA
                 'kpi': 'Disponibilidade / SLA', 'sla_table': 'Disponibilidade / SLA',
                 'sla_chart': 'Disponibilidade / SLA', 'sla_plus': 'Disponibilidade / SLA',

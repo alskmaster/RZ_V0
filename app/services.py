@@ -23,13 +23,15 @@ from .pdf_builder import PDFBuilder
 from .collectors.cpu_collector import CpuCollector  # legado
 from .collectors.cpu_table_collector import CpuTableCollector
 from .collectors.cpu_chart_collector import CpuChartCollector
-from .collectors.mem_collector import MemCollector  # legado (tabela+grÃ¡fico)
+from .collectors.mem_collector import MemCollector  # legado (tabela+grafico)
 from .collectors.mem_table_collector import MemTableCollector
 from .collectors.mem_chart_collector import MemChartCollector
 from .collectors.disk_collector import DiskCollector
 from .collectors.traffic_collector import TrafficCollector
 from .collectors.traffic_in_chart_collector import TrafficInChartCollector
 from .collectors.traffic_in_table_collector import TrafficInTableCollector
+from .collectors.traffic_out_chart_collector import TrafficOutChartCollector
+from .collectors.traffic_out_table_collector import TrafficOutTableCollector
 from .collectors.latency_collector import LatencyCollector
 from .collectors.loss_collector import LossCollector
 from .collectors.latency_table_collector import LatencyTableCollector
@@ -67,6 +69,8 @@ COLLECTOR_MAP = {
     'disk': DiskCollector,
     'traffic_in': TrafficCollector,
     'traffic_out': TrafficCollector,
+    'traffic_out_chart': TrafficOutChartCollector,
+    'traffic_out_table': TrafficOutTableCollector,
     'traffic_in_chart': TrafficInChartCollector,
     'traffic_in_table': TrafficInTableCollector,
     'latency': LatencyCollector,  # compatibilidade (misto)
@@ -1012,14 +1016,3 @@ class ReportGenerator:
         import pandas as pd
         rows = [{'Host': host_map.get(h, f'Host {h}'), 'Problemas': c} for h, c in cnt.items()]
         return pd.DataFrame(rows)
-
-
-
-
-
-
-
-
-
-
-

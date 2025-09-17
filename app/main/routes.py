@@ -428,6 +428,9 @@ def get_available_modules(client_id):
         available_modules.append({'type': 'traffic_in_table', 'name': 'Trafego de Entrada (Tabela)'})
         available_modules.append({'type': 'traffic_in_chart', 'name': 'Trafego de Entrada (Graficos)'})
         available_modules.append({'type': 'traffic_out', 'name': 'Trafego de Saida'})
+    if check_key('net.if.out'):
+        available_modules.append({'type': 'traffic_out_table', 'name': 'Trafego de Saida (Tabela)'})
+        available_modules.append({'type': 'traffic_out_chart', 'name': 'Trafego de Saida (Graficos)'})
     
     # --------- NOVO: Descoberta de Wi-Fi (clientcountnumber / perfis wifi_clients) ----------
     try:
@@ -672,6 +675,7 @@ def test_events(client_id, mes_ref):
         "diagnostico": "Coleta em lote estao INCOMPLETA." if total_diario > total_lote else "Coleta em lote parece COMPLETA.",
         "detalhes_diarios": dias_com_eventos
     })
+
 
 
 

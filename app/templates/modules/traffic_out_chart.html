@@ -1,0 +1,16 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Trafego de Saida (Graficos)' }}</h2>
+  {% if data.summary_text %}
+    <p class="mb-2">{{ data.summary_text }}</p>
+  {% endif %}
+  {% if data.warning_text %}
+    <p><i>{{ data.warning_text }}</i></p>
+  {% endif %}
+  <div class="chart-container">
+    {% if data.img %}
+      <img src="data:image/png;base64,{{ data.img }}" alt="Grafico de Trafego de Saida"/>
+    {% else %}
+      <p><i>Grafico de Trafego de Saida indisponivel.</i></p>
+    {% endif %}
+  </div>
+</div>
