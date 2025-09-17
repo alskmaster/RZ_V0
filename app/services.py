@@ -28,6 +28,8 @@ from .collectors.mem_table_collector import MemTableCollector
 from .collectors.mem_chart_collector import MemChartCollector
 from .collectors.disk_collector import DiskCollector
 from .collectors.traffic_collector import TrafficCollector
+from .collectors.traffic_in_chart_collector import TrafficInChartCollector
+from .collectors.traffic_in_table_collector import TrafficInTableCollector
 from .collectors.latency_collector import LatencyCollector
 from .collectors.loss_collector import LossCollector
 from .collectors.latency_table_collector import LatencyTableCollector
@@ -65,6 +67,8 @@ COLLECTOR_MAP = {
     'disk': DiskCollector,
     'traffic_in': TrafficCollector,
     'traffic_out': TrafficCollector,
+    'traffic_in_chart': TrafficInChartCollector,
+    'traffic_in_table': TrafficInTableCollector,
     'latency': LatencyCollector,  # compatibilidade (misto)
     'latency_table': LatencyTableCollector,
     'latency_chart': LatencyChartCollector,
@@ -525,6 +529,74 @@ class ReportGenerator:
         if df_lat.empty and df_loss.empty:
             return None, "Nenhum item de icmppingsec/icmppingloss encontrado."
         return {'df_lat': df_lat, 'df_loss': df_loss}, None
+    def shared_collect_traffic(self, all_hosts, period, key_filter='net.if.in', interfaces=None, chunk_size=150):
+        """Coleta dados de trafego (Min/Avg/Max) agregados por host."""
+        self._update_status(f"Buscando itens de trafego: {key_filter}")
+        host_ids = [h.get('hostid') for h in (all_hosts or [])]
+        host_map = {str(h.get('hostid')): h.get('nome_visivel') for h in (all_hosts or [])}
+        traffic_items = self.get_items(host_ids, key_filter, search_by_key=True)
+        if interfaces:
+            try:
+                pattern = re.compile('|'.join(re.escape(i) for i in interfaces if i), re.IGNORECASE)
+                traffic_items = [item for item in traffic_items if pattern.search(str(item.get('key_', '')))]
+            except Exception:
+                current_app.logger.warning('Falha ao aplicar filtro de interfaces para trafego.', exc_info=True)
+        if not traffic_items:
+            return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
+                f"Nenhum item de trafego '{key_filter}' encontrado para as interfaces selecionadas."
+            )
+        try:
+            chunk = int(chunk_size) if chunk_size else 150
+        except Exception:
+            chunk = 150
+        self._update_status(f"Buscando tendencias para {len(traffic_items)} itens de trafego...")
+        item_ids = [item.get('itemid') for item in traffic_items]
+        trends = self.get_trends_chunked(item_ids, period['start'], period['end'], chunk_size=chunk)
+        if not trends:
+            return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
+                f"Nenhuma tendencia retornada para '{key_filter}'. Verifique a disponibilidade do Zabbix."
+            )
+        try:
+            df_trends = pd.DataFrame(trends)
+            required_cols = {'value_min', 'value_avg', 'value_max', 'itemid'}
+            if not required_cols.issubset(df_trends.columns):
+                return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
+                    f"Tendencias de '{key_filter}' retornaram um formato inesperado."
+                )
+            df_trends[['value_min', 'value_avg', 'value_max']] = df_trends[['value_min', 'value_avg', 'value_max']].astype(float)
+            item_map = {str(item.get('itemid')): item.get('hostid') for item in traffic_items}
+            df_trends['itemid'] = df_trends['itemid'].astype(str)
+            df_trends['hostid'] = df_trends['itemid'].map(item_map)
+            df_trends.dropna(subset=['hostid'], inplace=True)
+            if df_trends.empty:
+                return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
+                    f"Nenhuma medida valida retornada para '{key_filter}'."
+                )
+            agg_functions = {
+                'Min': ('value_min', 'sum'),
+                'Avg': ('value_avg', 'sum'),
+                'Max': ('value_max', 'sum'),
+            }
+            df_agg = df_trends.groupby('hostid').agg(**agg_functions).reset_index()
+            if df_agg.empty:
+                return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
+                    f"Nao foi possivel agregar dados de '{key_filter}'."
+                )
+            conversion = 8 / (1024 * 1024)
+            for col in ['Min', 'Avg', 'Max']:
+                df_agg[col] = df_agg[col].astype(float) * conversion
+            df_agg['Host'] = df_agg['hostid'].map(lambda hid: host_map.get(str(hid)))
+            df_agg.dropna(subset=['Host'], inplace=True)
+            if df_agg.empty:
+                return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), (
+                    f"Nenhum host valido encontrado para '{key_filter}'."
+                )
+            df_agg = df_agg[['Host', 'Min', 'Avg', 'Max']].reset_index(drop=True)
+            return df_agg, None
+        except Exception:
+            current_app.logger.error('Falha ao processar tendencias de trafego.', exc_info=True)
+            return pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max']), 'Erro interno ao processar dados de trafego.'
+
 
     # -------------- Zabbix data access --------------
     def get_items(self, hostids, filter_key, search_by_key=False, exact_key_search=False, include_triggers=False):

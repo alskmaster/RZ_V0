@@ -425,8 +425,9 @@ def get_available_modules(client_id):
         available_modules.append({'type': 'disk', 'name': 'Uso de Disco'})
 
     if check_key('net.if.in'):
-        available_modules.append({'type': 'traffic_in', 'name': 'Trafego de Entrada'})
-        available_modules.append({'type': 'traffic_out', 'name': 'Trafego de Sai­da'})
+        available_modules.append({'type': 'traffic_in_table', 'name': 'Trafego de Entrada (Tabela)'})
+        available_modules.append({'type': 'traffic_in_chart', 'name': 'Trafego de Entrada (Graficos)'})
+        available_modules.append({'type': 'traffic_out', 'name': 'Trafego de Saida'})
     
     # --------- NOVO: Descoberta de Wi-Fi (clientcountnumber / perfis wifi_clients) ----------
     try:

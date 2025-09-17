@@ -68,81 +68,25 @@ class TrafficCollector(BaseCollector):
         return table_html, chart_image, module_message
 
     def _collect_traffic_data(self, all_hosts, period, interfaces):
-        host_ids = [h['hostid'] for h in all_hosts]
-        host_map = {h['hostid']: h['nome_visivel'] for h in all_hosts}
-        empty_df = pd.DataFrame(columns=['Host', 'Min', 'Avg', 'Max'])
-
-        def get_traffic_data(key_filter):
-            self._update_status(f"Buscando itens de trafego: {key_filter}")
-            traffic_items = self.generator.get_items(host_ids, key_filter, search_by_key=True)
-
-            if interfaces:
-                regex = f".*({'|'.join(re.escape(i) for i in interfaces)})"
-                traffic_items = [item for item in traffic_items if re.search(regex, item['key_'])]
-
-            if not traffic_items:
-                return empty_df.copy(), (
-                    f"Nenhum item de trafego '{key_filter}' encontrado para as interfaces selecionadas."
-                )
-
-            item_ids = [item['itemid'] for item in traffic_items]
+        interfaces = interfaces or []
+        try:
             chunk_size = int(self.module_config.get('trend_chunk_size') or 150)
-            self._update_status(
-                f"Buscando tendencias para {len(item_ids)} itens de trafego..."
-            )
-            traffic_trends = self.generator.get_trends_chunked(
-                item_ids, period['start'], period['end'], chunk_size=chunk_size
-            )
-            if not traffic_trends:
-                return empty_df.copy(), (
-                    f"Nenhuma tendencia retornada para '{key_filter}'. Verifique a disponibilidade do Zabbix."
-                )
+        except Exception:
+            chunk_size = 150
 
-            df_trends = pd.DataFrame(traffic_trends)
-            required_cols = {'value_min', 'value_avg', 'value_max', 'itemid'}
-            if not required_cols.issubset(df_trends.columns):
-                return empty_df.copy(), (
-                    f"Tendencias de '{key_filter}' retornaram um formato inesperado."
-                )
+        df_net_in, error_in = self.generator.shared_collect_traffic(
+            all_hosts, period, 'net.if.in', interfaces=interfaces, chunk_size=chunk_size
+        )
+        df_net_out, error_out = self.generator.shared_collect_traffic(
+            all_hosts, period, 'net.if.out', interfaces=interfaces, chunk_size=chunk_size
+        )
 
-            df_trends[['value_min', 'value_avg', 'value_max']] = df_trends[
-                ['value_min', 'value_avg', 'value_max']
-            ].astype(float)
-            item_map = {str(item['itemid']): item['hostid'] for item in traffic_items}
-            df_trends['itemid'] = df_trends['itemid'].astype(str)
-            df_trends['hostid'] = df_trends['itemid'].map(item_map)
-            df_trends.dropna(subset=['hostid'], inplace=True)
-            if df_trends.empty:
-                return empty_df.copy(), (
-                    f"Nenhuma medida valida retornada para '{key_filter}'."
-                )
-
-            agg_functions = {
-                'Min': ('value_min', 'sum'),
-                'Avg': ('value_avg', 'sum'),
-                'Max': ('value_max', 'sum'),
-            }
-            df_agg = df_trends.groupby('hostid').agg(**agg_functions).reset_index()
-            if df_agg.empty:
-                return empty_df.copy(), (
-                    f"Nao foi possivel agregar dados de '{key_filter}'."
-                )
-
-            conversion = 8 / (1024 * 1024)
-            for col in ['Min', 'Avg', 'Max']:
-                df_agg[col] = df_agg[col] * conversion
-            df_agg['Host'] = df_agg['hostid'].map(host_map)
-            df_agg.dropna(subset=['Host'], inplace=True)
-            if df_agg.empty:
-                return empty_df.copy(), (
-                    f"Nenhum host valido encontrado para '{key_filter}'."
-                )
-            df_agg = df_agg[['Host', 'Min', 'Avg', 'Max']].sort_values('Avg', ascending=False)
-            df_agg.reset_index(drop=True, inplace=True)
-            return df_agg, None
-
-        df_net_in, error_in = get_traffic_data('net.if.in')
-        df_net_out, error_out = get_traffic_data('net.if.out')
+        if error_in and error_out:
+            return None, f"{error_in} e {error_out}"
+        if error_in and df_net_out is not None and not df_net_out.empty:
+            return None, error_in
+        if error_out and df_net_in is not None and not df_net_in.empty:
+            return None, error_out
 
         data = {
             'df_net_in': df_net_in,
@@ -154,3 +98,4 @@ class TrafficCollector(BaseCollector):
         }
 
         return data, None
+

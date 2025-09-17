@@ -205,6 +205,82 @@ def generate_chart(
     plt.close(fig)
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
+def generate_multi_line_chart(df, title, y_label, colors, *, label_wrap=48, show_values=False, rotate_x=False):
+    """Gera grafico de linhas com series Min/Avg/Max por host."""
+    logging.info(f"Gerando grafico: {title} (linha)...")
+
+    if df is None or df.empty:
+        logging.warning("[charting.generate_multi_line_chart] DataFrame vazio - grafico nao sera gerado.")
+        return None
+
+    try:
+        df_norm = _normalize_mem_dataframe(df.copy())
+    except Exception as e:
+        logging.error(f"[charting.generate_multi_line_chart] Falha na normalizacao do DataFrame: {e}", exc_info=True)
+        return None
+
+    try:
+        df_sorted = df_norm.copy()
+        df_sorted['Avg_sort'] = df_sorted['Avg'].fillna(float('-inf'))
+        df_sorted = df_sorted.sort_values(by='Avg_sort', ascending=False).drop(columns=['Avg_sort'])
+    except Exception as e:
+        logging.error(f"[charting.generate_multi_line_chart] Falha ao ordenar por 'Avg': {e}")
+        df_sorted = df_norm
+
+    if df_sorted.empty:
+        logging.warning("[charting.generate_multi_line_chart] DataFrame vazio apos ordenacao.")
+        return None
+
+    try:
+        wrap = int(label_wrap) if label_wrap is not None else 48
+    except Exception:
+        wrap = 48
+    labels = ['\n'.join(textwrap.wrap(str(label), width=wrap)) for label in df_sorted['Host']]
+
+    plt.style.use('seaborn-v0_8-whitegrid')
+    fig_width = max(10, len(df_sorted) * 0.6)
+    fig, ax = plt.subplots(figsize=(fig_width, 6))
+
+    series_map = [
+        ('Maximo', 'Max', colors[0] if len(colors) > 0 else '#f39c12'),
+        ('Medio', 'Avg', colors[1] if len(colors) > 1 else '#1f77b4'),
+        ('Minimo', 'Min', colors[2] if len(colors) > 2 else '#2ca02c'),
+    ]
+
+    x = list(range(len(df_sorted)))
+    plotted = False
+    for label, col, color in series_map:
+        if col not in df_sorted.columns:
+            continue
+        values = pd.to_numeric(df_sorted[col], errors='coerce')
+        if values.isna().all():
+            continue
+        ax.plot(x, values, marker='o', label=label, color=color)
+        plotted = True
+        if show_values:
+            for idx, val in enumerate(values):
+                if pd.notna(val):
+                    ax.annotate(f"{val:.1f}", (idx, val), textcoords='offset points', xytext=(0, 6), ha='center', fontsize=8)
+
+    if not plotted:
+        plt.close(fig)
+        return None
+
+    ax.set_xticks(x)
+    rotation = 45 if rotate_x else 0
+    ha = 'right' if rotate_x else 'center'
+    ax.set_xticklabels(labels, rotation=rotation, ha=ha)
+    ax.set_ylabel(y_label)
+    ax.set_title(title, fontsize=16)
+    ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
+    ax.legend()
+
+    plt.tight_layout()
+    buffer = BytesIO()
+    plt.savefig(buffer, format='png', dpi=150, transparent=True)
+    plt.close(fig)
+    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
 
 def generate_multi_bar_chart(df, title, x_label, colors, *, label_wrap=48, show_values=False, rotate_x=False):
     """
