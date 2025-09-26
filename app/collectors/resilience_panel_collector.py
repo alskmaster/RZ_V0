@@ -18,6 +18,21 @@ class ResiliencePanelCollector(BaseCollector):
       - host_name_contains: substring para filtrar o nome visível do host
       - period_sub_filter: full_month | last_24h | last_7d (default: full_month)
     """
+    _DEFAULT_SEVERITIES = ['not_classified', 'info', 'warning', 'average', 'high', 'disaster']
+    _SEVERITY_FILTER_MAP = {
+        'not_classified': '0',
+        'info': '1',
+        'warning': '2',
+        'average': '3',
+        'high': '4',
+        'disaster': '5',
+    }
+
+
+    def _tokenize(self, value):
+        if not value:
+            return []
+        return [token.strip() for token in str(value).split(',') if token and token.strip()]
 
     def _fmt_seconds(self, total_seconds):
         try:
@@ -49,6 +64,34 @@ class ResiliencePanelCollector(BaseCollector):
         host_contains = (opts.get('host_name_contains') or '').strip()
         host_exclude_raw = (opts.get('exclude_hosts_contains') or '')
         exclude_terms = [s.strip().lower() for s in str(host_exclude_raw).split(',') if s and str(s).strip()]
+        trigger_contains_raw = (opts.get('trigger_contains') or '').strip()
+        trigger_exclude_raw = (opts.get('trigger_exclude') or '').strip()
+        tags_include_raw = (opts.get('tags_include') or '').strip()
+        tags_exclude_raw = (opts.get('tags_exclude') or '').strip()
+        selected_severities = opts.get('severities') if isinstance(opts.get('severities'), list) else None
+        if selected_severities:
+            severity_labels = [str(s) for s in selected_severities if str(s)]
+        else:
+            severity_labels = list(self._DEFAULT_SEVERITIES)
+        severity_ids = [self._SEVERITY_FILTER_MAP.get(label) for label in severity_labels if label in self._SEVERITY_FILTER_MAP]
+        trigger_include_tokens = [token.lower() for token in self._tokenize(trigger_contains_raw)]
+        trigger_exclude_tokens = [token.lower() for token in self._tokenize(trigger_exclude_raw)]
+        tag_include_tokens = [token.lower() for token in self._tokenize(tags_include_raw)]
+        tag_exclude_tokens = [token.lower() for token in self._tokenize(tags_exclude_raw)]
+        event_filters = {}
+        if trigger_include_tokens:
+            event_filters['trigger_contains'] = trigger_include_tokens
+        if trigger_exclude_tokens:
+            event_filters['trigger_exclude'] = trigger_exclude_tokens
+        if tag_include_tokens:
+            event_filters['tags_include'] = tag_include_tokens
+        if tag_exclude_tokens:
+            event_filters['tags_exclude'] = tag_exclude_tokens
+        if severity_ids:
+            event_filters['severity_ids'] = [sid for sid in severity_ids if sid is not None]
+        event_filters = {k: v for k, v in event_filters.items() if v}
+
+
         decimals = int(opts.get('decimals') or 2)
         highlight = (opts.get('highlight_below_goal') is not False)
         sort_by = (opts.get('sort_by') or 'sla').lower()
@@ -99,7 +142,7 @@ class ResiliencePanelCollector(BaseCollector):
 
         self._update_status("Calculando disponibilidade por host (SLA)...")
         try:
-            data, err = self.generator._collect_availability_data(all_hosts, period, target_sla)
+            data, err = self.generator._collect_availability_data(all_hosts, period, target_sla, filters=event_filters or None)
         except Exception:
             current_app.logger.exception('[ResiliencePanel] Falha no cálculo de disponibilidade')
             data, err = None, 'Falha ao calcular disponibilidade.'

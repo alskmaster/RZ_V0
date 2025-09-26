@@ -411,20 +411,87 @@ class ReportGenerator:
         return pdf_path, None
 
     # -------------------- Availability data --------------------
-    def _collect_availability_data(self, all_hosts, period, sla_goal, trends_only=False):
+    def _collect_availability_data(self, all_hosts, period, sla_goal, filters=None, trends_only=False):
         all_host_ids = [h['hostid'] for h in all_hosts if h.get('hostid') is not None]
         if not all_host_ids:
             return None, "Nenhum host valido para calcular disponibilidade."
 
-        all_group_events = self.obter_eventos_wrapper(all_host_ids, period, 'hostids')
+        filters = filters or {}
+        trigger_include = [str(token).lower() for token in (filters.get('trigger_contains') or []) if str(token).strip()]
+        trigger_exclude = [str(token).lower() for token in (filters.get('trigger_exclude') or []) if str(token).strip()]
+        tag_include = [str(token).lower() for token in (filters.get('tags_include') or []) if str(token).strip()]
+        tag_exclude = [str(token).lower() for token in (filters.get('tags_exclude') or []) if str(token).strip()]
+        default_severity_set = {'0', '1', '2', '3', '4', '5'}
+        severity_override = filters.get('severity_ids') or []
+        severity_set = {str(s) for s in severity_override if str(s) != ''} or default_severity_set
+        apply_severity_filter = bool(severity_override) and severity_set != default_severity_set
+        need_tags = bool(tag_include or tag_exclude)
+
+        all_group_events = self.obter_eventos_wrapper(all_host_ids, period, 'hostids', include_tags=need_tags)
         if all_group_events is None:
             return None, "Falha ao coletar eventos do grupo."
 
+        def _extract_tag_tokens(event):
+            tags = event.get('tags') or []
+            tokens = []
+            for item in tags:
+                if not isinstance(item, dict):
+                    continue
+                key = str(item.get('tag', '')).lower()
+                val = str(item.get('value', '')).lower()
+                if key and val:
+                    tokens.append(f"{key}={val}")
+                if key:
+                    tokens.append(key)
+                if val:
+                    tokens.append(val)
+            return tokens
+
+        def _matches_filters(event):
+            name_lower = str(event.get('name') or '').lower()
+            if trigger_include and not any(token in name_lower for token in trigger_include):
+                return False
+            if trigger_exclude and any(token in name_lower for token in trigger_exclude):
+                return False
+            severity_value = str(event.get('severity', '')).strip()
+            if apply_severity_filter and severity_value not in severity_set:
+                return False
+            if tag_include or tag_exclude:
+                tag_tokens = _extract_tag_tokens(event)
+                if tag_include and not any(any_token in token for token in tag_tokens for any_token in tag_include):
+                    return False
+                if tag_exclude and any(any_token in token for token in tag_tokens for any_token in tag_exclude):
+                    return False
+            return True
+
+        apply_filters = bool(trigger_include or trigger_exclude or tag_include or tag_exclude or apply_severity_filter)
+        if apply_filters:
+            allowed_triggers = set()
+            for ev in (all_group_events or []):
+                try:
+                    if str(ev.get('value', '0')) != '1':
+                        continue
+                    if not _matches_filters(ev):
+                        continue
+                    tid = ev.get('objectid') or ev.get('triggerid')
+                    if tid is not None:
+                        allowed_triggers.add(str(tid))
+                except Exception:
+                    continue
+            filtered_events = [
+                ev for ev in (all_group_events or [])
+                if str(ev.get('objectid') or ev.get('triggerid')) in allowed_triggers
+            ] if allowed_triggers else []
+        else:
+            filtered_events = list(all_group_events or [])
+
+        all_events = filtered_events
         all_problems = [
-            ev for ev in (all_group_events or [])
+            ev for ev in all_events
             if str(ev.get('source', '0')) == '0' and str(ev.get('object', '0')) == '0' and str(ev.get('value', '0')) == '1'
         ]
-        correlated = self._correlate_problems(all_problems, all_group_events, period)
+
+        correlated = self._correlate_problems(all_problems, all_events, period)
         rows, intervals_by_host, incidents_by_host = self._calculate_sla(correlated, all_hosts, period)
         df_sla = pd.DataFrame(rows)
 
@@ -435,8 +502,8 @@ class ReportGenerator:
         detailed_rows = []
         severity_counts = {}
         sev_map = {
-            '0': 'Não Classificado', '1': 'Informação', '2': 'Atenção',
-            '3': 'Média', '4': 'Alta', '5': 'Desastre'
+            '0': 'Nao Classificado', '1': 'Informacao', '2': 'Atencao',
+            '3': 'Media', '4': 'Alta', '5': 'Desastre'
         }
         for ev in (all_problems or []):
             try:
@@ -445,14 +512,14 @@ class ReportGenerator:
                 host_name = host_map.get(hostid, f'Host {hostid}') if hostid else 'Desconhecido'
                 prob_name = ev.get('name') or f"Trigger {ev.get('objectid') or ev.get('triggerid') or '?'}"
                 clk = int(ev.get('clock', 0))
-                detailed_rows.append({'Host': host_name, 'Problema': prob_name, 'Ocorrências': 1, 'clock': clk})
+                detailed_rows.append({'Host': host_name, 'Problema': prob_name, 'Ocorrencias': 1, 'clock': clk})
                 sev_raw = ev.get('severity', 'Desconhecido')
                 sev_key = sev_map.get(str(sev_raw), 'Desconhecido')
                 severity_counts[sev_key] = severity_counts.get(sev_key, 0) + 1
             except Exception:
                 continue
         import pandas as _pd
-        df_top_incidents = _pd.DataFrame(detailed_rows, columns=['Host', 'Problema', 'Ocorrências', 'clock']) if detailed_rows else _pd.DataFrame(columns=['Host', 'Problema', 'Ocorrências', 'clock'])
+        df_top_incidents = _pd.DataFrame(detailed_rows, columns=['Host', 'Problema', 'Ocorrencias', 'clock']) if detailed_rows else _pd.DataFrame(columns=['Host', 'Problema', 'Ocorrencias', 'clock'])
 
         avg_sla = float(df_sla['SLA (%)'].mean()) if not df_sla.empty else 100.0
         total_hosts = len(self.cached_data.get('all_hosts', [])) or len(all_hosts)
@@ -467,18 +534,17 @@ class ReportGenerator:
         top_offender = None
         try:
             if not df_top_incidents.empty:
-                top_offender = df_top_incidents.groupby('Host')['Ocorrências'].sum().sort_values(ascending=False).index.tolist()[0]
+                top_offender = df_top_incidents.groupby('Host')['Ocorrencias'].sum().sort_values(ascending=False).index.tolist()[0]
         except Exception:
             top_offender = None
         kpis_data = [
-            {'label': 'Média de SLA', 'value': f"{avg_sla:.2f}%", 'sublabel': 'Mês atual', 'trend': None, 'status': 'atingido' if (goal and avg_sla >= float(goal)) else 'nao-atingido'},
+            {'label': 'Media de SLA', 'value': f"{avg_sla:.2f}%", 'sublabel': 'Mes atual', 'trend': None, 'status': 'atingido' if (goal and avg_sla >= float(goal)) else 'nao-atingido'},
             {'label': 'Hosts com SLA', 'value': f"{hosts_ok}/{total_hosts}", 'sublabel': 'SLA >= meta', 'trend': None, 'status': 'ok' if hosts_ok == total_hosts and total_hosts > 0 else 'info'},
-            {'label': 'Total de Incidentes', 'value': str(int(df_top_incidents['Ocorrências'].sum())) if not df_top_incidents.empty else '0', 'sublabel': 'no período', 'trend': None, 'status': 'info'},
+            {'label': 'Total de Incidentes', 'value': str(int(df_top_incidents['Ocorrencias'].sum())) if not df_top_incidents.empty else '0', 'sublabel': 'no periodo', 'trend': None, 'status': 'info'},
             {'label': 'Principal Ofensor', 'value': top_offender or 'N/A', 'sublabel': 'mais incidentes', 'trend': None, 'status': 'critico' if top_offender else 'info'},
         ]
 
         return {'df_sla_problems': df_sla, 'df_top_incidents': df_top_incidents, 'kpis': kpis_data, 'severity_counts': severity_counts, 'downtime_intervals_by_host': intervals_by_host, 'incidents_by_host': incidents_by_host}, None
-
     def obter_disponibilidade_sla(self, host_ids, period, service_tag=None):
         host_ids = sorted({str(hid) for hid in (host_ids or []) if hid is not None})
         if not host_ids:
@@ -953,17 +1019,15 @@ class ReportGenerator:
                     out[eid] = tags
         return out
 
-    def obter_eventos_wrapper(self, object_ids, periodo, id_type='objectids'):
+    def obter_eventos_wrapper(self, object_ids, periodo, id_type='objectids', include_tags=False):
         if not object_ids:
             return []
         self._update_status(f"Processando eventos para {len(object_ids)} objetos em uma unica chamada...")
-        # Padrão: coleta 'leve' (sem acks/tags) para reduzir carga e evitar 500
-        evs = self.obter_eventos(object_ids, periodo, id_type, max_depth=6, include_acks=False, include_tags=False)
+        evs = self.obter_eventos(object_ids, periodo, id_type, max_depth=6, include_acks=False, include_tags=include_tags)
         if evs is None:
             current_app.logger.critical("Falha critica ao coletar eventos.")
             return None
         return sorted(evs, key=lambda x: int(x['clock']))
-
     def _correlate_problems(self, problems, all_events, period=None):
         if not problems:
             return []

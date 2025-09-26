@@ -18,12 +18,23 @@
     const loadTemplateBtn = document.getElementById('loadTemplateBtn');
     const saveTemplateBtn = document.getElementById('saveTemplateBtn');
     const templateNameInput = document.getElementById('templateNameInput');
+    const updateTemplateBtn = document.getElementById('updateTemplateBtn');
+    const deleteTemplateBtn = document.getElementById('deleteTemplateBtn');
+    const confirmSaveTemplateBtn = document.getElementById('confirmSaveTemplateBtn');
+    const saveTemplateModalEl = document.getElementById('saveTemplateModal');
+    const saveTemplateModal = saveTemplateModalEl ? new bootstrap.Modal(saveTemplateModalEl) : null;
+    const saveTemplateModalLabel = document.getElementById('saveTemplateModalLabel');
+    const csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
 
     // --- ESTADO DA APLICAÇÃO ---
     let reportLayout = [];
     let availableModules = [];
     let currentModuleToCustomize = null;
     let activePoll = null; // controle para polling de status
+    let savedTemplates = [];
+    let activeTemplateId = null;
+    let templateAction = 'create';
+    let templateBeingEditedId = null;
 
     // ===================================================================================
     // --- CENTRO DE COMANDO DE CUSTOMIZAÇÃO DE MÓDULOS ---
@@ -290,12 +301,101 @@
         generateBtn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> Gerar Relatório';
     }
 
+    function withCsrf(headers = {}) {
+        if (csrfToken) {
+            headers['X-CSRFToken'] = csrfToken;
+        }
+        return headers;
+    }
+
+    function findTemplateById(templateId) {
+        if (templateId === null || templateId === undefined) return null;
+        const idNum = Number(templateId);
+        if (Number.isNaN(idNum)) return null;
+        return savedTemplates.find(t => Number(t.id) === idNum) || null;
+    }
+
+    function renderSavedTemplates(selectedId = null) {
+        if (!templateSelector) return;
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Carregar Template...';
+        templateSelector.innerHTML = '';
+        templateSelector.appendChild(placeholder);
+        savedTemplates.forEach(t => {
+            const option = new Option(t.name || `Template #${t.id}`, t.layout_json || '');
+            option.dataset.templateId = t.id;
+            if (selectedId && Number(selectedId) === Number(t.id)) {
+                option.selected = true;
+            }
+            templateSelector.appendChild(option);
+        });
+    }
+
+    async function refreshSavedTemplates(selectedId = null) {
+        if (!URLS || !URLS.get_templates) return;
+        try {
+            const response = await fetch(URLS.get_templates, { headers: { 'Accept': 'application/json' } });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const data = await response.json();
+            savedTemplates = Array.isArray(data) ? data : [];
+            renderSavedTemplates(selectedId);
+        } catch (error) {
+            logDebug('templates.refresh.error', { error: String(error) });
+        }
+    }
+
+    function getSelectedTemplateInfo() {
+        if (!templateSelector) return null;
+        const option = templateSelector.options[templateSelector.selectedIndex];
+        if (!option || !option.dataset.templateId) return null;
+        const templateId = Number(option.dataset.templateId);
+        const record = findTemplateById(templateId);
+        return record ? { id: templateId, option, record } : null;
+    }
+
+    function prepareTemplateModal(action, templateRecord) {
+        templateAction = action;
+        templateBeingEditedId = templateRecord ? templateRecord.id : null;
+        if (saveTemplateModalLabel) {
+            saveTemplateModalLabel.textContent = action === 'update' ? 'Atualizar Template' : 'Salvar Layout como Template';
+        }
+        if (templateNameInput) {
+            templateNameInput.value = templateRecord ? (templateRecord.name || '') : '';
+            templateNameInput.focus();
+        }
+    }
+
+    function bootstrapSavedTemplatesFromDom() {
+        if (!templateSelector) return;
+        const options = Array.from(templateSelector.options || []);
+        savedTemplates = options
+            .map(option => {
+                const idAttr = option.dataset ? option.dataset.templateId : null;
+                if (!idAttr) return null;
+                const idNum = Number(idAttr);
+                if (Number.isNaN(idNum)) return null;
+                return {
+                    id: idNum,
+                    name: option.textContent || `Template #${idAttr}`,
+                    layout_json: option.value || '[]'
+                };
+            })
+            .filter(Boolean);
+    }
+
     // --- EVENTOS ---
 
     clientSelect.addEventListener('change', () => {
         fetchClientData(clientSelect.value);
         reportLayout = [];
         renderLayoutList();
+        activeTemplateId = null;
+        if (templateSelector) {
+            templateSelector.selectedIndex = 0;
+        }
     });
 
     addModuleBtn.addEventListener('click', () => {
@@ -356,6 +456,108 @@
         }
     });
 
+
+    if (saveTemplateBtn && saveTemplateModal) {
+        saveTemplateBtn.addEventListener('click', () => {
+            prepareTemplateModal('create', null);
+            saveTemplateModal.show();
+        });
+    }
+
+    if (updateTemplateBtn && saveTemplateModal) {
+        updateTemplateBtn.addEventListener('click', () => {
+            const info = getSelectedTemplateInfo();
+            if (!info) {
+                alert('Selecione um template para atualizar.');
+                return;
+            }
+            prepareTemplateModal('update', info.record);
+            saveTemplateModal.show();
+        });
+    }
+
+    if (deleteTemplateBtn) {
+        deleteTemplateBtn.addEventListener('click', async () => {
+            const info = getSelectedTemplateInfo();
+            if (!info) {
+                alert('Selecione um template para excluir.');
+                return;
+            }
+            if (!confirm(`Tem certeza que deseja excluir o template "${info.record.name}"?`)) {
+                return;
+            }
+            try {
+                const response = await fetch(URLS.delete_template.replace('0', info.id), {
+                    method: 'DELETE',
+                    headers: withCsrf({ 'Accept': 'application/json' })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    const errorMsg = (result && result.error) ? result.error : 'Erro ao excluir template.';
+                    alert(errorMsg);
+                    return;
+                }
+                await refreshSavedTemplates();
+                if (Number(activeTemplateId) === Number(info.id)) {
+                    activeTemplateId = null;
+                }
+                logDebug('template.delete.success', { id: info.id });
+            } catch (error) {
+                logDebug('template.delete.error', { error: String(error) });
+                alert('Erro ao excluir template.');
+            }
+        });
+    }
+
+    if (confirmSaveTemplateBtn) {
+        confirmSaveTemplateBtn.addEventListener('click', async () => {
+            const templateName = templateNameInput ? templateNameInput.value.trim() : '';
+            if (!templateName) {
+                alert('Informe um nome para o template.');
+                return;
+            }
+            if (!Array.isArray(reportLayout) || reportLayout.length === 0) {
+                alert('Adicione ao menos um modulo ao layout antes de salvar.');
+                return;
+            }
+            const payload = {
+                name: templateName,
+                layout: JSON.stringify(reportLayout)
+            };
+            if (templateAction === 'update' && templateBeingEditedId) {
+                payload.id = templateBeingEditedId;
+            }
+            try {
+                const response = await fetch(URLS.save_template, {
+                    method: 'POST',
+                    headers: withCsrf({
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }),
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    const errorMsg = (result && result.error) ? result.error : 'Falha ao salvar template.';
+                    alert(errorMsg);
+                    return;
+                }
+                const savedRecord = result.template;
+                const selectedId = (savedRecord && savedRecord.id) ? savedRecord.id : (templateBeingEditedId || null);
+                if (saveTemplateModal) {
+                    saveTemplateModal.hide();
+                }
+                await refreshSavedTemplates(selectedId);
+                activeTemplateId = selectedId;
+                templateAction = 'create';
+                templateBeingEditedId = null;
+            } catch (error) {
+                logDebug('template.save.error', { error: String(error) });
+                alert('Erro ao salvar template.');
+            }
+        });
+    }
+
     // Salvar de cada customizador
     Object.keys(moduleCustomizers).forEach(moduleType => {
         const customizer = moduleCustomizers[moduleType];
@@ -389,16 +591,23 @@
     }
 
     // Carregar template salvo
-    loadTemplateBtn.addEventListener('click', () => {
-        if (templateSelector.value) {
+    if (loadTemplateBtn) {
+        loadTemplateBtn.addEventListener('click', () => {
+            const info = getSelectedTemplateInfo();
+            if (!info) {
+                alert('Selecione um template para carregar.');
+                return;
+            }
             try {
-                reportLayout = JSON.parse(templateSelector.value);
+                const layoutSource = info.record?.layout_json || templateSelector.value || '[]';
+                reportLayout = JSON.parse(layoutSource || '[]');
                 renderLayoutList();
+                activeTemplateId = info.id;
             } catch (e) {
                 logDebug('loadTemplateBtn.jsonError', { error: String(e) });
             }
-        }
-    });
+        });
+    }
 
     // Submissão do form é para gerar Relatório
     reportForm.addEventListener('submit', async (e) => {
@@ -486,6 +695,8 @@
     const lastDay = `${y}-${String(m).padStart(2,'0')}-${String(lastDayDate.getDate()).padStart(2,'0')}`;
     if (dateFromInput) dateFromInput.value = firstDay;
     if (dateToInput) dateToInput.value = lastDay;
+    bootstrapSavedTemplatesFromDom();
+    refreshSavedTemplates();
     renderLayoutList();
 });
 

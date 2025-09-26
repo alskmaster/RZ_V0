@@ -12,6 +12,8 @@ import unicodedata
 from flask_login import login_required, current_user
 
 from . import main
+from sqlalchemy import or_
+
 from app import db
 from app.models import Client, Report, SystemConfig, User, ReportTemplate, MetricKeyProfile  # <-- adicionado MetricKeyProfile
 
@@ -73,7 +75,10 @@ def index():
 @login_required
 def gerar_form():
     clients = current_user.clients if current_user.has_role('client') else Client.query.order_by(Client.name).all()
-    templates = ReportTemplate.query.order_by(ReportTemplate.name).all()
+    templates_query = ReportTemplate.query.filter(
+        or_(ReportTemplate.user_id == current_user.id, ReportTemplate.user_id.is_(None))
+    )
+    templates = templates_query.order_by(ReportTemplate.name).all()
     return render_template('gerar_form.html', title="Gerar Relatorio", clients=clients, templates=templates)
 
 @main.route('/gerar_relatorio', methods=['POST'])
@@ -253,10 +258,11 @@ def uploaded_file(filename):
 @main.route('/save_template', methods=['POST'])
 @login_required
 def save_template():
-    data = request.json
-    template_name = data.get('name')
+    data = request.get_json(silent=True) or {}
+    template_name = (data.get('name') or '').strip()
     layout_json = data.get('layout')
-    # migra antes de salvar
+    template_id = data.get('id')
+
     def _migrate(layout):
         import json
         try:
@@ -269,16 +275,25 @@ def save_template():
             t = (m or {}).get('type')
             co = (m or {}).get('custom_options') or {}
             base = {k: v for k, v in m.items() if k != 'custom_options'}
+
             def mk(tp):
-                mm = deepcopy(base); mm['type'] = tp; mm['custom_options'] = {k: v for k, v in co.items()};
-                for k in ('show_table','show_chart'): mm['custom_options'].pop(k, None)
+                mm = deepcopy(base)
+                mm['type'] = tp
+                mm['custom_options'] = {k: v for k, v in co.items()}
+                for k in ('show_table', 'show_chart'):
+                    mm['custom_options'].pop(k, None)
                 return mm
+
             if t == 'cpu':
-                if co.get('show_table', True): out.append(mk('cpu_table'))
-                if co.get('show_chart', True): out.append(mk('cpu_chart'))
+                if co.get('show_table', True):
+                    out.append(mk('cpu_table'))
+                if co.get('show_chart', True):
+                    out.append(mk('cpu_chart'))
             elif t == 'mem':
-                if co.get('show_table', True): out.append(mk('mem_table'))
-                if co.get('show_chart', True): out.append(mk('mem_chart'))
+                if co.get('show_table', True):
+                    out.append(mk('mem_table'))
+                if co.get('show_chart', True):
+                    out.append(mk('mem_chart'))
             elif t == 'latency':
                 out += [mk('latency_table'), mk('latency_chart')]
             elif t == 'loss':
@@ -293,28 +308,90 @@ def save_template():
         layout_json = _migrate(layout_json)
     except Exception:
         pass
-    
+
+    if isinstance(layout_json, (list, dict)):
+        layout_json = json.dumps(layout_json)
+
     if not template_name or not layout_json:
         return jsonify({'success': False, 'error': 'Nome do template e layout sao obrigatorios.'}), 400
 
-    existing_template = ReportTemplate.query.filter_by(name=template_name).first()
-    if existing_template:
+    template = None
+    if template_id is not None:
+        try:
+            template_id = int(template_id)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Identificador de template invalido.'}), 400
+        template = db.session.get(ReportTemplate, template_id)
+        if not template:
+            return jsonify({'success': False, 'error': 'Template nao encontrado.'}), 404
+        if template.user_id and template.user_id != current_user.id:
+            return jsonify({'success': False, 'error': 'Acesso nao autorizado ao template.'}), 403
+
+    existing_template = (
+        ReportTemplate.query
+        .filter(
+            ReportTemplate.name == template_name,
+            or_(ReportTemplate.user_id == current_user.id, ReportTemplate.user_id.is_(None))
+        )
+        .first()
+    )
+    if existing_template and (not template or existing_template.id != template.id):
         return jsonify({'success': False, 'error': 'Ja existe um template com este nome. Por favor, escolha outro.'}), 409
-    
+
     try:
-        new_template = ReportTemplate(name=template_name, layout_json=layout_json)
-        db.session.add(new_template)
-        db.session.commit()
-        return jsonify({'success': True, 'message': f'Template "{template_name}" salvo com sucesso!'})
+        if template:
+            template.name = template_name
+            template.layout_json = layout_json
+            if not template.user_id:
+                template.user_id = current_user.id
+            db.session.commit()
+            saved_template = template
+            action_message = f'Template "{template_name}" atualizado com sucesso!'
+        else:
+            saved_template = ReportTemplate(name=template_name, layout_json=layout_json, user_id=current_user.id)
+            db.session.add(saved_template)
+            db.session.commit()
+            action_message = f'Template "{template_name}" salvo com sucesso!'
+        return jsonify({
+            'success': True,
+            'message': action_message,
+            'template': {
+                'id': saved_template.id,
+                'name': saved_template.name,
+                'layout_json': saved_template.layout_json
+            }
+        })
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Erro ao salvar template: {e}")
         return jsonify({'success': False, 'error': 'Erro interno ao salvar o template.'}), 500
 
+
+@main.route('/templates/<int:template_id>', methods=['DELETE'])
+@login_required
+def delete_template(template_id):
+    template = db.session.get(ReportTemplate, template_id)
+    if not template:
+        return jsonify({'success': False, 'error': 'Template nao encontrado.'}), 404
+    if template.user_id and template.user_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Acesso nao autorizado ao template.'}), 403
+
+    try:
+        db.session.delete(template)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Template removido com sucesso.'})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erro ao remover template {template_id}: {e}")
+        return jsonify({'success': False, 'error': 'Erro interno ao remover o template.'}), 500
+
 @main.route('/get_templates')
 @login_required
 def get_templates():
-    templates = ReportTemplate.query.order_by(ReportTemplate.name).all()
+    templates = (ReportTemplate.query
+                 .filter(or_(ReportTemplate.user_id == current_user.id, ReportTemplate.user_id.is_(None)))
+                 .order_by(ReportTemplate.name)
+                 .all())
     out = []
     for t in templates:
         lj = getattr(t, 'layout_json', None)

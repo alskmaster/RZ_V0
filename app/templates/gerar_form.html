@@ -92,17 +92,23 @@
                 </div>
                 <div class="card-body">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <button type="button" class="btn btn-outline-primary" id="saveTemplateBtn" data-bs-toggle="modal" data-bs-target="#saveTemplateModal">
+                        <button type="button" class="btn btn-outline-primary" id="saveTemplateBtn">
                             <i class="bi bi-save"></i> Salvar Layout
                         </button>
                         <select id="templateSelector" class="form-select" style="max-width: 320px;">
                             <option value="">Carregar Template...</option>
                             {% for t in templates %}
-                                <option value='{{ t.layout_json|e }}'>{{ t.name }}</option>
+                                <option value='{{ t.layout_json|e }}' data-template-id="{{ t.id }}">{{ t.name }}</option>
                             {% endfor %}
                         </select>
                         <button type="button" class="btn btn-outline-secondary" id="loadTemplateBtn">
                             Carregar
+                        </button>
+                        <button type="button" class="btn btn-outline-success" id="updateTemplateBtn">
+                            <i class="bi bi-arrow-repeat"></i> Atualizar
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" id="deleteTemplateBtn">
+                            <i class="bi bi-trash"></i> Excluir
                         </button>
                     </div>
                 </div>
@@ -271,6 +277,8 @@
         report_status: "{{ url_for('main.report_status', task_id=0) }}",
         download_report: "{{ url_for('main.download_final_report', task_id=0) }}",
         save_template: "{{ url_for('main.save_template') }}",
+        get_templates: "{{ url_for('main.get_templates') }}",
+        delete_template: "{{ url_for('main.delete_template', template_id=0) }}",
     };
 </script>
 <script src="{{ url_for('static', filename='js/gerar_form.js') }}"></script>
