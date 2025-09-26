@@ -31,11 +31,11 @@ startup_log()
 # ----------------------------------------------------------------------------
 if __name__ == "__main__":
     host = os.getenv("FLASK_RUN_HOST", "0.0.0.0")
-    port = int(os.getenv("FLASK_RUN_PORT", "5000"))
+    port = int(os.getenv("FLASK_RUN_PORT", "5001"))
     debug = os.getenv("FLASK_DEBUG", "1").lower() in ("1", "true", "yes")
 
     if debug:
         logger.warning("⚠️ Rodando em modo DEBUG. Não use em produção!")
 
     app.run(host=host, port=port, debug=debug)
-    # 🚨 Em produção use: gunicorn -w 4 -b 0.0.0.0:5000 'run:app'
+    # 🚨 Em produção use: gunicorn -w 4 -b 0.0.0.0:5001 'run:app'

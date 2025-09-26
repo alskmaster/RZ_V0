@@ -1,0 +1,180 @@
+<div class="report-module-instance" {% if new_page %}style="page-break-before: always;"{% endif %}>
+  <h2>{{ title or 'Disponibilidade por Incidente' }}</h2>
+  {% if data.error %}
+    <div class="alert alert-warning" role="alert">{{ data.error }}</div>
+    {% if data.filters %}
+      <div class="small text-muted">
+        {% for f in data.filters %}<span class="badge bg-light text-dark border me-1">{{ f.label }}: {{ f.value }}</span>{% endfor %}
+      </div>
+    {% endif %}
+    {% if data.coverage %}
+      <div class="small text-muted">Escopo monitorado: {{ data.coverage.monitored_triggers or 0 }} gatilhos.</div>
+    {% endif %}
+  {% else %}
+    {% set period_names = {'full_month': 'Mes Completo', 'last_7d': 'Ultimos 7 Dias', 'last_24h': 'Ultimas 24 Horas'} %}
+    <div class="card mb-3 border-0 shadow-sm">
+      <div class="card-body p-3">
+        <div class="row g-3 align-items-center">
+          <div class="col-md-3 col-sm-6">
+            <div class="text-muted small text-uppercase">Disponibilidade</div>
+            <div class="display-6 fw-semibold text-success">{{ '%.2f' | format(data.summary.availability_pct or 0) }}%</div>
+            {% if data.summary.target_availability %}
+              <div class="small {% if data.summary.target_met %}text-success{% else %}text-danger{% endif %}">
+                Meta {{ '%.2f' | format(data.summary.target_availability) }}% {% if data.summary.target_met %}(atingida){% else %}(nao atingida){% endif %}
+              </div>
+            {% endif %}
+          </div>
+          <div class="col-md-3 col-sm-6">
+            <div class="text-muted small text-uppercase">Tempo indisponivel</div>
+            <div class="fs-4">{{ data.summary.total_downtime_human }}</div>
+            <div class="small text-muted">Incidentes: {{ data.summary.total_incidents }}</div>
+          </div>
+          <div class="col-md-3 col-sm-6">
+            <div class="text-muted small text-uppercase">Hosts monitorados</div>
+            <div class="fs-4">{{ data.summary.hosts_monitored }}</div>
+            <div class="small text-muted">Com incidentes: {{ data.summary.hosts_with_incidents }}</div>
+          </div>
+          <div class="col-md-3 col-sm-6">
+            <div class="text-muted small text-uppercase">Periodo</div>
+            <div class="fw-semibold">{{ data.summary.period_label }}</div>
+            <div class="small text-muted">{{ period_names.get(data.period_mode, 'Escopo customizado') }} - {{ data.summary.period_duration_human }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if data.summary.insight %}
+      <div class="alert alert-info" role="alert">{{ data.summary.insight }}</div>
+    {% endif %}
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <h6 class="text-muted text-uppercase small mb-2">Severidades monitoradas</h6>
+          {% if data.summary.severity_breakdown %}
+            <ul class="list-unstyled mb-0">
+              {% for label, qty in data.summary.severity_breakdown.items() %}
+                <li>{{ label }}: <strong>{{ qty }}</strong></li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="small text-muted">Sem incidentes nas severidades selecionadas.</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+          <h6 class="text-muted text-uppercase small mb-2">Status de reconhecimento</h6>
+          <div class="small">Com ACK: <strong>{{ data.summary.ack_counts.with_ack }}</strong></div>
+          <div class="small">Sem ACK: <strong>{{ data.summary.ack_counts.without_ack }}</strong></div>
+          <div class="small text-muted mt-2">Triggers com incidentes: {{ data.summary.triggers_with_incidents }} - Eventos brutos: {{ data.summary.raw_incidents }} - Filtrados: {{ data.summary.filtered_incidents }}</div>
+        </div>
+      </div>
+    </div>
+
+    {% if data.filters %}
+      <div class="mb-3">
+        <span class="text-muted small text-uppercase">Filtros aplicados</span>
+        <div class="d-flex flex-wrap gap-2 mt-1">
+          {% for f in data.filters %}
+            <span class="badge bg-light text-dark border">{{ f.label }}: {{ f.value }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if data.groups and data.groups|length > 0 %}
+      <div class="table-responsive mb-4">
+        <table class="table table-sm table-striped align-middle">
+          <thead>
+            <tr>
+              {% if data.group_by == 'host' %}
+                <th>Host</th>
+              {% else %}
+                <th>Problema</th>
+                <th>Host</th>
+              {% endif %}
+              <th class="text-end">Incidentes</th>
+              {% if data.show_duration %}<th class="text-end">Tempo indisponivel</th>{% endif %}
+              {% if data.group_by == 'host' %}
+                <th class="text-end">Disponibilidade (%)</th>
+              {% else %}
+                <th class="text-end">Impacto (%)</th>
+              {% endif %}
+              {% if data.show_acknowledgements %}<th class="text-end">ACKs</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in data.groups %}
+              <tr>
+                {% if data.group_by == 'host' %}
+                  <td>{{ row.label }}</td>
+                {% else %}
+                  <td>{{ row.label }}</td>
+                  <td>{{ row.host_label }}</td>
+                {% endif %}
+                <td class="text-end">{{ row.incidents }}</td>
+                {% if data.show_duration %}<td class="text-end">{{ row.downtime_human }}</td>{% endif %}
+                {% if data.group_by == 'host' %}
+                  <td class="text-end">{% if row.availability_pct is not none %}{{ '%.2f' | format(row.availability_pct) }}{% else %}--{% endif %}</td>
+                {% else %}
+                  <td class="text-end">{% if row.impact_pct is not none %}{{ '%.2f' | format(row.impact_pct) }}{% else %}--{% endif %}</td>
+                {% endif %}
+                {% if data.show_acknowledgements %}<td class="text-end">{{ row.ack_count }}</td>{% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-success" role="alert">Nenhum incidente dentro dos filtros aplicados.</div>
+    {% endif %}
+
+    {% if data.show_details and data.details %}
+      <h5 class="mb-2">Detalhes dos incidentes</h5>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead>
+            <tr>
+              <th>Host</th>
+              <th>Problema</th>
+              <th>Severidade</th>
+              <th>Inicio</th>
+              <th>Fim</th>
+              {% if data.show_duration %}<th>Duracao</th>{% endif %}
+              {% if data.show_acknowledgements %}<th>Reconhecimentos</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in data.details %}
+              <tr>
+                <td>{{ item.host_name }}</td>
+                <td>{{ item.trigger }}</td>
+                <td>{{ item.severity }}</td>
+                <td>{{ item.start }}</td>
+                <td>{{ item.end }}</td>
+                {% if data.show_duration %}<td>{{ item.duration_human }}</td>{% endif %}
+                {% if data.show_acknowledgements %}
+                  <td>
+                    {% if item.ack_count > 0 %}
+                      <div class="small text-muted">{{ item.ack_count }} ACK(s)</div>
+                      <ul class="small mb-0 ps-3">
+                        {% for ack in item.ack_details %}
+                          <li><strong>{{ ack.alias or 'Usuario' }}</strong> em {{ ack.clock }}{% if ack.message %}: {{ ack.message }}{% endif %}</li>
+                        {% endfor %}
+                      </ul>
+                    {% else %}
+                      <span class="text-muted">Nenhum</span>
+                    {% endif %}
+                  </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% elif data.show_details %}
+      <div class="alert alert-info" role="alert">Nenhum incidente detalhado para exibir.</div>
+    {% endif %}
+  {% endif %}
+</div>

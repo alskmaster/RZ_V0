@@ -132,7 +132,7 @@
             const titleDisplay = module.title ? `"${module.title}"` : '';
             // Detecta se há customizer registrado para o módulo.
             // Fall-back: garante o botão para tipos conhecidos mesmo se o registro atrasar.
-            const knownCustomizable = new Set(['incidents_table', 'incidents_chart', 'wifi', 'disk', 'disk_table', 'disk_chart', 'traffic_in_table', 'traffic_in_chart', 'traffic_out_table', 'traffic_out_chart', 'latency_table', 'latency_chart', 'loss_table', 'loss_chart', 'cpu_table', 'cpu_chart', 'mem_table', 'mem_chart', 'agent_status', 'mttr', 'critical_performance', 'capacity_forecast', 'itil_availability', 'resilience_panel', 'resilience_services', 'recurring_problems', 'root_cause_top_triggers', 'unavailability_heatmap', 'html', 'inventory']);
+            const knownCustomizable = new Set(['incidents_table', 'incidents_chart', 'wifi', 'disk', 'disk_table', 'disk_chart', 'traffic_in_table', 'traffic_in_chart', 'traffic_out_table', 'traffic_out_chart', 'latency_table', 'latency_chart', 'loss_table', 'loss_chart', 'cpu_table', 'cpu_chart', 'mem_table', 'mem_chart', 'agent_status', 'mttr', 'critical_performance', 'capacity_forecast', 'incident_availability', 'resilience_panel', 'resilience_services', 'recurring_problems', 'root_cause_top_triggers', 'unavailability_heatmap', 'html', 'inventory']);
             const isCustomizable = (
                 (module.type in moduleCustomizers) ||
                 (window.ModuleCustomizers && (module.type in window.ModuleCustomizers)) ||
@@ -201,37 +201,52 @@
             // Agrupamento por categorias (optgroups) para melhor usabilidade
             moduleTypeSelect.innerHTML = '';
             const TYPE_TO_CATEGORY = {
-                // Desempenho
-                'cpu_table': 'Desempenho', 'cpu_chart': 'Desempenho',
-                'mem_table': 'Desempenho', 'mem_chart': 'Desempenho',
-                'disk': 'Desempenho',
-                'disk_table': 'Desempenho', 'disk_chart': 'Desempenho',
-                // Rede (Ping)
-                'latency_table': 'Rede (Ping)', 'latency_chart': 'Rede (Ping)',
-                'loss_table': 'Rede (Ping)', 'loss_chart': 'Rede (Ping)',
-                'traffic_in': 'Rede (Trafego)', 'traffic_in_table': 'Rede (Trafego)', 'traffic_in_chart': 'Rede (Trafego)', 'traffic_out': 'Rede (Trafego)', 'traffic_out_table': 'Rede (Trafego)', 'traffic_out_chart': 'Rede (Trafego)',
                 // Disponibilidade / SLA
+                'incident_availability': 'Disponibilidade / SLA',
+                'uptime_summary': 'Disponibilidade / SLA',
                 'kpi': 'Disponibilidade / SLA', 'sla_table': 'Disponibilidade / SLA',
                 'sla_chart': 'Disponibilidade / SLA', 'sla_plus': 'Disponibilidade / SLA',
-                'resilience_panel': 'Disponibilidade / SLA',
                 'sla_incidents_table': 'Disponibilidade / SLA',
+                'resilience_panel': 'Disponibilidade / SLA', 'resilience_services': 'Disponibilidade / SLA',
                 'top_hosts': 'Disponibilidade / SLA', 'top_problems': 'Disponibilidade / SLA',
                 'stress': 'Disponibilidade / SLA',
                 // Incidentes
-                'incidents_table': 'Incidentes', 'incidents_chart': 'Incidentes', 'unavailability_heatmap': 'Incidentes', 'root_cause_top_triggers': 'Incidentes', 'mttr': 'Incidentes', 'softdesk_root_cause': 'Incidentes',
+                'incidents_table': 'Incidentes', 'incidents_chart': 'Incidentes', 'unavailability_heatmap': 'Incidentes',
+                'root_cause_top_triggers': 'Incidentes', 'mttr': 'Incidentes', 'recurring_problems': 'Incidentes',
+                'softdesk_root_cause': 'Incidentes',
+                // Desempenho
+                'cpu_table': 'Desempenho', 'cpu_chart': 'Desempenho',
+                'mem_table': 'Desempenho', 'mem_chart': 'Desempenho',
+                'disk': 'Desempenho', 'disk_table': 'Desempenho', 'disk_chart': 'Desempenho',
+                'critical_performance': 'Desempenho',
+                // Rede (Ping)
+                'latency_table': 'Rede (Ping)', 'latency_chart': 'Rede (Ping)',
+                'loss_table': 'Rede (Ping)', 'loss_chart': 'Rede (Ping)',
+                // Rede (Trafego)
+                'traffic_in': 'Rede (Trafego)', 'traffic_in_table': 'Rede (Trafego)', 'traffic_in_chart': 'Rede (Trafego)',
+                'traffic_out': 'Rede (Trafego)', 'traffic_out_table': 'Rede (Trafego)', 'traffic_out_chart': 'Rede (Trafego)',
                 // Wi-Fi
                 'wifi': 'Wi-Fi',
-                // Inventário & Conteúdo
-                'inventory': 'Inventário & Conteúdo', 'html': 'Inventário & Conteúdo'
+                // Operacao
+                'agent_status': 'Operacao',
+                // Planejamento
+                'capacity_forecast': 'Planejamento',
+                // Executivo
+                'executive_summary': 'Executivo',
+                // Inventario & Conteudo
+                'inventory': 'Inventario & Conteudo', 'html': 'Inventario & Conteudo'
             };
             const CATEGORY_ORDER = [
                 'Disponibilidade / SLA',
                 'Incidentes',
                 'Desempenho',
                 'Rede (Ping)',
-                'Rede (Tráfego)',
+                'Rede (Trafego)',
                 'Wi-Fi',
-                'Inventário & Conteúdo'
+                'Operacao',
+                'Planejamento',
+                'Executivo',
+                'Inventario & Conteudo'
             ];
             const buckets = {};
             availableModules.forEach(m => {

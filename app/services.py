@@ -55,7 +55,7 @@ from .collectors.recurring_problems_collector import RecurringProblemsCollector
 from .collectors.agent_status_collector import AgentStatusCollector
 from .collectors.critical_performance_collector import CriticalPerformanceCollector
 from .collectors.capacity_forecast_collector import CapacityForecastCollector
-from .collectors.itil_availability_collector import ITILAvailabilityCollector
+from .collectors.incident_availability_collector import IncidentAvailabilityCollector
 from .collectors.executive_summary_collector import ExecutiveSummaryCollector
 from .collectors.softdesk_root_cause_collector import SoftdeskRootCauseCollector
 from .collectors.uptime_summary_collector import UptimeSummaryCollector
@@ -100,7 +100,7 @@ COLLECTOR_MAP = {
     'agent_status': AgentStatusCollector,
     'critical_performance': CriticalPerformanceCollector,
     'capacity_forecast': CapacityForecastCollector,
-    'itil_availability': ITILAvailabilityCollector,
+    'incident_availability': IncidentAvailabilityCollector,
     'executive_summary': ExecutiveSummaryCollector,
     'softdesk_root_cause': SoftdeskRootCauseCollector,
     'uptime_summary': UptimeSummaryCollector,

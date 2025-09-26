@@ -473,7 +473,7 @@ def get_available_modules(client_id):
     # Limpa modulos legados do backend (mostrar apenas versoes novas)
     # Extensoes adicionais
     available_modules.append({'type': 'capacity_forecast', 'name': 'Previsão de Capacidade'})
-    available_modules.append({'type': 'itil_availability', 'name': 'Disponibilidade por Incidente (ITIL)'})
+    available_modules.append({'type': 'incident_availability', 'name': 'Disponibilidade por Incidente'})
     available_modules.append({'type': 'executive_summary', 'name': 'Sumário Executivo'})
     legacy_types = {'cpu', 'mem', 'latency', 'loss', 'sla', 'sla_table', 'sla_chart', 'sla_plus', 'kpi', 'top_hosts', 'top_problems', 'stress', 'sla_incidents_table'}
     try:
