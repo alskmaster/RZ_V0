@@ -70,6 +70,29 @@ class SoftdeskRootCauseCollector(BaseCollector):
                 return f"{date_part} {time_part}"
             return date_part
 
+    def _tokenize(self, value):
+        if not value:
+            return []
+        if isinstance(value, (list, tuple)):
+            return [str(token).strip() for token in value if str(token).strip()]
+        return [token.strip() for token in str(value).split(',') if token and token.strip()]
+
+    def _parse_field_codes(self, raw_value, default_codes):
+        codes = []
+        for token in self._tokenize(raw_value):
+            try:
+                codes.append(int(token))
+            except Exception:
+                continue
+        if not codes:
+            if isinstance(default_codes, (list, tuple)):
+                return [int(c) for c in default_codes if isinstance(c, int)]
+            try:
+                return [int(default_codes)]
+            except Exception:
+                return []
+        return codes
+
     def _extract_ticket_ids(self, acknowledges):
         tickets = set()
         for ack in acknowledges or []:
@@ -80,13 +103,17 @@ class SoftdeskRootCauseCollector(BaseCollector):
                 continue
         return sorted(tickets)
 
-    def _fetch_softdesk_tickets(self, ticket_ids, base_url, api_key):
+    def _fetch_softdesk_tickets(self, ticket_ids, base_url, api_key, note_codes=None, root_codes=None, protocol_codes=None):
         ids = []
         for tid in ticket_ids or []:
             tid_str = str(tid).strip()
             if tid_str:
                 ids.append(tid_str)
         results = {}
+        note_codes = self._parse_field_codes(note_codes, [5])
+        root_codes = self._parse_field_codes(root_codes, [6])
+        protocol_codes = self._parse_field_codes(protocol_codes, [7])
+
         if not ids:
             return results
         session = requests.Session()
@@ -108,13 +135,16 @@ class SoftdeskRootCauseCollector(BaseCollector):
                 obj = data['objeto']
                 campos = obj.get('campos_costumizaveis') or []
 
-                def _get_custom(code):
-                    for campo in campos:
-                        try:
-                            if int(campo.get('campo_customizavel', {}).get('codigo')) == code:
-                                return campo.get('descricao') or ''
-                        except Exception:
-                            continue
+                def _get_custom(code_list):
+                    for code in code_list or []:
+                        for campo in campos:
+                            try:
+                                if int(campo.get('campo_customizavel', {}).get('codigo')) == int(code):
+                                    raw_val = (campo.get('descricao') or campo.get('valor') or campo.get('texto') or '').strip()
+                                    if raw_val:
+                                        return raw_val
+                            except Exception:
+                                continue
                     return ''
 
                 results[tid] = {
@@ -126,9 +156,9 @@ class SoftdeskRootCauseCollector(BaseCollector):
                     'atendente': (obj.get('atendente') or {}).get('nome'),
                     'abertura': self._format_datetime_parts(obj.get('data_abertura'), obj.get('hora_abertura')),
                     'encerramento': self._format_datetime_parts(obj.get('data_encerramento'), obj.get('hora_encerramento')),
-                    'nota_fechamento': _get_custom(5) or None,
-                    'causa_raiz': _get_custom(6) or None,
-                    'protocolo_operadora': _get_custom(7) or None,
+                    'nota_fechamento': _get_custom(note_codes) or None,
+                    'causa_raiz': _get_custom(root_codes) or None,
+                    'protocolo_operadora': _get_custom(protocol_codes) or None,
                 }
             except requests.RequestException as exc:
                 current_app.logger.warning(
@@ -168,6 +198,18 @@ class SoftdeskRootCauseCollector(BaseCollector):
         problem_exclude = (options.get('exclude_problem_contains') or '').strip()
         tags_include = (options.get('tags_include') or '').strip()
         tags_exclude = (options.get('tags_exclude') or '').strip()
+        group_by = (options.get('group_by') or 'tickets').lower()
+        if group_by not in ('tickets', 'host'):
+            group_by = 'tickets'
+        show_events_table = options.get('show_events_table')
+        if isinstance(show_events_table, str):
+            show_events_table = show_events_table.lower() not in ('false', '0', 'no')
+        show_events_table = True if show_events_table is None else bool(show_events_table)
+
+        note_field_codes = self._parse_field_codes(options.get('note_field_codes'), [5])
+        root_field_codes = self._parse_field_codes(options.get('root_cause_field_codes'), [6])
+        protocol_field_codes = self._parse_field_codes(options.get('protocol_field_codes'), [7])
+
         top_n = options.get('top_n_tickets')
         sort_by = (options.get('sort_by') or 'duration').lower()
         period = self._apply_period_subfilter(period, sub_filter)
@@ -326,45 +368,118 @@ class SoftdeskRootCauseCollector(BaseCollector):
         df['formatted_end'] = df['end_ts'].apply(self._format_ts)
         df['formatted_duration'] = df['duration'].apply(self._format_duration)
 
-        ticket_details = self._fetch_softdesk_tickets(df['ticket_ids'].unique().tolist(), base_url, api_key)
+        ticket_details = self._fetch_softdesk_tickets(
+            df['ticket_ids'].unique().tolist(),
+            base_url,
+            api_key,
+            note_codes=note_field_codes,
+            root_codes=root_field_codes,
+            protocol_codes=protocol_field_codes
+        )
 
         grouped = []
-        for ticket_id, group in df.groupby('ticket_ids'):
-            intervals = []
-            for _, raw in group.iterrows():
-                start_val = int(raw.get('clock', 0))
-                end_val = int(raw.get('end_ts', start_val))
-                intervals.append((start_val, end_val))
-            intervals.sort()
-            merged = []
-            for start_val, end_val in intervals:
-                if not merged or start_val > merged[-1][1]:
-                    merged.append([start_val, end_val])
-                else:
-                    merged[-1][1] = max(merged[-1][1], end_val)
-            total_seconds = sum(end_val - start_val for start_val, end_val in merged)
+        ticket_details_map = {str(k): v for k, v in (ticket_details or {}).items()}
 
-            events_rows = []
-            for _, row in group.sort_values('clock').iterrows():
-                events_rows.append({
-                    'host': row.get('host_name') or 'Desconhecido',
-                    'problem': row.get('name') or f"Trigger {row.get('trigger_ref')}",
-                    'severity': row.get('severity_name'),
-                    'start': row.get('formatted_start'),
-                    'end': row.get('formatted_end'),
-                    'duration': row.get('formatted_duration')
+        if group_by == 'host':
+            host_groups = df.groupby('host_name', dropna=False)
+            for host_name, group in host_groups:
+                host_label = host_name or 'Desconhecido'
+                intervals = []
+                for _, raw in group.iterrows():
+                    start_val = int(raw.get('clock', 0))
+                    end_val = int(raw.get('end_ts', start_val))
+                    intervals.append((start_val, end_val))
+                intervals.sort()
+                merged = []
+                for start_val, end_val in intervals:
+                    if not merged or start_val > merged[-1][1]:
+                        merged.append([start_val, end_val])
+                    else:
+                        merged[-1][1] = max(merged[-1][1], end_val)
+                total_seconds = sum(end_val - start_val for start_val, end_val in merged)
+
+                events_rows = []
+                for _, row in group.sort_values('clock').iterrows():
+                    events_rows.append({
+                        'ticket_id': str(row.get('ticket_ids') or ''),
+                        'host': row.get('host_name') or 'Desconhecido',
+                        'problem': row.get('name') or f"Trigger {row.get('trigger_ref')}",
+                        'severity': row.get('severity_name'),
+                        'start': row.get('formatted_start'),
+                        'end': row.get('formatted_end'),
+                        'duration': row.get('formatted_duration')
+                    })
+
+                ticket_ids = sorted({str(val) for val in group['ticket_ids'].dropna().astype(str)})
+                ticket_details_list = []
+                for tid in ticket_ids:
+                    ticket_details_list.append({
+                        'ticket_id': tid,
+                        'softdesk': ticket_details_map.get(tid)
+                    })
+
+                grouped.append({
+                    'group_type': 'host',
+                    'ticket_id': host_label,
+                    'softdesk': None,
+                    'hosts': [host_label],
+                    'tickets': ticket_ids,
+                    'ticket_details': ticket_details_list,
+                    'total_duration_seconds': int(total_seconds),
+                    'total_duration': self._format_duration(total_seconds),
+                    'events': events_rows
                 })
-            grouped.append({
-                'ticket_id': str(ticket_id),
-                'softdesk': ticket_details.get(str(ticket_id)),
-                'hosts': sorted({row.get('host_name') or 'Desconhecido' for _, row in group.iterrows()}),
-                'total_duration_seconds': int(total_seconds),
-                'total_duration': self._format_duration(total_seconds),
-                'events': events_rows
-            })
+        else:
+            for ticket_id, group in df.groupby('ticket_ids'):
+                intervals = []
+                for _, raw in group.iterrows():
+                    start_val = int(raw.get('clock', 0))
+                    end_val = int(raw.get('end_ts', start_val))
+                    intervals.append((start_val, end_val))
+                intervals.sort()
+                merged = []
+                for start_val, end_val in intervals:
+                    if not merged or start_val > merged[-1][1]:
+                        merged.append([start_val, end_val])
+                    else:
+                        merged[-1][1] = max(merged[-1][1], end_val)
+                total_seconds = sum(end_val - start_val for start_val, end_val in merged)
+
+                events_rows = []
+                for _, row in group.sort_values('clock').iterrows():
+                    events_rows.append({
+                        'ticket_id': str(ticket_id),
+                        'host': row.get('host_name') or 'Desconhecido',
+                        'problem': row.get('name') or f"Trigger {row.get('trigger_ref')}",
+                        'severity': row.get('severity_name'),
+                        'start': row.get('formatted_start'),
+                        'end': row.get('formatted_end'),
+                        'duration': row.get('formatted_duration')
+                    })
+
+                ticket_id_str = str(ticket_id)
+                ticket_info = ticket_details_map.get(ticket_id_str)
+
+                grouped.append({
+                    'group_type': 'ticket',
+                    'ticket_id': ticket_id_str,
+                    'softdesk': ticket_info,
+                    'hosts': sorted({row.get('host_name') or 'Desconhecido' for _, row in group.iterrows()}),
+                    'tickets': [ticket_id_str],
+                    'ticket_details': [{
+                        'ticket_id': ticket_id_str,
+                        'softdesk': ticket_info
+                    }],
+                    'total_duration_seconds': int(total_seconds),
+                    'total_duration': self._format_duration(total_seconds),
+                    'events': events_rows
+                })
 
         if sort_by == 'tickets':
-            grouped.sort(key=lambda item: item['ticket_id'])
+            if group_by == 'host':
+                grouped.sort(key=lambda item: item['ticket_id'])
+            else:
+                grouped.sort(key=lambda item: item['ticket_id'])
         else:
             grouped.sort(key=lambda item: item['total_duration_seconds'], reverse=True)
         if top_n:
@@ -381,5 +496,7 @@ class SoftdeskRootCauseCollector(BaseCollector):
             'period': period,
             'period_label': period_label,
             'selected_severities': selected_names,
+            'group_by': group_by,
+            'hide_events_table': not show_events_table,
             'info': None if grouped else 'Nenhum chamado encontrado.'
         })

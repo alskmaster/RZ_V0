@@ -20,6 +20,11 @@
         problemExclude: el.querySelector('#softdeskProblemExclude'),
         tagsInclude: el.querySelector('#softdeskTagsInclude'),
         tagsExclude: el.querySelector('#softdeskTagsExclude'),
+        noteFieldCodes: el.querySelector('#softdeskNoteFieldCodes'),
+        rootCauseFieldCodes: el.querySelector('#softdeskRootFieldCodes'),
+        protocolFieldCodes: el.querySelector('#softdeskProtocolFieldCodes'),
+        groupBy: el.querySelector('#softdeskGroupBy'),
+        showEventsTable: el.querySelector('#softdeskShowEventsTable'),
         topNTickets: el.querySelector('#softdeskTopNTickets'),
         sortBy: el.querySelector('#softdeskSortBy'),
         saveBtn: el.querySelector('#saveSoftdeskCustomizationBtn')
@@ -45,13 +50,21 @@
       el.problemExclude.value = o.exclude_problem_contains || '';
       el.tagsInclude.value = o.tags_include || '';
       el.tagsExclude.value = o.tags_exclude || '';
+      if (el.noteFieldCodes) el.noteFieldCodes.value = (o.note_field_codes !== undefined && o.note_field_codes !== null && o.note_field_codes !== '') ? o.note_field_codes : '5';
+      if (el.rootCauseFieldCodes) el.rootCauseFieldCodes.value = (o.root_cause_field_codes !== undefined && o.root_cause_field_codes !== null && o.root_cause_field_codes !== '') ? o.root_cause_field_codes : '6';
+      if (el.protocolFieldCodes) el.protocolFieldCodes.value = (o.protocol_field_codes !== undefined && o.protocol_field_codes !== null && o.protocol_field_codes !== '') ? o.protocol_field_codes : '7';
+      if (el.groupBy) el.groupBy.value = (o.group_by || 'tickets');
+      if (el.showEventsTable) el.showEventsTable.checked = (o.show_events_table !== false);
       const top = o.top_n_tickets;
       el.topNTickets.value = (top !== undefined && top !== null && top !== '') ? top : '';
       el.sortBy.value = (o.sort_by || 'duration');
-      el.saveBtn.addEventListener('click', () => {
-        if (this._onSave) this._onSave(this.save());
-        this.modal.hide();
-      }, { once: true });
+      if (el.saveBtn) {
+        el.saveBtn.onclick = null;
+        el.saveBtn.addEventListener('click', () => {
+          if (this._onSave) this._onSave(this.save());
+          this.modal.hide();
+        }, { once: true });
+      }
     },
     save(){
       const el = this.elements;
@@ -86,6 +99,11 @@
         exclude_problem_contains: problemExclude || null,
         tags_include: tagsInclude || null,
         tags_exclude: tagsExclude || null,
+        note_field_codes: (el.noteFieldCodes && el.noteFieldCodes.value.trim()) ? el.noteFieldCodes.value.trim() : null,
+        root_cause_field_codes: (el.rootCauseFieldCodes && el.rootCauseFieldCodes.value.trim()) ? el.rootCauseFieldCodes.value.trim() : null,
+        protocol_field_codes: (el.protocolFieldCodes && el.protocolFieldCodes.value.trim()) ? el.protocolFieldCodes.value.trim() : null,
+        group_by: el.groupBy ? (el.groupBy.value || 'tickets') : 'tickets',
+        show_events_table: el.showEventsTable ? !!el.showEventsTable.checked : true,
         top_n_tickets: topVal,
         sort_by: el.sortBy.value || 'duration'
       };
@@ -151,6 +169,37 @@
                 </div>
               </div>
             </div>
+            <div class="row g-3 mt-3">
+              <div class="col-md-4">
+                <label class="form-label" for="softdeskNoteFieldCodes">Campo nota de fechamento (codigos)</label>
+                <input type="text" class="form-control" id="softdeskNoteFieldCodes" placeholder="Ex: 5 ou 5,42">
+                <small class="text-muted">Informe os codigos dos campos customizados que guardam a nota. Separe por virgula.</small>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="softdeskRootFieldCodes">Campo causa raiz (codigos)</label>
+                <input type="text" class="form-control" id="softdeskRootFieldCodes" placeholder="Ex: 6">
+                <small class="text-muted">Aceita multiplos codigos separados por virgula.</small>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="softdeskProtocolFieldCodes">Campo protocolo operadora (codigos)</label>
+                <input type="text" class="form-control" id="softdeskProtocolFieldCodes" placeholder="Ex: 7">
+              </div>
+            </div>
+            <div class="row g-3 mt-2">
+              <div class="col-md-6">
+                <label class="form-label" for="softdeskGroupBy">Agrupar resultados</label>
+                <select class="form-select" id="softdeskGroupBy">
+                  <option value="tickets">Por chamado</option>
+                  <option value="host">Por host</option>
+                </select>
+              </div>
+              <div class="col-md-6 d-flex align-items-end">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="softdeskShowEventsTable" checked>
+                  <label class="form-check-label" for="softdeskShowEventsTable">Exibir tabela de incidentes</label>
+                </div>
+              </div>
+            </div>
             <hr class="my-3">
             <div class="row g-3">
               <div class="col-md-6">
@@ -207,4 +256,5 @@
     return document.getElementById('customizeSoftdeskModal');
   }
 })();
+
 
